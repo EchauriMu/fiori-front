@@ -1,0 +1,18 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.promociones.Promociones"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+>
+    <Page
+        title="{i18n>promocionesPageTitle}"
+        showNavButton="true"
+        navButtonPress="onNavBack"
+    >
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <Title text="Gestión de Promociones" level="H2" />
+                <Text text="Aquí se gestionarán las promociones." />
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

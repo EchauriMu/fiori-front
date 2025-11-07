@@ -1,0 +1,55 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.Login"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:m="sap.m"
+>
+    
+            <m:VBox
+                id="LoginVBox"
+                height="100%"
+                width="100%"
+                justifyContent="Center"
+                alignItems="Center"
+                class="sapUiResponsiveMargin"
+            >
+                <m:Image
+                    id="LoginImage"
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/SAP_2011_logo.svg/2560px-SAP_2011_logo.svg.png"
+                    width="400px"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <m:Input
+                    id="emailInput"
+                    type="Email"
+                    placeholder="Correo"
+                    value="{loginModel>/email}"    
+                    width="300px"
+                    class="sapUiSmallMarginBottom"
+                />
+                <m:HBox width="300px" class="sapUiSmallMarginBottom">
+                    <m:Input
+                        id="passwordInput"
+                        placeholder="Contraseña"
+                        value="{loginModel>/password}"  
+                        type="Password"
+                        width="100%"
+                    />
+                    <m:Button
+                        id="showPasswordButton"
+                        icon="sap-icon://show"
+                        type="Transparent"
+                        press=".onVerContraseña"
+                        tooltip="Mostrar/Ocultar contraseña"
+                    />
+                </m:HBox>
+
+                <m:Button
+                    id="loginButton"
+                    text="Iniciar Sesión"
+                    press=".onLoginPress"
+                    width="300px"
+                />
+            </m:VBox>
+
+</mvc:View>

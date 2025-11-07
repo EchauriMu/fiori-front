@@ -1,0 +1,236 @@
+{
+    "_version": "1.65.0",
+    "sap.app": {
+        "id": "com.invertions.sapfiorimodinv",
+        "type": "application",
+        "i18n": {
+            "bundleName": "com.invertions.sapfiorimodinv.i18n.i18n",
+            "fallbackLocale": "es_MX",
+            "supportedLocales": [
+                "es_MX"
+            ]
+        },
+        "applicationVersion": {
+            "version": "0.0.1"
+        },
+        "title": "{{appTitle}}",
+        "description": "{{appDescription}}",
+        "resources": "resources.json",
+        "sourceTemplate": {
+            "id": "@sap/generator-fiori:basic",
+            "version": "1.16.4",
+            "toolsId": "994b0345-20cb-4584-8e8d-af85135e6071"
+        }
+    },
+    "sap.ui": {
+        "technology": "UI5",
+        "icons": {
+            "icon": "",
+            "favIcon": "",
+            "phone": "",
+            "phone@2": "",
+            "tablet": "",
+            "tablet@2": ""
+        },
+        "deviceTypes": {
+            "desktop": true,
+            "tablet": true,
+            "phone": true
+        }
+    },
+    "sap.ui5": {
+        "flexEnabled": false,
+        "dependencies": {
+            "minUI5Version": "1.132.1",
+            "libs": {
+                "sap.m": {},
+                "sap.ui.core": {},
+                "sap.tnt": {},
+                "sap.f": {},
+                "sap.ui.table": {},
+                "sap.ui.layout": {},
+                "sap.viz": {},
+                "sap.ui.comp": {},
+                "sap.suite.ui.microchart": {}
+            }
+        },
+        "contentDensities": {
+            "compact": true,
+            "cozy": true
+        },
+        "models": {
+             "": { 
+                "type": "sap.ui.model.json.JSONModel"
+            },
+            "i18n": {
+                "type": "sap.ui.model.resource.ResourceModel",
+                "settings": {
+                    "bundleName": "com.invertions.sapfiorimodinv.i18n.i18n",
+                    "fallbackLocale": "es_MX",
+                    "supportedLocales": [
+                        "es_MX"
+                    ]
+                }
+            }
+        },
+        "resources": {
+            "css": [
+                {
+                    "uri": "css/style.css"
+                }
+            ]
+        },
+        "routing": {
+            "config": {
+                "routerClass": "sap.m.routing.Router",
+                "viewType": "XML",
+                "async": true,
+                "viewPath": "com.invertions.sapfiorimodinv.view",
+                "controlId": "mainContents",
+                "controlAggregation": "pages",
+                "transition": "slide"
+            },
+            "routes": [
+                {
+                    "pattern": "",
+                    "name": "Login",
+                    "target": "TargetLogin"
+                },
+                {
+                    "pattern": "home",
+                    "name": "RouteMain",
+                    "target": "TargetMain"
+                },
+                {
+                    "pattern": "salesforecast",
+                    "name": "RouteSalesForecast",
+                    "target": "TargetSalesForecast"
+                },
+                {
+                    "pattern": "roles",
+                    "name": "RouteRoles",
+                    "target": "TargetRoles"
+                },
+                {
+                    "pattern": "roles/detail/{roleId}",
+                    "name": "RouteRolesDetail",
+                    "target": "TargetRolesDetail"
+                },
+
+                 {
+                    "pattern": "users",
+                    "name": "RouteUsersList",
+                    "target": "TargetUsersList"
+                },
+                {
+                    "pattern": "users/{USERID}",
+                    "name": "RouteUserDetails",
+                    "target":"TargetUserDetails"
+                },
+                 {
+                    "pattern": "catalogs",
+                    "name": "RouteCatalogs",
+                    "target": "TargetCatalogs"
+                  },
+                                    {
+                                        "pattern": "investments",
+                                        "name": "RouteInvestments",
+                                        "target": "TargetInvestments"
+                                    },
+                                    {
+                                                "pattern": "listasprecios",
+                                                "name": "RouteListasPrecios",
+                                                "target": "TargetListasPrecios"
+                                    },
+                                    {
+                                        "pattern": "promociones",
+                                        "name": "RoutePromociones",
+                                        "target": "TargetPromociones"
+                                    },
+                                    {
+                                        "pattern": "categorias",
+                                        "name": "RouteCategorias",
+                                        "target": "TargetCategorias"
+                                    }
+            ],
+            "targets": {
+                "TargetMain": {
+                    "viewName": "Main",
+                    "viewId": "main",
+                    "viewType": "XML"
+                },
+                "TargetSalesForecast": {
+                    "viewName": "salesforecast.SalesForecast",
+                    "viewId": "salesForecast",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.salesforecast"
+                },
+                "TargetRoles": {
+                    "viewName": "Roles",
+                    "viewId": "rolesSplitter",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.security.splitter"
+                },
+                "TargetUsersList": {
+                    "viewId": "UsersList",
+                    "viewName": "UsersList",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.security"
+                },
+                "TargetUserDetails":{
+                    "viewId": "UserDetails",
+                    "viewName": "UserDetails",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.security"
+                },
+                "TargetCatalogs": {
+                    "viewName": "Catalogs",
+                    "viewId": "catalogs",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.catalogs"
+                },
+                "TargetInvestments": {
+                    "viewName": "Investments",
+                    "viewId": "investmentsPage",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.investments"
+                },
+                "TargetLogin": {
+                    "viewName": "Login",
+                    "viewId": "login",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view"
+                },
+                "TargetRolesDetail": {
+                "viewName": "RolesDetail",
+                "viewId": "rolesDetail",
+                "viewType": "XML",
+                "viewPath": "com.invertions.sapfiorimodinv.view.security"
+                },
+                "TargetListasPrecios": {
+                        "viewName": "ListasPrecios",
+                        "viewId": "listasPrecios",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.listasprecios"
+                },
+                "TargetPromociones": {
+                        "viewName": "Promociones",
+                        "viewId": "promociones",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.promociones"
+                },
+                "TargetCategorias": {
+                        "viewName": "Categorias",
+                        "viewId": "categorias",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.categorias"
+                }
+            }
+        },
+        "rootView": {
+            "viewName": "com.invertions.sapfiorimodinv.view.App",
+            "type": "XML",
+            "id": "App"
+        }
+    }
+}

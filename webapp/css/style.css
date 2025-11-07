@@ -1,0 +1,84 @@
+/* Enter your custom styles here */
+.textSuccess {
+  background-color: green !important;
+  font-weight: bold;
+}
+
+.textError {
+  background-color: red !important;
+  font-weight: bold;
+}
+
+.myBlackButton .sapMBtnInner {
+    color: black !important;
+}
+
+.myBlackButton .sapMBtnIcon {
+    color: black !important;
+}
+
+
+.balance {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+
+  color: #00ff88;
+  border: 1.5px solid #00ff88;
+  background-color: transparent;
+  border-radius: 0.5rem;
+
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.4px;
+
+  transition: all 0.2s ease;
+}
+
+.balance:hover {
+  background-color: rgba(0, 255, 136, 0.05); 
+  box-shadow: 0 0 6px #00ff88;
+}
+
+.rowBuy {
+    background-color: rgba(46, 204, 64, 0.1) !important;
+    color: #2ecc40;
+}
+
+.rowBuy .sapMText {
+    color: #2ecc40 !important;
+    font-weight: bold;
+}
+
+.rowSell {
+    background-color: rgba(255, 65, 54, 0.1) !important;
+    color:#ff4136 !important
+}
+
+.rowSell .sapMText {
+    color: #ff4136 !important;
+    font-weight: bold;
+}
+
+.sapMListTblCell .rowBuy {
+    background-color: rgba(46, 204, 64, 0.1) !important;
+    color: #2ecc40 !important
+}
+
+.sapMListTblCell .rowSell {
+    background-color: rgba(255, 65, 54, 0.1) !important;
+    color: #ff4136 !important;
+}
+
+.viz-plot-marker[data-signals="BUY"] {
+    fill: #2ecc40 !important;
+}
+
+.viz-plot-marker[data-signals="SELL"] {
+    fill: #ff4136 !important;
+}
+
+.customTable .sapMListItems {
+  min-height: 500px;
+  height:500px
+}

@@ -1,0 +1,15 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.listasprecios.ListasPrecios"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+>
+    <Page
+        title="Listas de Precios"
+        showNavButton="true"
+        navButtonPress=".onNavBack"
+    >
+        <content>
+            <Text text="Aquí se gestionarán las Listas de Precios." class="sapUiSmallMargin"/>
+        </content>
+    </Page>
+</mvc:View>

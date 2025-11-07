@@ -1,0 +1,16 @@
+<mvc:View
+  controllerName="com.invertions.sapfiorimodinv.controller.Main"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  displayBlock="true"
+  models="{ appView: 'appView' }">
+
+  <VBox alignItems="Center" justifyContent="Center" height="100%">
+    <Title text="¡Bienvenido al catálogo de productos!" level="H1" class="sapUiSmallMargin" />
+    <Button
+        text="Ir a Listas de Precios"
+        press=".onGoToListasPrecios"
+        type="Emphasized" />
+  </VBox>
+</mvc:View>

@@ -1,0 +1,80 @@
+<mvc:View
+  controllerName="com.invertions.sapfiorimodinv.controller.App"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns:tnt="sap.tnt"
+  xmlns:f="sap.f"
+  xmlns="sap.m"
+  models="{ appView: 'appView' }">
+
+  <tnt:ToolPage id="mainToolPage" class="sapUiSizeCompact">
+
+    <!-- Header -->
+    <tnt:header>
+      <f:ShellBar
+        visible="{= ${appView>/isLoggedIn} }"
+        id="shellBar"
+        title="Proyecto Final"
+        showMenuButton="true"
+        homeIcon="./resources/images/logo_sap.png"
+        menuButtonPressed=".onToggleSideNav">
+        <f:profile>
+          <!-- Avatar simple con la URL del usuario -->
+          <Avatar 
+            id="mainAvatar" 
+            src="{appView>/currentUser/AVATAR}"
+            visible="{= ${appView>/isLoggedIn} }"
+            press=".logout" />        
+        </f:profile>
+      </f:ShellBar>
+    </tnt:header>
+
+    <!-- Side Navigation -->
+    <tnt:sideContent>
+      <tnt:SideNavigation
+        id="sideNavigation"
+        itemSelect=".onItemSelect"
+        selectedKey="main"
+        visible="{= ${appView>/isLoggedIn} }">
+
+        <tnt:NavigationList id="mainNavigationList">
+          
+          <!-- Home -->
+          <tnt:NavigationListItem
+            id="navItemMain"
+            key="main"
+            text="Home"
+            icon="sap-icon://home" />
+
+          <!-- Listas de Precios -->
+          <tnt:NavigationListItem
+            id="navItemListasPrecios"
+            key="listasprecios"
+            text="Listas de Precios"
+            icon="sap-icon://list" />
+
+          <!-- Módulo de Promociones -->
+          <tnt:NavigationListItem
+            id="navItemPromociones"
+            key="promociones"
+            text="{i18n>promocionesPageTitle}"
+            icon="sap-icon://sales-quote" />
+
+          <!-- Módulo de Categorías -->
+          <tnt:NavigationListItem
+            id="navItemCategorias"
+            key="categorias"
+            text="{i18n>categoriasPageTitle}"
+            icon="sap-icon://folder-blank" />
+          
+        </tnt:NavigationList>
+
+      </tnt:SideNavigation>
+    </tnt:sideContent>
+
+    <!-- Main Content -->
+    <tnt:mainContents>
+      <App id="mainContents" />
+    </tnt:mainContents>
+
+  </tnt:ToolPage>
+</mvc:View>

@@ -1,0 +1,15 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.categorias.Categorias"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+>
+    <Page
+        title="{i18n>categoriasPageTitle}"
+        showNavButton="true"
+        navButtonPress=".onNavBack"
+    >
+        <content>
+            <Text text="Aquí se gestionarán las Categorías." class="sapUiSmallMargin"/>
+        </content>
+    </Page>
+</mvc:View>
