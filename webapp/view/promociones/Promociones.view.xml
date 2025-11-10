@@ -2,16 +2,118 @@
     controllerName="com.invertions.sapfiorimodinv.controller.promociones.Promociones"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
+    xmlns:core="sap.ui.core"
 >
     <Page
-        title="{i18n>promocionesPageTitle}"
+        title="Promociones"
         showNavButton="true"
         navButtonPress="onNavBack"
     >
         <content>
-            <VBox class="sapUiSmallMargin">
-                <Title text="Gestión de Promociones" level="H2" />
-                <Text text="Aquí se gestionarán las promociones." />
+            <VBox class="sapUiMediumMargin">
+                <!-- Header Section -->
+                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
+                    <VBox>
+                        <Title text="Gestión de Promociones" level="H2" />
+                        <HBox class="sapUiSmallMarginTop">
+                            <Button text="Promociones" type="Emphasized" class="sapUiTinyMarginEnd" />
+                            <Button text="Calendario" type="Transparent" />
+                        </HBox>
+                    </VBox>
+                    <Button 
+                        text="Nueva Promoción" 
+                        type="Emphasized"
+                        icon="sap-icon://add"
+                        press="onNewPromotion"
+                    />
+                </HBox>
+
+                <!-- Search and Actions Section -->
+                <Panel>
+                    <content>
+                        <VBox>
+                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
+                                <VBox>
+                                    <Title text="Lista de Promociones" level="H3" />
+                                    <Text text="{promotionsModel>/totalPromotions} promociones encontradas" />
+                                </VBox>
+                                <HBox>
+                                    <Button text="Editar" icon="sap-icon://edit" type="Transparent" class="sapUiTinyMarginEnd" press="onEditPromotion" />
+                                    <Button text="Eliminar" icon="sap-icon://delete" type="Transparent" class="sapUiTinyMarginEnd" press="onDeletePromotion" />
+                                    <Button text="Desactivar" icon="sap-icon://decline" type="Transparent" press="onDeactivatePromotion" />
+                                </HBox>
+                            </HBox>
+                            
+                            <!-- Search Bar -->
+                            <SearchField 
+                                placeholder="Buscar por producto, SKU, marca..."
+                                value="{promotionsModel>/searchText}"
+                                search="onSearch"
+                                class="sapUiMediumMarginBottom"
+                                width="100%"
+                            />
+
+                            <!-- Promotions Table -->
+                            <Table
+                                id="promotionsTable"
+                                items="{promotionsModel>/promotions}"
+                                mode="MultiSelect"
+                                class="sapUiResponsiveMargin promotions-table"
+                                width="auto"
+                            >
+                                <columns>
+                                    <Column width="15%">
+                                        <Text text="ID Promoción" />
+                                    </Column>
+                                    <Column width="20%">
+                                        <Text text="Título" />
+                                    </Column>
+                                    <Column width="15%">
+                                        <Text text="Descripción" />
+                                    </Column>
+                                    <Column width="8%">
+                                        <Text text="Descuento" />
+                                    </Column>
+                                    <Column width="15%">
+                                        <Text text="Vigencia" />
+                                    </Column>
+                                    <Column width="12%">
+                                        <Text text="Creado Por" />
+                                    </Column>
+                                    <Column width="10%">
+                                        <Text text="Estado" />
+                                    </Column>
+                                </columns>
+                                
+                                <items>
+                                    <ColumnListItem press="onPromotionPress">
+                                        <cells>
+                                            <Text text="{promotionsModel>id}" class="sapUiTinyText" />
+                                            <Text text="{promotionsModel>title}" />
+                                            <Text text="{promotionsModel>description}" />
+                                            <Text 
+                                                text="{promotionsModel>discount}" 
+                                                class="discount-value"
+                                            />
+                                            <VBox>
+                                                <Text text="{promotionsModel>validityPeriod}" class="validity-text" />
+                                                <Text text="{promotionsModel>validityStatus}" class="sapUiTinyText" />
+                                            </VBox>
+                                            <VBox>
+                                                <Text text="{promotionsModel>createdBy}" class="created-info" />
+                                                <Text text="{promotionsModel>createdDate}" class="sapUiTinyText created-info" />
+                                            </VBox>
+                                            <ObjectStatus 
+                                                text="{promotionsModel>status}" 
+                                                state="{promotionsModel>statusState}"
+                                            />
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </VBox>
+                    </content>
+                </Panel>
             </VBox>
         </content>
     </Page>

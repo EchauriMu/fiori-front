@@ -31,7 +31,7 @@ sap.ui.define([
         USERNAME: sUsername,
         EMAIL: sUsername
       };
-
+      
       // Actualiza el modelo de la aplicación para reflejar el inicio de sesión
       const oAppModel = this.getOwnerComponent().getModel("appView");
       oAppModel.setProperty("/isLoggedIn", true);
@@ -41,9 +41,7 @@ sap.ui.define([
 
       // Navega a la vista principal
       this.getOwnerComponent().getRouter().navTo("RouteMain");
-    },
-
-    //Funcion para el ojito
+    },    //Funcion para el ojito
     onVerContraseña: function () {
       const oInput = this.byId("passwordInput");
       const bCurrentType = oInput.getType() === "Text";
