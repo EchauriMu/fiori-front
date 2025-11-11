@@ -56,7 +56,7 @@
           <tnt:NavigationListItem
             id="navItemPromociones"
             key="promociones"
-            text="{i18n>promocionesPageTitle}"
+            text="Promociones"
             icon="sap-icon://sales-quote" />
 
           <!-- Módulo de Categorías -->
