@@ -45,6 +45,7 @@
             "libs": {
                 "sap.m": {},
                 "sap.ui.core": {},
+                "sap.ui.unified": {},
                 "sap.tnt": {},
                 "sap.f": {},
                 "sap.ui.table": {},
@@ -102,6 +103,11 @@
                     "target": "TargetMain"
                 },
                 {
+                    "pattern": "add-product",
+                    "name": "RouteAddProduct",
+                    "target": "TargetAddProduct"
+                },
+                {
                     "pattern": "salesforecast",
                     "name": "RouteSalesForecast",
                     "target": "TargetSalesForecast"
@@ -157,6 +163,11 @@
                 "TargetMain": {
                     "viewName": "Main",
                     "viewId": "main",
+                    "viewType": "XML"
+                },
+                "TargetAddProduct": {
+                    "viewName": "AddProduct",
+                    "viewId": "addProduct",
                     "viewType": "XML"
                 },
                 "TargetSalesForecast": {

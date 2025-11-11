@@ -1,0 +1,214 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+    xmlns:u="sap.ui.unified">
+
+    <Dialog
+        id="productDetailDialog"
+        title="Detalle del Producto: {detailView>/PRODUCTNAME}"
+        stretch="true"
+        contentWidth="95%"
+        contentHeight="85%"
+        verticalScrolling="false"
+        horizontalScrolling="false">
+
+        <l:Splitter id="detailSplitter" height="100%">
+            <l:contentAreas>
+
+                <ScrollContainer
+                    height="100%"
+                    width="100%"
+                    vertical="true"
+                    horizontal="false">
+                    <layoutData>
+                        <l:SplitterLayoutData size="380px" />
+                    </layoutData>
+                    <VBox class="sapUiSmallMargin">
+                        <Title text="{detailView>/PRODUCTNAME}" titleStyle="H3" class="sapUiTinyMarginBottom" wrapping="true"/>
+                        <Text text="{detailView>/DESSKU}" class="sapUiSmallMarginBottom"/>
+
+                        <Label text="Estado" design="Bold"/>
+                        <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+                            <ObjectStatus
+                                class="sapUiTinyMarginEnd"
+                                text="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusText'}"
+                                state="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusState'}"
+                                inverted="true" />
+                            <Button icon="sap-icon://activate" type="Accept" tooltip="Activar" press="onToggleProductStatus" visible="{= !${detailView>/ACTIVED} &amp;&amp; !${detailView>/DELETED} }"/>
+                            <Button icon="sap-icon://deactivate" type="Reject" tooltip="Desactivar" press="onToggleProductStatus" visible="{= ${detailView>/ACTIVED} &amp;&amp; !${detailView>/DELETED} }"/>
+                        </HBox>
+
+                        <f:SimpleForm
+                            editable="false"
+                            layout="ResponsiveGridLayout"
+                            labelSpanXL="4" labelSpanL="4" labelSpanM="12"
+                            adjustLabelSpan="false"
+                            emptySpanXL="0" emptySpanL="0" emptySpanM="0"
+                            columnsXL="1" columnsL="1" columnsM="1">
+                            <f:content>
+                                <core:Title text="Información General" />
+                                <Label text="SKU" />
+                                <Text text="{detailView>/SKUID}" />
+                                <Label text="Marca" />
+                                <Text text="{detailView>/MARCA}" />
+                                <Label text="Código de Barras" />
+                                <Text text="{detailView>/BARCODE}" />
+                                <Label text="Unidad de Medida" />
+                                <Text text="{detailView>/IDUNIDADMEDIDA}" />
+                                <Label text="Categorías" />
+                                <Text text="{path: 'detailView>/CATEGORIAS', formatter: '.formatterCategories'}" />
+                                <Label text="Info Adicional" visible="{= !!${detailView>/INFOAD} }"/>
+                                <Text text="{detailView>/INFOAD}" visible="{= !!${detailView>/INFOAD} }"/>
+
+                                <core:Title text="Auditoría" />
+                                <Label text="Creado por" />
+                                <VBox>
+                                    <Text text="{detailView>/REGUSER}" />
+                                    <Text text="{path: 'detailView>/REGDATE', formatter: '.formatterDate'}" class="sapUiTinyMarginTop sapUiSmallFont sapThemeBaseText"/>
+                                </VBox>
+                                <Label text="Modificado por" />
+                                <VBox>
+                                    <Text text="{detailView>/MODUSER}" />
+                                    <Text text="{path: 'detailView>/MODDATE', formatter: '.formatterDate'}" class="sapUiTinyMarginTop sapUiSmallFont sapThemeBaseText"/>
+                                </VBox>
+                            </f:content>
+                        </f:SimpleForm>
+                    </VBox>
+                </ScrollContainer>
+
+                <ScrollContainer
+                    height="100%"
+                    width="100%"
+                    vertical="true"
+                    horizontal="false">
+                    <layoutData>
+                        <l:SplitterLayoutData size="auto" />
+                    </layoutData>
+                    <VBox class="sapUiSmallMargin">
+                        <Toolbar>
+                            <Title text="Presentaciones" />
+                            <ToolbarSpacer/>
+                            <ObjectStatus
+                                class="sapUiTinyMarginEnd"
+                                text="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusText'}"
+                                state="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusState'}"
+                                inverted="true"
+                                visible="{= !!${detailView>/selectedPresentation} }" />
+                            <Button icon="sap-icon://add" type="Emphasized" text="Insertar" press="onAddPresentation" />
+                            <Button icon="sap-icon://edit" press="onEditPresentation" enabled="{= !!${detailView>/selectedPresentation} }" />
+                            <Button icon="sap-icon://delete" type="Negative" press="onDeletePresentation" enabled="{= !!${detailView>/selectedPresentation} }" />
+                        </Toolbar>
+
+                        <Select
+                            id="presentationSelect"
+                            width="100%"
+                            class="sapUiSmallMarginTopBottom"
+                            items="{path: 'detailView>/presentations'}"
+                            selectedKey="{detailView>/selectedPresentationKey}"
+                            change="onPresentationChange"
+                            visible="{= ${detailView>/presentations}.length > 0 }">
+                            <core:Item key="{detailView>IdPresentaOK}" text="{detailView>NOMBREPRESENTACION} ({detailView>Descripcion})" />
+                        </Select>
+
+                        <IllustratedMessage
+                            enableVerticalResponsiveness="true"
+                            illustrationType="sapIllus-NoData"
+                            title="Sin Presentaciones"
+                            description="Este producto no tiene presentaciones o no se ha seleccionado ninguna."
+                            visible="{= !${detailView>/loadingPresentations} &amp;&amp; ${detailView>/presentations}.length === 0 }"
+                        />
+
+                        <VBox visible="{= !!${detailView>/selectedPresentation} }">
+                            <Panel expandable="true" expanded="true" headerText="Archivos Asociados" class="sapUiNoContentPadding sapUiSmallMarginTop">
+                                <content>
+                                    <VBox class="sapUiSmallMargin">
+                                        <BusyIndicator visible="{detailView>/loadingFiles}" />
+                                        <Text text="{detailView>/errorFiles}" visible="{= !!${detailView>/errorFiles} }" class="sapUiNegativeText"/>
+                                        
+                                        <IllustratedMessage
+                                            visible="{= !${detailView>/loadingFiles} &amp;&amp; ${detailView>/files}.length === 0 }"
+                                            illustrationType="sapIllus-NoEntries"
+                                            title="Sin Archivos"
+                                            description="No hay archivos para esta presentación."
+                                        />
+
+                                        <VBox visible="{= ${detailView>/imageFiles}.length > 0 }">
+                                            <Label text="Imágenes ({detailView>/imageFiles/length})" design="Bold"/>
+                                            <Carousel
+                                                class="sapUiSmallMarginTop"
+                                                height="220px"
+                                                pages="{path: 'detailView>/imageFiles'}">
+                                                <Image
+                                                    src="{detailView>FILE}"
+                                                    alt="{detailView>INFOAD}"
+                                                    densityAware="false"
+                                                    width="170px"
+                                                    height="150px"/>
+                                            </Carousel>
+                                        </VBox>
+
+                                        <VBox visible="{= ${detailView>/pdfFiles}.length > 0 }" class="sapUiSmallMarginTop">
+                                            <Label text="PDFs ({detailView>/pdfFiles/length})" design="Bold"/>
+                                            <HBox wrap="Wrap" items="{path: 'detailView>/pdfFiles'}">
+                                                <u:FileUploader
+                                                    buttonOnly="true"
+                                                    iconOnly="true"
+                                                    icon="sap-icon://pdf-attachment"
+                                                    tooltip="{detailView>INFOAD}"
+                                                    style="Emphasized"
+                                                    enabled="false"
+                                                    class="sapUiTinyMargin"/>
+                                            </HBox>
+                                        </VBox>
+
+                                        <VBox visible="{= ${detailView>/docFiles}.length > 0 || ${detailView>/videoFiles}.length > 0 || ${detailView>/otherFiles}.length > 0 }" class="sapUiSmallMarginTop">
+                                            <Label text="Documentos y Otros" design="Bold"/>
+                                            <List
+                                                noDataText="No hay otros archivos"
+                                                items="{path: 'detailView>/docFiles'}">
+                                                <StandardListItem
+                                                    title="{detailView>INFOAD}"
+                                                    icon="sap-icon://document-text"
+                                                    type="Active"
+                                                    press="onFilePress" />
+                                            </List>
+                                            <List
+                                                items="{path: 'detailView>/videoFiles'}">
+                                                <StandardListItem
+                                                    title="{detailView>INFOAD}"
+                                                    icon="sap-icon://video"
+                                                    type="Active"
+                                                    press="onFilePress" />
+                                            </List>
+                                            <List
+                                                items="{path: 'detailView>/otherFiles'}">
+                                                <StandardListItem
+                                                    title="{detailView>INFOAD}"
+                                                    icon="sap-icon://attachment"
+                                                    type="Active"
+                                                    press="onFilePress" />
+                                            </List>
+                                        </VBox>
+                                    </VBox>
+                                </content>
+                            </Panel>
+
+                            <Panel expandable="true" expanded="false" headerText="Precios Asociados" class="sapUiNoContentPadding sapUiSmallMarginTop">
+                                <content>
+                                    <Text text="Contenido de precios de la presentación..." class="sapUiSmallMargin"/>
+                                </content>
+                            </Panel>
+                        </VBox>
+                    </VBox>
+                </ScrollContainer>
+
+            </l:contentAreas>
+        </l:Splitter>
+
+        <endButton>
+            <Button text="Cerrar" press="onCloseProductDetailDialog" type="Emphasized"/>
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

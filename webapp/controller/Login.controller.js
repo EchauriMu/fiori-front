@@ -25,6 +25,7 @@ sap.ui.define([
 
       // Guarda el nombre de usuario en sessionStorage
       sessionStorage.setItem("LoggedUser", sUsername);
+      localStorage.setItem("currentUser", JSON.stringify({ USERNAME: sUsername, EMAIL: sUsername }));
 
       // Crea un objeto de usuario simulado
       const oUser = {

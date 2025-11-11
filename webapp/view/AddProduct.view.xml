@@ -1,0 +1,284 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.AddProduct"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+    xmlns:u="sap.ui.unified"
+    xmlns:core="sap.ui.core"
+>
+    <Page id="addProductPage" title="Crear Nuevo Producto" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <Wizard id="createProductWizard" class="sapUiResponsivePadding--header sapUiResponsivePadding--content" finishButtonText="Guardar Producto" complete=".onSaveProduct">
+                <!-- PASO 1: INFORMACIÓN DEL PRODUCTO PADRE -->
+                <WizardStep
+                    id="ProductStep"
+                    title="Paso 1: Información del Producto"
+                    validated="true"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Complete la información principal del producto. El SKU y el código de barras se generarán automáticamente."
+                        type="Information"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    <f:SimpleForm
+                        editable="true"
+                        layout="ResponsiveGridLayout"
+                        labelSpanXL="4"
+                        labelSpanL="3"
+                        labelSpanM="4"
+                        labelSpanS="12"
+                        emptySpanXL="0"
+                        emptySpanL="4"
+                        emptySpanM="0"
+                        emptySpanS="0"
+                        columnsXL="2"
+                        columnsL="1"
+                        columnsM="1"
+                        adjustLabelSpan="false"
+                        singleContainerFullSize="false"
+                    >
+                        <f:content>
+                            <core:Title text="Información del Producto Padre" />
+
+                            <Label text="Nombre del Producto" required="true" />
+                            <Input id="productNameInput" value="{addProduct>/PRODUCTNAME}" liveChange=".onProductNameChange" placeholder="Ej: Taladro Inalámbrico 20V" valueState="{= ${addProduct>/errors/PRODUCTNAME} ? 'Error' : 'None' }" />
+
+                            <Label text="SKU ID (Autogenerado)" />
+                            <Input value="{addProduct>/SKUID}" editable="false" placeholder="Se genera a partir del nombre" />
+
+                            <Label text="Marca" required="true" />
+                            <Input value="{addProduct>/MARCA}" liveChange=".onAddProductInputChange" valueState="{= ${addProduct>/errors/MARCA} ? 'Error' : 'None' }" />
+
+                            <Label text="Código de Barras (Autogenerado)" />
+                            <Input value="{addProduct>/BARCODE}" editable="false" placeholder="Se genera a partir del nombre" />
+
+                            <Label text="Descripción" required="true" />
+                            <TextArea value="{addProduct>/DESSKU}" liveChange=".onAddProductInputChange" placeholder="Descripción completa del producto" valueState="{= ${addProduct>/errors/DESSKU} ? 'Error' : 'None' }" width="100%" rows="3"/>
+
+                            <Label text="Unidad de Medida" required="true" />
+                            <Select selectedKey="{addProduct>/IDUNIDADMEDIDA}" width="100%" valueState="{= ${addProduct>/errors/IDUNIDADMEDIDA} ? 'Error' : 'None' }">
+                                <core:Item key="PZA" text="PZA - Pieza" />
+                                <core:Item key="KG" text="KG - Kilogramo" />
+                                <core:Item key="G" text="G - Gramo" />
+                                <core:Item key="L" text="L - Litro" />
+                                <core:Item key="ML" text="ML - Mililitro" />
+                                <core:Item key="M" text="M - Metro" />
+                                <core:Item key="M2" text="M2 - Metro Cuadrado" />
+                                <core:Item key="CM" text="CM - Centímetro" />
+                                <core:Item key="CJ" text="CJ - Caja" />
+                                <core:Item key="KIT" text="KIT - Kit" />
+                                <core:Item key="JGO" text="JGO - Juego" />
+                                <core:Item key="PAR" text="PAR - Par" />
+                                <core:Item key="ROLLO" text="ROLLO - Rollo" />
+                                <core:Item key="GAL" text="GAL - Galón" />
+                            </Select>
+
+                            <Label text="Información Adicional" />
+                            <Input value="{addProduct>/INFOAD}" placeholder="Información extra sobre el producto (opcional)" />
+
+                            <core:Title text="Categorías" />
+                            <Label text="Asignar Categorías" />
+                            <MultiComboBox
+                                items="{addProduct>/allCategories}"
+                                placeholder="{= ${addProduct>/loadingCategories} ? 'Cargando categorías...' : 'Seleccione categorías'}"
+                                selectedKeys="{addProduct>/CATEGORIAS}"
+                                width="100%">
+                                <core:Item key="{addProduct>CATID}" text="{addProduct>Nombre}" />
+                            </MultiComboBox>
+                        </f:content>
+                    </f:SimpleForm>
+                </WizardStep>
+
+                <!-- PASO 2: PRESENTACIONES -->
+                <WizardStep
+                    id="PresentationsStep"
+                    title="Paso 2: Presentaciones"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Añada una o más variantes o presentaciones para el producto. Cada presentación puede tener sus propias propiedades y archivos."
+                        type="Information"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    <l:Splitter orientation="Horizontal">
+                        <l:contentAreas>
+                            <!-- Columna Izquierda: Formulario para nueva presentación -->
+                            <VBox class="sapUiSmallMarginEnd">
+                                <f:SimpleForm
+                                    editable="true"
+                                    layout="ResponsiveGridLayout"
+                                    title="Añadir Nueva Presentación"
+                                    labelSpanXL="12" labelSpanL="12" labelSpanM="12" labelSpanS="12"
+                                >
+                                    <f:content>
+                                        <Label text="ID Presentación (Autogenerado)" />
+                                        <Input value="{addProduct>/newPresentation/IdPresentaOK}" editable="false" placeholder="Se genera del nombre de la presentación" />
+
+                                        <Label text="Nombre Presentación" required="true" />
+                                        <Input value="{addProduct>/newPresentation/NOMBREPRESENTACION}" liveChange=".onPresentationNameChange" valueState="{= ${addProduct>/newPresentationErrors/NOMBREPRESENTACION} ? 'Error' : 'None' }"/>
+
+                                        <Label text="Descripción" required="true" />
+                                        <TextArea value="{addProduct>/newPresentation/Descripcion}" rows="3" width="100%" liveChange=".onPresentationInputChange" valueState="{= ${addProduct>/newPresentationErrors/Descripcion} ? 'Error' : 'None' }"/>
+
+                                        <core:Title text="Propiedades Extras" />
+                                        <Label text="Propiedad" />
+                                        <Input value="{addProduct>/propKey}" placeholder="Ej: Color"/>
+                                        <Label text="Valor" />
+                                        <Input value="{addProduct>/propValue}" placeholder="Ej: Rojo"/>
+                                        <Label text=""/>
+                                        <Button icon="sap-icon://add" text="Añadir Propiedad" press=".onAddProperty" enabled="{= !!${addProduct>/propKey} }" />
+
+                                        <Label text="Propiedades Añadidas"/>
+                                        <FlexBox items="{
+                                            path: 'addProduct>/newPresentation/PropiedadesExtras',
+                                            templateShareable: false
+                                        }" wrap="Wrap" class="sapUiTinyMarginTop">
+                                            <ObjectStatus
+                                                class="sapUiTinyMargin"
+                                                text="{addProduct>key}: {addProduct>value}"
+                                                state="Indication01"
+                                            />
+                                        </FlexBox>
+
+                                        <core:Title text="Archivos" />
+                                        <Label text="Subir Archivos"/>
+                                        <u:FileUploader
+                                            id="fileUploader"
+                                            multiple="true"
+                                            fileType="jpg,png,pdf,doc,docx,mp4"
+                                            change=".onFileChange"
+                                            buttonOnly="true"
+                                            icon="sap-icon://upload"
+                                            buttonText="Seleccionar Archivos"
+                                        />
+                                        <List
+                                            items="{addProduct>/newPresentation/files}"
+                                            noDataText="No hay archivos para esta presentación."
+                                        >
+                                            <StandardListItem
+                                                title="{addProduct>originalname}"
+                                                description="{addProduct>FILETYPE}"
+                                                icon="sap-icon://attachment"
+                                                type="Active"
+                                                press=".onRemoveFile"
+                                            />
+                                        </List>
+
+                                        <Label text=""/>
+                                        <Button
+                                            text="Añadir Presentación a la Lista"
+                                            type="Emphasized"
+                                            press=".onAddPresentation"
+                                            enabled="{= !!${addProduct>/newPresentation/NOMBREPRESENTACION} &amp;&amp; !!${addProduct>/newPresentation/Descripcion} }"
+                                        />
+                                    </f:content>
+                                </f:SimpleForm>
+                            </VBox>
+
+                            <!-- Columna Derecha: Lista de presentaciones añadidas -->
+                            <VBox class="sapUiSmallMarginBegin">
+                                <Title level="H4" text="Lista de Presentaciones ({= ${addProduct>/presentations}.length })" class="sapUiSmallMarginBottom"/>
+                                <List
+                                    id="presentationsList"
+                                    items="{addProduct>/presentations}"
+                                    noDataText="Aún no has añadido ninguna presentación."
+                                >
+                                    <CustomListItem>
+                                        <VBox class="sapUiSmallMargin">
+                                            <FlexBox justifyContent="SpaceBetween" alignItems="Start">
+                                                <VBox>
+                                                    <Title level="H6" text="{addProduct>NOMBREPRESENTACION}" />
+                                                    <Text text="ID: {addProduct>IdPresentaOK}" class="sapUiTinyMarginBottom" />
+                                                    <Text text="{addProduct>Descripcion}" class="sapUiTinyMarginBottom" />
+                                                </VBox>
+                                                <Button icon="sap-icon://delete" type="Transparent" press=".onRemovePresentation" />
+                                            </FlexBox>
+                                            <FlexBox>
+                                                <ObjectStatus state="Indication01" text="{= ${addProduct>files}.length } archivos" class="sapUiTinyMarginEnd"/>
+                                                <ObjectStatus state="Indication02" text="{= Object.keys(${addProduct>PropiedadesExtras}).length } propiedades" />
+                                            </FlexBox>
+                                        </VBox>
+                                    </CustomListItem>
+                                </List>
+                            </VBox>
+                        </l:contentAreas>
+                    </l:Splitter>
+                </WizardStep>
+
+                <!-- PASO 3: REVISIÓN Y CONFIRMACIÓN -->
+                <WizardStep
+                    id="ReviewStep"
+                    title="Paso 3: Revisión y Confirmación"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Verifique toda la información antes de guardar el producto. Una vez guardado, no podrá modificar el SKU ID."
+                        type="Warning"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    <Title level="H4" text="Información del Producto Padre" class="sapUiSmallMarginTopBottom" />
+                    <f:SimpleForm
+                        editable="false"
+                        layout="ResponsiveGridLayout"
+                        labelSpanXL="4" labelSpanL="3" labelSpanM="4" labelSpanS="12"
+                    >
+                        <f:content>
+                            <Label text="Nombre Producto" />
+                            <Text text="{addProduct>/PRODUCTNAME}" />
+                            <Label text="SKU ID" />
+                            <Text text="{addProduct>/SKUID}" />
+                            <Label text="Marca" />
+                            <Text text="{addProduct>/MARCA}" />
+                            <Label text="Código de Barras" />
+                            <Text text="{addProduct>/BARCODE}" />
+                            <Label text="Descripción" />
+                            <Text text="{addProduct>/DESSKU}" wrapping="true"/>
+                            <Label text="Unidad de Medida" />
+                            <Text text="{addProduct>/IDUNIDADMEDIDA}" />
+                            <Label text="Categorías" />
+                            <FlexBox items="{path: 'addProduct>/CATEGORIAS'}" wrap="Wrap">
+                                <ObjectStatus class="sapUiTinyMargin" text="{parts: ['addProduct>'], formatter: '.getCategoryName'}" />
+                            </FlexBox>
+                        </f:content>
+                    </f:SimpleForm>
+
+                    <Title level="H4" text="Presentaciones ({= ${addProduct>/presentations}.length })" class="sapUiMediumMarginTop sapUiSmallMarginBottom"/>
+                    <List items="{addProduct>/presentations}" noDataText="No se agregaron presentaciones.">
+                        <CustomListItem>
+                            <VBox class="sapUiSmallMargin">
+                                <Title level="H6" text="{addProduct>NOMBREPRESENTACION}" />
+                                <Text text="ID: {addProduct>IdPresentaOK}" class="sapUiTinyMarginBottom" />
+                                <Text text="{addProduct>Descripcion}" class="sapUiTinyMarginBottom" />
+                                <Label text="Archivos:" class="sapUiTinyMarginTop"/>
+                                <List items="{addProduct>files}" noDataText="Sin archivos.">
+                                    <StandardListItem title="{addProduct>originalname}" icon="sap-icon://attachment" />
+                                </List>
+
+                                <Label text="Propiedades:" class="sapUiTinyMarginTop" visible="{= Object.keys(${addProduct>PropiedadesExtras}).length > 0 }"/>
+                                <Label text="Propiedades:" class="sapUiTinyMarginTop" visible="{= ${addProduct>PropiedadesExtras} &amp;&amp; Object.keys(${addProduct>PropiedadesExtras}).length > 0 }"/>
+                                <FlexBox items="{
+                                    path: 'addProduct>PropiedadesExtras',
+                                    templateShareable: false
+                                }" wrap="Wrap">
+                                    <ObjectStatus class="sapUiTinyMargin" text="{addProduct>key}: {addProduct>value}" />
+                                </FlexBox>
+                            </VBox>
+                        </CustomListItem>
+                    </List>
+                </WizardStep>
+            </Wizard>
+        </content>
+        <footer>
+            <Toolbar>
+                <ToolbarSpacer />
+                <!-- Los botones de navegación del Wizard se manejan automáticamente -->
+                <Button text="Cancelar" press=".onNavBack" />
+            </Toolbar>
+        </footer>
+    </Page>
+</mvc:View>

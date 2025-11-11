@@ -7,9 +7,20 @@ sap.ui.define([
     return Controller.extend("com.invertions.sapfiorimodinv.controller.App", {
 
         onInit: function () {
-            // Redirige automáticamente a la vista principal al iniciar
+            // Intenta restaurar la sesión desde localStorage
+            const sUser = localStorage.getItem("currentUser");
             const oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("Login");
+            const oAppModel = this.getOwnerComponent().getModel("appView");
+
+            if (sUser) {
+                const oUser = JSON.parse(sUser);
+                oAppModel.setProperty("/isLoggedIn", true);
+                oAppModel.setProperty("/currentUser", oUser);
+                // Si hay sesión, no es necesario ir al login, podrías ir a la ruta principal directamente
+                // o dejar que el router maneje la ruta inicial.
+            } else {
+                oRouter.navTo("Login");
+            }
         },
 
 

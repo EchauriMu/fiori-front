@@ -20,3 +20,33 @@ framework:
     - name: sap.ndc
     - name: sap.ui.comp 
     - name: sap.viz 
+server:
+  customMiddleware:
+    - name: fiori-tools-appreload
+      afterMiddleware: compression
+      configuration:
+        port: 35729
+        path: webapp
+        delay: 300
+    - name: fiori-tools-proxy
+      afterMiddleware: fiori-tools-appreload
+      configuration:
+        ignoreCertError: false # If set to true, certificate errors will be ignored.
+        ui5:
+          path:
+            - /resources
+            - /test-resources
+          url: https://ui5.sap.com
+        backend:
+          - path: /api
+            url: http://localhost:3033
+    - name: fiori-tools-preview
+      afterMiddleware: fiori-tools-proxy
+      configuration:
+        component: com.invertions.sapfiorimodinv
+        ui5Theme: sap_horizon
+builder:
+  resources:
+    excludes:
+      - /test/**
+      - /localService/**

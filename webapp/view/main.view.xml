@@ -1,16 +1,189 @@
 <mvc:View
-  controllerName="com.invertions.sapfiorimodinv.controller.Main"
-  xmlns:mvc="sap.ui.core.mvc"
-  xmlns="sap.m"
-  xmlns:core="sap.ui.core"
-  displayBlock="true"
-  models="{ appView: 'appView' }">
+    controllerName="com.invertions.sapfiorimodinv.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:m="sap.m"
+    xmlns:core="sap.ui.core"
+    displayBlock="true"
+    height="100%"
+>
+    <m:Page
+        id="idProductsPage"
+        title="{i18n>productViewTitle}"
+        showHeader="true"
+        class="sapUiContentPadding"
+    >
+        <m:customHeader>
+            <m:Bar>
+                <m:contentLeft>
+                    <m:Title id="idPageHeader" text="{i18n>tableTitle}" class="sapUiTinyMarginEnd" />
+                </m:contentLeft>
+                <m:contentRight>
+                    <m:SearchField
+                        id="idSearchField"
+                        width="300px"
+                        placeholder="{i18n>searchPlaceholder}"
+                        liveChange="onSearch"
+                        search="onSearch"
+                        value="{view>/searchTerm}"
+                        enabled="{= !${view>/loading} }"
+                    />
+                    
+                    <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press="onTableAction" enabled="{= ${view>/selectedSKUIDs}.length === 1 }" tooltip="Editar producto seleccionado">
+                        <m:customData><core:CustomData key="action" value="EDIT"/></m:customData>
+                    </m:Button>
+                    <m:Button icon="sap-icon://delete" text="Eliminar" type="Negative" press="onTableAction" enabled="{= ${view>/selectedSKUIDs}.length > 0 }" tooltip="Eliminar productos seleccionados">
+                        <m:customData><core:CustomData key="action" value="DELETE"/></m:customData>
+                    </m:Button>
+                    <m:Button icon="sap-icon://activate" text="Activar" type="Accept" press="onTableAction" enabled="{= ${view>/selectedSKUIDs}.length > 0 }" tooltip="Activar productos seleccionados">
+                        <m:customData><core:CustomData key="action" value="ACTIVATE"/></m:customData>
+                    </m:Button>
+                    <m:Button icon="sap-icon://add" text="Crear Producto" type="Emphasized" press="onTableAction">
+                        <m:customData><core:CustomData key="action" value="CREATE"/></m:customData>
+                    </m:Button>
+                </m:contentRight>
+            </m:Bar>
+        </m:customHeader>
+        
+        <m:VBox class="sapUiSmallMargin">
+            
+            <m:MessageStrip
+                visible="{= !!${view>/error} }"
+                text="{view>/error}"
+                type="Error"
+                showCloseButton="true"
+                class="sapUiSmallMarginBottom"
+            />
+            
+            <!-- Busy Indicator (visible controlado por {view>/loading}) -->
+            <m:VBox 
+                visible="{view>/loading}" 
+                alignItems="Center" 
+                justifyContent="Center" 
+                class="loadingContainer"
+            >
+                <m:BusyIndicator size="3.5rem" class="sapUiSmallMarginBottom"/> 
+                <m:Text text="{i18n>loadingProducts}"/>
+            </m:VBox>
 
-  <VBox alignItems="Center" justifyContent="Center" height="100%">
-    <Title text="¡Bienvenido al catálogo de productos!" level="H1" class="sapUiSmallMargin" />
-    <Button
-        text="Ir a Listas de Precios"
-        press=".onGoToListasPrecios"
-        type="Emphasized" />
-  </VBox>
+            <!-- No Data Found / No Filtered Data (CORREGIDO: && escapado como &amp;&amp;) -->
+            <m:VBox 
+                visible="{= !${view>/loading} &amp;&amp; ${view>/filteredProducts}.length === 0 }" 
+                alignItems="Center" 
+                justifyContent="Center"
+                class="noDataContainer"
+            >
+                <m:Title level="H4" text="{i18n>noFilteredData}" class="sapUiSmallMarginBottom"/> 
+                <m:Text text="{= ${view>/searchTerm} ? ${i18n>noFilteredSubtext} : ${i18n>noProductsSystem} }"/>
+            </m:VBox>
+
+            <!-- Tabla de Productos (CORREGIDO: && escapado como &amp;&amp;) -->
+            <m:Table
+                id="idProductsTable"
+                items="{path: 'view>/filteredProducts'}"
+                visible="{= !${view>/loading} &amp;&amp; ${view>/filteredProducts}.length > 0 }"
+                noDataText="{i18n>noDataText}"
+                class="productsTableStyle"
+            >
+                <m:columns>
+                    <m:Column width="40px" minScreenWidth="Tablet" hAlign="Center">
+                        <m:CheckBox change="onSelectAll" 
+                             selected="{= ${view>/filteredProducts}.length > 0 &amp;&amp; ${view>/selectedSKUIDs}.length === ${view>/filteredProducts}.length }"
+                        />
+                    </m:Column>
+                    <m:Column width="100px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>colSKUID}"/>
+                    </m:Column>
+                    <m:Column width="25%" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>colProduct}"/>
+                    </m:Column>
+                    <m:Column minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>colBrand}"/>
+                    </m:Column>
+                    <m:Column minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>colCategory}"/>
+                    </m:Column>
+                    <m:Column minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>colCreationDate}"/>
+                    </m:Column>
+                    <m:Column minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>colLastAction}"/>
+                    </m:Column>
+                    <m:Column width="100px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>colStatus}"/>
+                    </m:Column>
+                </m:columns>
+
+                <m:items>
+                    <m:ColumnListItem type="Active" press="onRowClick" class="ui5-table-row-hover">
+                        <m:cells>
+                            <m:CheckBox 
+                                change="onRowSelectChange"
+                                selected="{parts: [{path: 'view>/selectedSKUIDs'}, {path: 'view>SKUID'}], formatter: '.formatterIsSelected'}"
+                            />
+                            
+                            <m:Text text="{view>SKUID}" class="sapUiForceMonospace sapUiForceBold"/>
+                            <m:VBox><m:Text text="{view>PRODUCTNAME}" class="sapUiForceBold"/></m:VBox>
+                            <m:Text text="{view>MARCA}" class="sapUiForceMedium"/>
+                            
+                            <m:Label 
+                                text="{path: 'view>CATEGORIAS', formatter: '.formatterCategories'}"
+                                class="categoryTagStyle"
+                            />
+
+                            <m:VBox>
+                                <m:Text text="{path: 'view>REGDATE', formatter: '.formatterDate'}" class="sapUiTinyFontSize"/>
+                                <m:Text text="Mod: {path: 'view>MODDATE', formatter: '.formatterDate'}" 
+                                    class="sapUiExtraTinyFontSize sapUiGreyText"
+                                    visible="{= !!${view>MODDATE} }"
+                                />
+                            </m:VBox>
+                            
+                            <m:VBox>
+                                <m:Label 
+                                    text="{path: 'view>HISTORY', formatter: '.formatterLastActionText'}"
+                                    class="{path: 'view>HISTORY', formatter: '.formatterLastActionClass'}"
+                                />
+                                <m:Text 
+                                    text="{path: 'view>HISTORY', formatter: '.formatterLastActionDetails'}"
+                                    class="sapUiExtraTinyFontSize sapUiGreyText"
+                                />
+                            </m:VBox>
+
+                            <m:ObjectStatus
+                                text="{parts: [{path: 'view>ACTIVED'}, {path: 'view>DELETED'}], formatter: '.formatterProductStatusText'}"
+                                state="{parts: [{path: 'view>ACTIVED'}, {path: 'view>DELETED'}], formatter: '.formatterProductStatusState'}"
+                            />
+                        </m:cells>
+                    </m:ColumnListItem>
+                </m:items>
+            </m:Table>
+        </m:VBox>
+
+        <m:footer>
+            <m:Toolbar>
+                <m:content>
+                    <m:Text 
+                        text="{i18n>footerShowing} {view>/filteredProducts/length} {i18n>footerOf} {view>/products/length} {i18n>footerProducts}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSeparator/>
+                    <m:Text 
+                        text="{i18n>footerActive}: {view>/activeCount}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSeparator/>
+                    <m:Text 
+                        text="{i18n>footerSelected}: {view>/selectedSKUIDs/length}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSpacer/>
+                    <m:Text 
+                        text="{i18n>footerTotal}: {view>/totalCount}"
+                        class="sapUiTinyFontSize sapUiGreyText"
+                    />
+                </m:content>
+            </m:Toolbar>
+        </m:footer>
+
+    </m:Page>
 </mvc:View>
