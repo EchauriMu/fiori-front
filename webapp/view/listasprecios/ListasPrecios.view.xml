@@ -1,15 +1,220 @@
 <mvc:View
     controllerName="com.invertions.sapfiorimodinv.controller.listasprecios.ListasPrecios"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m"
+    xmlns:m="sap.m"
+    xmlns:core="sap.ui.core"
+    displayBlock="true"
+    height="100%"
 >
-    <Page
-        title="Listas de Precios"
-        showNavButton="true"
+    <m:Page
+        id="idListasPage"
+        title="{i18n>listasPageTitle}"
+        showHeader="true"
+        class="sapUiContentPadding"
         navButtonPress=".onNavBack"
+        showNavButton="true"
     >
-        <content>
-            <Text text="Aquí se gestionarán las Listas de Precios." class="sapUiSmallMargin"/>
-        </content>
-    </Page>
+        <m:customHeader>
+            <m:Bar>
+                <m:contentLeft>
+                    <m:Title id="idListasPageHeader" text="{i18n>listasTableTitle}" class="sapUiTinyMarginEnd" />
+                </m:contentLeft>
+                <m:contentRight>
+                    <m:SearchField
+                        id="idListasSearchField"
+                        width="300px"
+                        placeholder="{i18n>listasSearchPlaceholder}"
+                        liveChange="onSearch"
+                        search="onSearch"
+                        value="{view>/searchTerm}"
+                        enabled="{= !${view>/loading} }"
+                    />
+                    
+                    <m:Button icon="sap-icon://add" text="{i18n>listasAddButton}" type="Emphasized" press="onOpenListaDialog" />
+                    
+                    <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press=".onTableAction" enabled="{= ${view>/selectedListaIDs}.length === 1 }" tooltip="{i18n>listasEditTooltip}">
+                        <m:customData><core:CustomData key="action" value="EDIT"/></m:customData>
+                    </m:Button>
+                    
+                    <m:Button icon="sap-icon://accept" text="Activar" type="Accept" press=".onToggleSelectedListasStatus" enabled="{= ${view>/selectedListaIDs}.length > 0 }" tooltip="Activar o desactivar listas seleccionadas" />
+                    
+                    <m:Button icon="sap-icon://delete" text="Eliminar" type="Negative" press=".onDeleteSelectedListas" enabled="{= ${view>/selectedListaIDs}.length > 0 }" tooltip="{i18n>listasDeleteTooltip}" />
+                </m:contentRight>
+            </m:Bar>
+        </m:customHeader>
+        
+        <m:VBox class="sapUiSmallMargin">
+            
+            <m:MessageStrip
+                visible="{= !!${view>/error} }"
+                text="{view>/error}"
+                type="Error"
+                showCloseButton="true"
+                class="sapUiSmallMarginBottom"
+            />
+            
+            <!-- Busy Indicator (visible controlado por {view>/loading}) -->
+            <m:VBox 
+                visible="{view>/loading}" 
+                alignItems="Center" 
+                justifyContent="Center" 
+                class="loadingContainer"
+            >
+                <m:BusyIndicator size="3.5rem" class="sapUiSmallMarginBottom"/> 
+                <m:Text text="{i18n>listasLoadingText}"/>
+            </m:VBox>
+
+            <!-- No Data Found / No Filtered Data -->
+            <m:VBox 
+                visible="{= !${view>/loading} &amp;&amp; ${view>/filteredListas}.length === 0 }" 
+                alignItems="Center" 
+                justifyContent="Center"
+                class="noDataContainer"
+            >
+                <m:Title level="H4" text="{i18n>listasNoDataMessage}" class="sapUiSmallMarginBottom"/> 
+                <m:Text text="Intenta con otro término de búsqueda o crea una nueva lista."/>
+            </m:VBox>
+
+            <!-- Tabla de Listas de Precios -->
+            <m:Table
+                id="idListasTable"
+                items="{path: 'view>/filteredListas'}"
+                visible="{= !${view>/loading} &amp;&amp; ${view>/filteredListas}.length > 0 }"
+                noDataText="No hay listas de precios para mostrar"
+                class="listasTableStyle"
+            >
+                <m:columns>
+                    <m:Column width="40px" minScreenWidth="Tablet" hAlign="Center">
+                        <m:CheckBox select="onSelectAll" 
+                             selected="{= ${view>/filteredListas}.length > 0 &amp;&amp; ${view>/selectedListaIDs}.length === ${view>/filteredListas}.length }"
+                        />
+                    </m:Column>
+                    
+                    <m:Column width="150px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>listasIdColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="200px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>listasSKUsColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="250px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>listasDescriptionColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="150px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasInstituteColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="120px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasTypeColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="120px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasFormulaColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="130px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasValidityStartColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="130px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasValidityEndColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="150px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasCreatedByColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="150px" minScreenWidth="Desktop" demandPopin="true">
+                        <m:Text text="{i18n>listasModifiedByColumn}"/>
+                    </m:Column>
+                    
+                    <m:Column width="100px" minScreenWidth="Tablet" demandPopin="true">
+                        <m:Text text="{i18n>listasStatusColumn}"/>
+                    </m:Column>
+                </m:columns>
+
+                <m:items>
+                    <m:ColumnListItem type="Active" press="onRowClick" class="ui5-table-row-hover">
+                        <m:cells>
+                            <m:CheckBox 
+                                select="onRowSelectChange"
+                                selected="{parts: [{path: 'view>/selectedListaIDs'}, {path: 'view>IDLISTAOK'}], formatter: '.formatterIsListaSelected'}"
+                            />
+                            
+                            <m:Text text="{view>IDLISTAOK}" class="sapUiForceMonospace sapUiForceBold"/>
+                            
+                            <m:Text text="{path: 'view>SKUSIDS', formatter: '.formatterSKUList'}" class="sapUiForceMedium"/>
+                            
+                            <m:VBox>
+                                <m:Text text="{view>DESLISTA}" class="sapUiForceBold"/>
+                            </m:VBox>
+                            
+                            <m:Text text="{view>IDINSTITUTOOK}"/>
+                            
+                            <m:Text text="{view>IDTIPOLISTAOK}"/>
+                            
+                            <m:Text text="{view>IDTIPOFORMULAOK}"/>
+                            
+                            <m:VBox>
+                                <m:Text text="{path: 'view>FECHAEXPIRAINI', formatter: '.formatterDate'}" class="sapUiTinyFontSize"/>
+                            </m:VBox>
+                            
+                            <m:VBox>
+                                <m:Text text="{path: 'view>FECHAEXPIRAFIN', formatter: '.formatterDate'}" class="sapUiTinyFontSize"/>
+                            </m:VBox>
+                            
+                            <m:VBox>
+                                <m:Text text="{view>REGUSER}" class="sapUiTinyFontSize"/>
+                                <m:Text text="{path: 'view>REGDATE', formatter: '.formatterDate'}" class="sapUiExtraTinyFontSize sapUiGreyText"/>
+                            </m:VBox>
+                            
+                            <m:VBox>
+                                <m:Text text="{view>MODUSER}" class="sapUiTinyFontSize"/>
+                                <m:Text text="{path: 'view>MODDATE', formatter: '.formatterDate'}" class="sapUiExtraTinyFontSize sapUiGreyText"/>
+                            </m:VBox>
+
+                            <m:ObjectStatus
+                                text="{parts: [{path: 'view>ACTIVED'}, {path: 'view>DELETED'}], formatter: '.formatterListaStatusText'}"
+                                state="{parts: [{path: 'view>ACTIVED'}, {path: 'view>DELETED'}], formatter: '.formatterListaStatus'}"
+                            />
+                        </m:cells>
+                    </m:ColumnListItem>
+                </m:items>
+            </m:Table>
+        </m:VBox>
+
+        <m:footer>
+            <m:Toolbar>
+                <m:content>
+                    <m:Text 
+                        text="{i18n>listasShowingLabel} {view>/filteredListas/length}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSeparator/>
+                    <m:Text 
+                        text="{i18n>listasActiveLabel}: {view>/activeCount}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSeparator/>
+                    <m:Text 
+                        text="{i18n>listasStatusDeleted}: {view>/deletedCount}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSeparator/>
+                    <m:Text 
+                        text="Seleccionadas: {view>/selectedListaIDs/length}"
+                        class="sapUiTinyFontSize sapUiGreyText sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                    />
+                    <m:ToolbarSpacer/>
+                    <m:Text 
+                        text="{i18n>listasTotalLabel}: {view>/totalCount}"
+                        class="sapUiTinyFontSize sapUiGreyText"
+                    />
+                </m:content>
+            </m:Toolbar>
+        </m:footer>
+
+    </m:Page>
 </mvc:View>

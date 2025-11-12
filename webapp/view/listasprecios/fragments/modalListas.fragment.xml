@@ -1,0 +1,252 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:mvc="sap.ui.core.mvc"
+>
+    <Dialog
+        id="idListaDetailDialog"
+        title="{= ${detailView>/editableLista} ? 'Editar Lista de Precios' : (${detailView>/IDLISTAOK} ? 'Detalle de Lista' : 'Nueva Lista de Precios')}"
+        type="Standard"
+        class="sapUiSmallMargin"
+    >
+        <!-- Contenido principal -->
+        <content>
+            <ScrollContainer height="100%" width="100%">
+                <VBox class="sapUiSmallMargin">
+                    <!-- Sección de Información General -->
+                    <Panel 
+                        headerText="Información General" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="true"
+                    >
+                        <content>
+                            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" class="sapUiSmallMargin">
+                                <f:content>
+                                    <!-- ID Lista (solo lectura) -->
+                                    <Label text="ID Lista"/>
+                                    <Text text="{detailView>/IDLISTAOK}" class="sapUiForceMonospace sapUiForceBold"/>
+
+                                    <!-- Estado (ObjectStatus) -->
+                                    <Label text="Estado"/>
+                                    <ObjectStatus
+                                        state="{
+                                            path: 'detailView>/ACTIVED,detailView>/DELETED',
+                                            formatter: '.formatterListaStatus'
+                                        }"
+                                        text="{
+                                            path: 'detailView>/ACTIVED,detailView>/DELETED',
+                                            formatter: '.formatterListaStatusText'
+                                        }"
+                                    />
+
+                                    <!-- Descripción de la lista -->
+                                    <Label text="Descripción"/>
+                                    <Input
+                                        value="{path: 'detailView>/editableLista/DESLISTA'}"
+                                        enabled="{detailView>/editing}"
+                                        placeholder="Ej: Lista de precios Verano 2024"
+                                    />
+
+                                    <!-- Instituto -->
+                                    <Label text="Instituto"/>
+                                    <Input
+                                        value="{path: 'detailView>/editableLista/IDINSTITUTOOK'}"
+                                        enabled="{detailView>/editing}"
+                                        placeholder="Ej: INSTITUTO-XYZ"
+                                    />
+
+                                    <!-- Tipo Lista -->
+                                    <Label text="Tipo de Lista"/>
+                                    <Input
+                                        value="{path: 'detailView>/editableLista/IDTIPOLISTAOK'}"
+                                        enabled="{detailView>/editing}"
+                                        placeholder="Ej: TIPO-01"
+                                    />
+
+                                    <!-- Tipo General -->
+                                    <Label text="Tipo General"/>
+                                    <Select
+                                        selectedKey="{path: 'detailView>/editableLista/IDTIPOGENERALISTAOK'}"
+                                        enabled="{detailView>/editing}"
+                                        autoAdjustWidth="true"
+                                    >
+                                        <core:Item key="ESPECIFICA" text="Específica"/>
+                                        <core:Item key="GENERAL" text="General"/>
+                                    </Select>
+
+                                    <!-- Tipo Fórmula -->
+                                    <Label text="Tipo de Fórmula"/>
+                                    <Select
+                                        selectedKey="{path: 'detailView>/editableLista/IDTIPOFORMULAOK'}"
+                                        enabled="{detailView>/editing}"
+                                        autoAdjustWidth="true"
+                                    >
+                                        <core:Item key="FIJO" text="Fijo"/>
+                                        <core:Item key="VARIABLE" text="Variable"/>
+                                        <core:Item key="DESCUENTO" text="Descuento"/>
+                                    </Select>
+
+                                    <!-- ID Lista BK (BackKlassify) -->
+                                    <Label text="ID Lista BackEnd"/>
+                                    <Input
+                                        value="{path: 'detailView>/editableLista/IDLISTABK'}"
+                                        enabled="{detailView>/editing}"
+                                        placeholder="Campo de referencia"
+                                    />
+                                </f:content>
+                            </f:SimpleForm>
+                        </content>
+                    </Panel>
+
+                    <!-- Sección de SKUs Asociados -->
+                    <Panel 
+                        headerText="SKUs Asociados" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="true"
+                    >
+                        <content>
+                            <VBox class="sapUiSmallMargin">
+                                <Label text="Selecciona uno o más SKUs" class="sapUiSmallMarginBottom"/>
+                                
+                                <!-- MultiComboBox para seleccionar SKUs -->
+                                <MultiComboBox
+                                    items="{detailView>/availableProducts}"
+                                    selectionChange=".onSKUSIDsChange"
+                                    enabled="{detailView>/editing}"
+                                    class="sapUiSmallMarginBottom"
+                                >
+                                    <core:Item key="{detailView>SKUID}" text="{detailView>PRODUCTNAME}"/>
+                                </MultiComboBox>
+
+                                <!-- Mostrar SKUs seleccionados como Text -->
+                                <Label text="SKUs Seleccionados:" class="sapUiSmallMarginTop"/>
+                                <Text 
+                                    text="{= ${detailView>/editableLista/SKUSIDS}.length > 0 ? ${detailView>/editableLista/SKUSIDS}.join(', ') : 'Sin SKUs seleccionados'}"
+                                    class="sapUiSmallMarginTop"
+                                />
+                            </VBox>
+                        </content>
+                    </Panel>
+
+                    <!-- Sección de Vigencia -->
+                    <Panel 
+                        headerText="Configuración de Vigencia" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="true"
+                    >
+                        <content>
+                            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" class="sapUiSmallMargin">
+                                <f:content>
+                                    <!-- Inicio de Vigencia -->
+                                    <Label text="Inicio de Vigencia"/>
+                                    <DatePicker
+                                        value="{path: 'detailView>/editableLista/FECHAEXPIRAINI'}"
+                                        enabled="{detailView>/editing}"
+                                        displayFormat="dd/MM/yyyy"
+                                    />
+
+                                    <!-- Fin de Vigencia -->
+                                    <Label text="Fin de Vigencia"/>
+                                    <DatePicker
+                                        value="{path: 'detailView>/editableLista/FECHAEXPIRAFIN'}"
+                                        enabled="{detailView>/editing}"
+                                        displayFormat="dd/MM/yyyy"
+                                    />
+                                </f:content>
+                            </f:SimpleForm>
+                        </content>
+                    </Panel>
+
+                    <!-- Sección de Auditoría -->
+                    <Panel 
+                        headerText="Auditoría" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="false"
+                    >
+                        <content>
+                            <f:SimpleForm layout="ResponsiveGridLayout" class="sapUiSmallMargin">
+                                <f:content>
+                                    <!-- Creado por -->
+                                    <Label text="Creado por"/>
+                                    <Text text="{detailView>/REGUSER}"/>
+
+                                    <!-- Fecha Creación -->
+                                    <Label text="Fecha Creación"/>
+                                    <Text 
+                                        text="{
+                                            path: 'detailView>/REGDATE',
+                                            formatter: '.formatterDate'
+                                        }"
+                                    />
+
+                                    <!-- Modificado por -->
+                                    <Label text="Modificado por"/>
+                                    <Text text="{detailView>/MODUSER}"/>
+
+                                    <!-- Fecha Modificación -->
+                                    <Label text="Fecha Modificación"/>
+                                    <Text 
+                                        text="{
+                                            path: 'detailView>/MODDATE',
+                                            formatter: '.formatterDate'
+                                        }"
+                                    />
+                                </f:content>
+                            </f:SimpleForm>
+                        </content>
+                    </Panel>
+
+                    <!-- Sección de Control de Estado (solo en modo detalle, no edición) -->
+                    <Panel 
+                        headerText="Control de Estado" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="false"
+                        visible="{= !${detailView>/editing} &amp;&amp; !!${detailView>/IDLISTAOK}}"
+                    >
+                        <content>
+                            <VBox class="sapUiSmallMargin">
+                                <HBox class="sapUiSmallMargin">
+                                    <Label text="Lista Activa"/>
+                                    <Switch
+                                        state="{detailView>/ACTIVED}"
+                                        change=".onToggleListaStatus"
+                                        enabled="{= !${detailView>/saving}}"
+                                    />
+                                </HBox>
+                                <Text 
+                                    text="{= ${detailView>/ACTIVED} ? 'Esta lista está activa' : 'Esta lista está inactiva'}"
+                                    class="sapUiSmallText"
+                                />
+                            </VBox>
+                        </content>
+                    </Panel>
+                </VBox>
+            </ScrollContainer>
+        </content>
+
+        <!-- Footer con botones -->
+        <beginButton>
+            <Button
+                id="idListaSaveButton"
+                text="{= ${detailView>/editing} ? 'Guardar' : 'Editar'}"
+                type="{= ${detailView>/editing} ? 'Emphasized' : 'Default'}"
+                press=".onListaButtonPress"
+                enabled="{= !${detailView>/saving}}"
+            />
+        </beginButton>
+
+        <endButton>
+            <Button
+                id="idListaCancelButton"
+                text="{= ${detailView>/editing} ? 'Cancelar' : (!!${detailView>/IDLISTAOK} ? 'Cerrar' : 'Cancelar')}"
+                press=".onListaCancelPress"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>
