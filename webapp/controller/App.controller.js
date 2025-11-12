@@ -31,43 +31,37 @@ sap.ui.define([
         },
 
         onItemSelect: function (oEvent) {
-      // Implementa la navegación basada en la selección del elemento del menú
-      var sKey = oEvent.getParameter("item").getKey();
-      
-      switch (sKey) {
-        case "categories":
-          this.getOwnerComponent().getRouter().navTo("RouteCategorias");
-          break;
-        case "priceLists":
-          this.getOwnerComponent().getRouter().navTo("RouteListasPrecios");
-          break;
-        case "promociones":
-          this.getOwnerComponent().getRouter().navTo("RoutePromociones");
-          break;
-        default:
-          console.log("No se encontró ruta para:", sKey);
-      }
-    },
+            const oItem = oEvent.getParameter("item");
+            const sKey = oItem.getKey();
+            const oRouter = this.getOwnerComponent().getRouter();
 
-        logout: function () {
-            // Limpia sessionStorage
-            sessionStorage.clear();
-
-            // Actualiza el modelo de la app
-            var oAppModel = this.getOwnerComponent().getModel("appView");
-            oAppModel.setProperty("/isLoggedIn", false);
-            oAppModel.setProperty("/currentUser", null);
-
-            // Redirige al login
-            this.getOwnerComponent().getRouter().navTo("Login");
+            switch (sKey) {
+                case "main":
+                    oRouter.navTo("RouteMain");
+                    break;
+                case "listasprecios":
+                    oRouter.navTo("RouteListasPrecios");
+                    break;
+                case "promociones":
+                    oRouter.navTo("RoutePromociones");
+                    break;
+                case "categorias":
+                    oRouter.navTo("RouteCategorias");
+                    break;
+                default:
+                    // Opcional: Navegar a una vista de "no encontrado" o mostrar un mensaje
+                    MessageToast.show("Ruta no implementada: " + sKey);
+                    break;
+            }
         },
 
-        onLogoutPress: function () {
-            var that = this;
+        logout: function () {
+            const that = this;
             MessageBox.confirm("¿Deseas cerrar sesión?", {
                 title: "Cerrar sesión",
                 icon: MessageBox.Icon.WARNING,
                 actions: [MessageBox.Action.YES, MessageBox.Action.NO],
+                emphasizedAction: MessageBox.Action.NO,
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.YES) {
                         // Limpia sessionStorage y localStorage
@@ -75,7 +69,7 @@ sap.ui.define([
                         localStorage.clear();
 
                         // Limpia el modelo de la app
-                        var oAppModel = that.getOwnerComponent().getModel("appView");
+                        const oAppModel = that.getOwnerComponent().getModel("appView");
                         oAppModel.setProperty("/isLoggedIn", false);
                         oAppModel.setProperty("/currentUser", null);
 
@@ -84,7 +78,7 @@ sap.ui.define([
                     }
                 }
             });
-        },
+        }
 
     });
 });

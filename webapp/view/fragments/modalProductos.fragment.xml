@@ -27,17 +27,29 @@
                     </layoutData>
                     <VBox class="sapUiSmallMargin">
                         <Title text="{detailView>/PRODUCTNAME}" titleStyle="H3" class="sapUiTinyMarginBottom" wrapping="true"/>
-                        <Text text="{detailView>/DESSKU}" class="sapUiSmallMarginBottom"/>
+                        <!-- Edit mode for Description -->
+                        <Text text="{detailView>/DESSKU}" class="sapUiSmallMarginBottom" visible="{= !${detailView>/editing} }"/>
+                        <TextArea value="{detailView>/editableProduct/DESSKU}" visible="{= ${detailView>/editing} }" width="100%" placeholder="Descripción del producto"/>
 
                         <Label text="Estado" design="Bold"/>
                         <HBox alignItems="Center" class="sapUiTinyMarginBottom">
                             <ObjectStatus
+                                visible="{= !${detailView>/editing} }"
                                 class="sapUiTinyMarginEnd"
                                 text="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusText'}"
                                 state="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusState'}"
                                 inverted="true" />
-                            <Button icon="sap-icon://activate" type="Accept" tooltip="Activar" press="onToggleProductStatus" visible="{= !${detailView>/ACTIVED} &amp;&amp; !${detailView>/DELETED} }"/>
-                            <Button icon="sap-icon://deactivate" type="Reject" tooltip="Desactivar" press="onToggleProductStatus" visible="{= ${detailView>/ACTIVED} &amp;&amp; !${detailView>/DELETED} }"/>
+                            
+                            <Switch
+                                state="{detailView>/ACTIVED}"
+                                enabled="{= !${detailView>/editing} }"
+                                customTextOn="Activo"
+                                customTextOff="Inactivo"
+                                change="onToggleProductStatus"
+                                tooltip="Cambiar estado del producto"
+                            />
+
+                            <Button icon="sap-icon://edit" type="Transparent" press="onEditProduct" visible="{= !${detailView>/editing} }" class="sapUiTinyMarginBegin"/>
                         </HBox>
 
                         <f:SimpleForm
@@ -49,18 +61,32 @@
                             columnsXL="1" columnsL="1" columnsM="1">
                             <f:content>
                                 <core:Title text="Información General" />
+                                <Label text="Nombre Producto" visible="{= ${detailView>/editing} }"/>
+                                <Input value="{detailView>/editableProduct/PRODUCTNAME}" visible="{= ${detailView>/editing} }"/>
+
                                 <Label text="SKU" />
                                 <Text text="{detailView>/SKUID}" />
+
                                 <Label text="Marca" />
-                                <Text text="{detailView>/MARCA}" />
+                                <Text text="{detailView>/MARCA}" visible="{= !${detailView>/editing} }"/>
+                                <Input value="{detailView>/editableProduct/MARCA}" visible="{= ${detailView>/editing} }"/>
+
                                 <Label text="Código de Barras" />
-                                <Text text="{detailView>/BARCODE}" />
+                                <Text text="{detailView>/BARCODE}" visible="{= !${detailView>/editing} }"/>
+                                <Input value="{detailView>/editableProduct/BARCODE}" visible="{= ${detailView>/editing} }"/>
+
                                 <Label text="Unidad de Medida" />
-                                <Text text="{detailView>/IDUNIDADMEDIDA}" />
+                                <Text text="{detailView>/IDUNIDADMEDIDA}" visible="{= !${detailView>/editing} }"/>
+                                <Input value="{detailView>/editableProduct/IDUNIDADMEDIDA}" visible="{= ${detailView>/editing} }"/>
+
                                 <Label text="Categorías" />
-                                <Text text="{path: 'detailView>/CATEGORIAS', formatter: '.formatterCategories'}" />
+                                <Text text="{path: 'detailView>/CATEGORIAS', formatter: '.formatterCategories'}" visible="{= !${detailView>/editing} }"/>
+                                <!-- TODO: Add a MultiComboBox for editing categories -->
+                                <Text text="Control de edición de categorías pendiente" visible="{= ${detailView>/editing} }"/>
+
                                 <Label text="Info Adicional" visible="{= !!${detailView>/INFOAD} }"/>
                                 <Text text="{detailView>/INFOAD}" visible="{= !!${detailView>/INFOAD} }"/>
+                                <TextArea value="{detailView>/editableProduct/INFOAD}" visible="{= ${detailView>/editing} }" width="100%" placeholder="Información adicional"/>
 
                                 <core:Title text="Auditoría" />
                                 <Label text="Creado por" />
@@ -207,8 +233,11 @@
             </l:contentAreas>
         </l:Splitter>
 
-        <endButton>
-            <Button text="Cerrar" press="onCloseProductDetailDialog" type="Emphasized"/>
-        </endButton>
+        <buttons>
+            <Button text="Guardar" type="Emphasized" press="onSaveProduct" visible="{= ${detailView>/editing} }" enabled="{= !${detailView>/saving} }"/>
+            <Button text="Cancelar" press="onCancelEditProduct" visible="{= ${detailView>/editing} }"/>
+            <Button text="Cerrar" press="onCloseProductDetailDialog" type="Emphasized" visible="{= !${detailView>/editing} }"/>
+        </buttons>
+
     </Dialog>
 </core:FragmentDefinition>

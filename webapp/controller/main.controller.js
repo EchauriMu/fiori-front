@@ -63,7 +63,11 @@ sap.ui.define([
                 videoFiles: [],
                 otherFiles: [],
                 loadingFiles: false,
-                errorFiles: ""
+                errorFiles: "",
+                // --- Estado de Edición ---
+                editing: false,
+                saving: false,
+                editableProduct: null // Copia del producto para edición
             });
             this.getView().setModel(oDetailViewModel, "detailView");
 
@@ -358,6 +362,9 @@ sap.ui.define([
                 oDetailModel.setProperty("/loadingFiles", false);
                 oDetailModel.setProperty("/errorPresentations", "");
                 oDetailModel.setProperty("/errorFiles", "");
+                oDetailModel.setProperty("/editing", false);
+                oDetailModel.setProperty("/saving", false);
+                oDetailModel.setProperty("/editableProduct", null);
 
 
                 // 2. Abrir el Dialog
@@ -457,6 +464,81 @@ sap.ui.define([
             }
         },
 
+        onEditProduct: function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oCurrentProduct = oDetailModel.getData();
+            
+            // Crear una copia profunda del producto para la edición
+            const oProductCopy = JSON.parse(JSON.stringify(oCurrentProduct));
+
+            oDetailModel.setProperty("/editableProduct", oProductCopy);
+            oDetailModel.setProperty("/editing", true);
+        },
+
+        onCancelEditProduct: function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            oDetailModel.setProperty("/editing", false);
+            oDetailModel.setProperty("/editableProduct", null);
+        },
+
+        onSaveProduct: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oEditableProduct = oDetailModel.getProperty("/editableProduct");
+
+            if (!oEditableProduct) {
+                MessageBox.error("No hay datos para guardar.");
+                return;
+            }
+
+            oDetailModel.setProperty("/saving", true);
+
+            try {
+                // --- INICIO DE LA CORRECCIÓN ---
+                // En lugar de eliminar propiedades, creamos un payload limpio solo con los campos necesarios.
+                const payload = {
+                    PRODUCTNAME: oEditableProduct.PRODUCTNAME,
+                    DESSKU: oEditableProduct.DESSKU,
+                    MARCA: oEditableProduct.MARCA,
+                    CATEGORIAS: oEditableProduct.CATEGORIAS,
+                    IDUNIDADMEDIDA: oEditableProduct.IDUNIDADMEDIDA,
+                    BARCODE: oEditableProduct.BARCODE,
+                    INFOAD: oEditableProduct.INFOAD
+                };
+
+                // Aseguramos que CATEGORIAS se envíe como un string JSON si es un array
+                if (Array.isArray(payload.CATEGORIAS)) {
+                    payload.CATEGORIAS = JSON.stringify(payload.CATEGORIAS);
+                }
+                // --- FIN DE LA CORRECCIÓN ---
+
+                const oUpdatedProduct = await this._callApi('/ztproducts/crudProducts', 'POST', payload, {
+                    ProcessType: 'UpdateOne',
+                    skuid: oEditableProduct.SKUID
+                });
+
+                MessageToast.show("Producto actualizado correctamente.");
+
+                // Actualizar el modelo principal y el del detalle
+                await this.loadProducts();
+
+                // Actualizamos el modelo del detalle con la información guardada.
+                // Es mejor usar el objeto 'editableProduct' que contiene todos los campos,
+                // no solo los del payload.
+                const oCurrentDetailData = oDetailModel.getData();
+                const oNewData = { ...oCurrentDetailData, ...oEditableProduct }; // Mezclamos la data editada
+                oDetailModel.setData(oNewData);
+
+                // Salir del modo edición
+                oDetailModel.setProperty("/editing", false);
+                oDetailModel.setProperty("/editableProduct", null);
+
+            } catch (error) {
+                MessageBox.error(`Error al guardar los cambios: ${error.message}`);
+            } finally {
+                oDetailModel.setProperty("/saving", false);
+            }
+        },
+
         // ====================================================================
         // INICIO DE LA CORRECCIÓN 3: Nueva lógica para onPresentationChange
         // ====================================================================
@@ -497,8 +579,46 @@ sap.ui.define([
             }
         },
 
-        onToggleProductStatus: function () {
-            MessageToast.show("Lógica para cambiar estado del producto pendiente.");
+        onToggleProductStatus: function (oEvent) {
+            const bState = oEvent.getParameter("state");
+            const oDetailModel = this.getView().getModel("detailView");
+            const sSKUID = oDetailModel.getProperty("/SKUID");
+            const sProductName = oDetailModel.getProperty("/PRODUCTNAME");
+
+            if (!sSKUID) {
+                MessageBox.error("No se ha podido identificar el producto (SKUID no encontrado).");
+                // Revertir el switch si no hay SKUID
+                oEvent.getSource().setState(!bState);
+                return;
+            }
+
+            const sActionText = bState ? "activar" : "desactivar";
+            const sProcessType = bState ? "ActivateOne" : "DeleteLogic";
+
+            MessageBox.confirm(`¿Estás seguro de que deseas ${sActionText} el producto "${sProductName}"?`, {
+                title: "Confirmar Cambio de Estado",
+                onClose: async (sAction) => {
+                    if (sAction === MessageBox.Action.OK) {
+                        oDetailModel.setProperty("/loadingPresentations", true); // Reutilizamos el busy indicator
+                        try {
+                            await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
+                                ProcessType: sProcessType,
+                                skuid: sSKUID
+                            });
+                            MessageToast.show(`Producto ${sActionText}do correctamente.`);
+                            await this.loadProducts(); // Recargar la lista principal
+                            oDetailModel.setProperty("/ACTIVED", bState); // Actualizar el estado en el modelo del diálogo
+                        } catch (oError) {
+                            MessageBox.error(`Error al ${sActionText} el producto: ${oError.message}`);
+                            oEvent.getSource().setState(!bState); // Revertir en caso de error
+                        } finally {
+                            oDetailModel.setProperty("/loadingPresentations", false);
+                        }
+                    } else {
+                        oEvent.getSource().setState(!bState); // Revertir si el usuario cancela
+                    }
+                }
+            });
         },
 
         onAddPresentation: function () {
@@ -597,9 +717,9 @@ sap.ui.define([
             let formattedDate = i18n.getText("statusNA");
             if (lastAction.date) {
                 try {
-                    const oFormat = DateFormat.getDateTimeInstance({
-                        pattern: "dd/MM/yyyy HH:mm"
-                    });
+                    const oFormat = DateFormat.getDateTimeInstance({ // CORREGIDO
+                        pattern: "dd/MM/yyyy, HH:mm"
+                    }); // CORREGIDO
                     formattedDate = oFormat.format(new Date(lastAction.date));
                 } catch (e) {
                     formattedDate = lastAction.date || i18n.getText("statusNA") || sDefaultNA;
@@ -645,9 +765,9 @@ sap.ui.define([
             }
             try {
                 const oFormat = DateFormat.getDateTimeInstance({
-                    pattern: "dd/MM/yyyy HH:mm"
-                });
-                return oFormat.format(new Date(sDateString)) || sDateString;
+                    pattern: "dd/MM/yyyy, HH:mm" // CORREGIDO
+                }); // CORREGIDO
+                return oFormat.format(new Date(sDateString)) || sDateString; // CORREGIDO
             } catch (e) {
                 return sDateString; // Devolver el string original si el formato falla
             }
@@ -671,9 +791,9 @@ sap.ui.define([
             if (lastAction.date) {
                 try {
                     const oFormat = DateFormat.getDateTimeInstance({
-                        pattern: "dd/MM/yyyy HH:mm"
-                    });
-                    formattedDate = oFormat.format(new Date(lastAction.date));
+                        pattern: "dd/MM/yyyy, HH:mm" // CORREGIDO
+                    }); // CORREGIDO
+                    formattedDate = oFormat.format(new Date(lastAction.date)); // CORREGIDO
                 } catch (e) {
                     formattedDate = lastAction.date;
                 }

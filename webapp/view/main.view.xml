@@ -28,6 +28,9 @@
                         enabled="{= !${view>/loading} }"
                     />
                     
+                    <m:Button icon="sap-icon://add" text="Crear Producto" type="Emphasized" press="onTableAction">
+                        <m:customData><core:CustomData key="action" value="CREATE"/></m:customData>
+                    </m:Button>
                     <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press="onTableAction" enabled="{= ${view>/selectedSKUIDs}.length === 1 }" tooltip="Editar producto seleccionado">
                         <m:customData><core:CustomData key="action" value="EDIT"/></m:customData>
                     </m:Button>
@@ -36,9 +39,6 @@
                     </m:Button>
                     <m:Button icon="sap-icon://activate" text="Activar" type="Accept" press="onTableAction" enabled="{= ${view>/selectedSKUIDs}.length > 0 }" tooltip="Activar productos seleccionados">
                         <m:customData><core:CustomData key="action" value="ACTIVATE"/></m:customData>
-                    </m:Button>
-                    <m:Button icon="sap-icon://add" text="Crear Producto" type="Emphasized" press="onTableAction">
-                        <m:customData><core:CustomData key="action" value="CREATE"/></m:customData>
                     </m:Button>
                 </m:contentRight>
             </m:Bar>
