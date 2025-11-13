@@ -1,0 +1,317 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+>
+    <Dialog
+        id="editPromoDialog"
+        title="Editar Promoción"
+        contentWidth="90%"
+        contentHeight="85%"
+        resizable="true"
+        draggable="true"
+    >
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <!-- Mensaje de error -->
+                <MessageStrip
+                    id="editErrorStrip"
+                    text="{editPromoModel>/errorMessage}"
+                    type="Error"
+                    showIcon="true"
+                    visible="{= ${editPromoModel>/errorMessage} !== '' }"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <!-- Header con información -->
+                <Panel headerText="Información de la Promoción" class="sapUiSmallMarginBottom">
+                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
+                        <VBox>
+                            <Title text="{editPromoModel>/IdPromoOK}" level="H4" />
+                            <Text text="Creada por: {editPromoModel>/REGUSER}" class="sapUiTinyMarginTop" />
+                            <Text text="Fecha: {path: 'editPromoModel>/REGDATE', formatter: '.formatDate'}" />
+                        </VBox>
+                        <VBox alignItems="End">
+                            <ObjectStatus 
+                                text="{path: 'editPromoModel>/', formatter: '.getPromotionStatus'}"
+                                state="{path: 'editPromoModel>/', formatter: '.getPromotionStatusState'}"
+                            />
+                            <HBox alignItems="Center" class="sapUiTinyMarginTop">
+                                <Label text="Activa:" class="sapUiTinyMarginEnd" />
+                                <Switch
+                                    state="{editPromoModel>/ACTIVED}"
+                                    change="onEditActivedChange"
+                                />
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </Panel>
+
+                <!-- Tabs de contenido -->
+                <IconTabBar
+                    id="editPromoTabs"
+                    select="onEditTabSelect"
+                    class="sapUiResponsiveContentPadding"
+                >
+                    <!-- Tab Detalles -->
+                    <items>
+                        <IconTabFilter text="Detalles" key="details" icon="sap-icon://detail-view">
+                            <VBox class="sapUiSmallMargin">
+                                
+                                <!-- Información Básica -->
+                                <Panel headerText="Información Básica" class="sapUiSmallMarginBottom">
+                                    <f:SimpleForm
+                                        editable="true"
+                                        layout="ResponsiveGridLayout"
+                                        labelSpanXL="3"
+                                        labelSpanL="3"
+                                        labelSpanM="3"
+                                        labelSpanS="12"
+                                        adjustLabelSpan="false"
+                                        emptySpanXL="4"
+                                        emptySpanL="4"
+                                        emptySpanM="4"
+                                        emptySpanS="0"
+                                        columnsXL="1"
+                                        columnsL="1"
+                                        columnsM="1"
+                                        singleContainerFullSize="false"
+                                    >
+                                        <f:content>
+                                            <Label text="Título" required="true" />
+                                            <Input
+                                                value="{editPromoModel>/Titulo}"
+                                                placeholder="Título de la promoción"
+                                                required="true"
+                                            />
+
+                                            <Label text="Descripción" />
+                                            <TextArea
+                                                value="{editPromoModel>/Descripcion}"
+                                                rows="3"
+                                                placeholder="Descripción de la promoción"
+                                            />
+
+                                            <Label text="Fecha de Inicio" required="true" />
+                                            <DatePicker
+                                                value="{editPromoModel>/FechaIni}"
+                                                valueFormat="yyyy-MM-dd"
+                                                displayFormat="dd/MM/yyyy"
+                                                required="true"
+                                            />
+
+                                            <Label text="Fecha de Fin" required="true" />
+                                            <DatePicker
+                                                value="{editPromoModel>/FechaFin}"
+                                                valueFormat="yyyy-MM-dd"
+                                                displayFormat="dd/MM/yyyy"
+                                                required="true"
+                                            />
+                                        </f:content>
+                                    </f:SimpleForm>
+                                </Panel>
+
+                                <!-- Descuento -->
+                                <Panel headerText="Configuración de Descuento" class="sapUiSmallMarginBottom">
+                                    <f:SimpleForm
+                                        editable="true"
+                                        layout="ResponsiveGridLayout"
+                                        labelSpanXL="3"
+                                        labelSpanL="3"
+                                        labelSpanM="3"
+                                        labelSpanS="12"
+                                        adjustLabelSpan="false"
+                                        emptySpanXL="4"
+                                        emptySpanL="4"
+                                        emptySpanM="4"
+                                        emptySpanS="0"
+                                        columnsXL="1"
+                                        columnsL="1"
+                                        columnsM="1"
+                                        singleContainerFullSize="false"
+                                    >
+                                        <f:content>
+                                            <Label text="Tipo de Descuento" />
+                                            <Select
+                                                selectedKey="{editPromoModel>/TipoDescuento}"
+                                                change="onEditTipoDescuentoChange"
+                                            >
+                                                <items>
+                                                    <core:Item key="PORCENTAJE" text="Porcentaje (%)" />
+                                                    <core:Item key="MONTO_FIJO" text="Monto Fijo ($)" />
+                                                </items>
+                                            </Select>
+
+                                            <Label 
+                                                text="Porcentaje de Descuento (%)" 
+                                                visible="{= ${editPromoModel>/TipoDescuento} === 'PORCENTAJE' }"
+                                            />
+                                            <Input
+                                                value="{editPromoModel>/DescuentoPorcentaje}"
+                                                type="Number"
+                                                placeholder="0 - 100"
+                                                visible="{= ${editPromoModel>/TipoDescuento} === 'PORCENTAJE' }"
+                                            />
+
+                                            <Label 
+                                                text="Monto de Descuento ($)" 
+                                                visible="{= ${editPromoModel>/TipoDescuento} === 'MONTO_FIJO' }"
+                                            />
+                                            <Input
+                                                value="{editPromoModel>/DescuentoMonto}"
+                                                type="Number"
+                                                placeholder="0.00"
+                                                visible="{= ${editPromoModel>/TipoDescuento} === 'MONTO_FIJO' }"
+                                            />
+                                        </f:content>
+                                    </f:SimpleForm>
+                                </Panel>
+
+                            </VBox>
+                        </IconTabFilter>
+
+                        <!-- Tab Productos -->
+                        <IconTabFilter text="Productos" key="products" icon="sap-icon://product">
+                            <VBox class="sapUiSmallMargin">
+                                
+                                <!-- Toolbar con acciones -->
+                                <Toolbar>
+                                    <Title text="Presentaciones en la Promoción ({editPromoModel>/ProductosAplicables/length})" level="H5" />
+                                    <ToolbarSpacer />
+                                    <Button
+                                        text="Seleccionar Todo"
+                                        icon="sap-icon://multiselect-all"
+                                        press="onEditSelectAllProducts"
+                                        visible="{= ${editPromoModel>/ProductosAplicables/length} > 0 }"
+                                    />
+                                    <Button
+                                        text="Eliminar Seleccionados"
+                                        icon="sap-icon://delete"
+                                        type="Negative"
+                                        press="onEditRemoveSelectedProducts"
+                                        enabled="{= ${editPromoModel>/selectedProductsCount} > 0 }"
+                                    />
+                                    <Button
+                                        text="Agregar Productos"
+                                        icon="sap-icon://add"
+                                        type="Emphasized"
+                                        press="onEditOpenAddProducts"
+                                    />
+                                </Toolbar>
+
+                                <!-- Buscador -->
+                                <SearchField
+                                    placeholder="Buscar por nombre, SKU o marca..."
+                                    search="onEditSearchProducts"
+                                    width="100%"
+                                    class="sapUiSmallMarginTop"
+                                />
+
+                                <!-- Lista de productos agrupados -->
+                                <List
+                                    id="editProductsList"
+                                    items="{path: 'editPromoModel>/groupedProducts'}"
+                                    mode="MultiSelect"
+                                    includeItemInSelection="true"
+                                    selectionChange="onEditProductsSelectionChange"
+                                    noDataText="No hay productos en esta promoción. Usa 'Agregar Productos' para incluirlos."
+                                    growing="true"
+                                    growingThreshold="20"
+                                    class="sapUiSmallMarginTop"
+                                >
+                                    <CustomListItem type="Active" press="onEditToggleProductExpansion">
+                                        <VBox width="100%">
+                                            <!-- Producto principal -->
+                                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                                                <HBox alignItems="Center">
+                                                    <core:Icon 
+                                                        src="{= ${editPromoModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }" 
+                                                        class="sapUiTinyMarginEnd"
+                                                        color="#0854A0"
+                                                    />
+                                                    <Avatar 
+                                                        initials="{= ${editPromoModel>PRODUCTNAME}.substring(0,1) }"
+                                                        displaySize="XS"
+                                                        class="sapUiTinyMarginEnd"
+                                                    />
+                                                    <VBox>
+                                                        <Text text="{editPromoModel>PRODUCTNAME}" class="sapUiTextBold" />
+                                                        <Text 
+                                                            text="SKU: {editPromoModel>SKUID} • {editPromoModel>presentaciones/length} presentación(es)"
+                                                            class="sapUiTinyText"
+                                                        />
+                                                    </VBox>
+                                                </HBox>
+                                                <ObjectNumber
+                                                    number="{editPromoModel>presentaciones/length}"
+                                                    state="Information"
+                                                />
+                                            </HBox>
+
+                                            <!-- Presentaciones expandidas -->
+                                            <VBox 
+                                                visible="{editPromoModel>expanded}"
+                                                class="sapUiSmallMarginStart sapUiSmallMarginTop"
+                                            >
+                                                <List
+                                                    items="{editPromoModel>presentaciones}"
+                                                    noDataText="Sin presentaciones"
+                                                >
+                                                    <CustomListItem>
+                                                        <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%">
+                                                            <VBox>
+                                                                <Text text="{editPromoModel>NOMBREPRESENTACION}" />
+                                                                <Text text="ID: {editPromoModel>IdPresentaOK}" class="sapUiTinyText" />
+                                                            </VBox>
+                                                            <ObjectStatus
+                                                                text="${editPromoModel>Precio}"
+                                                                state="Information"
+                                                            />
+                                                        </HBox>
+                                                    </CustomListItem>
+                                                </List>
+                                            </VBox>
+                                        </VBox>
+                                    </CustomListItem>
+                                </List>
+
+                            </VBox>
+                        </IconTabFilter>
+                    </items>
+                </IconTabBar>
+
+            </VBox>
+        </content>
+
+        <beginButton>
+            <Button
+                text="Guardar Cambios"
+                type="Emphasized"
+                press="onEditSavePromotion"
+                enabled="{= !${editPromoModel>/saving} }"
+            />
+        </beginButton>
+        <endButton>
+            <Button
+                text="Cancelar"
+                press="onEditCloseDialog"
+                enabled="{= !${editPromoModel>/saving} }"
+            />
+        </endButton>
+        <buttons>
+            <Button
+                text="Eliminar Permanentemente"
+                type="Reject"
+                press="onEditDeleteHard"
+                enabled="{= !${editPromoModel>/saving} }"
+            />
+            <Button
+                text="{= ${editPromoModel>/ACTIVED} ? 'Desactivar' : 'Activar' }"
+                type="Transparent"
+                press="onEditToggleActive"
+                enabled="{= !${editPromoModel>/saving} }"
+            />
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

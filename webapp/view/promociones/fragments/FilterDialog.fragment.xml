@@ -1,0 +1,154 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+>
+    <Dialog
+        title="Seleccionar Productos y Presentaciones"
+        contentWidth="90%"
+        contentHeight="80%"
+        resizable="true"
+        draggable="true"
+    >
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <MessageStrip
+                    text="Use los filtros para encontrar productos específicos. Seleccione las presentaciones que desea incluir en la promoción."
+                    type="Information"
+                    showIcon="true"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <!-- Filtros -->
+                <Panel headerText="Filtros de Búsqueda" expandable="true" expanded="true">
+                    <f:SimpleForm
+                        editable="true"
+                        layout="ResponsiveGridLayout"
+                        columnsL="2"
+                        columnsM="1"
+                    >
+                        <f:content>
+                            <Label text="Buscar Producto" />
+                            <SearchField
+                                placeholder="Nombre, SKU, marca..."
+                                value="{filterModel>/searchText}"
+                                search=".onFilterSearch"
+                                width="100%"
+                            />
+
+                            <Label text="Categoría" />
+                            <MultiComboBox
+                                placeholder="Seleccionar categorías..."
+                                items="{filterModel>/categories}"
+                                selectedKeys="{filterModel>/selectedCategories}"
+                            >
+                                <core:Item key="{filterModel>id}" text="{filterModel>name}" />
+                            </MultiComboBox>
+
+                            <Label text="Marca" />
+                            <MultiComboBox
+                                placeholder="Seleccionar marcas..."
+                                items="{filterModel>/brands}"
+                                selectedKeys="{filterModel>/selectedBrands}"
+                            >
+                                <core:Item key="{filterModel>id}" text="{filterModel>name}" />
+                            </MultiComboBox>
+
+                            <Label text="Rango de Precio" />
+                            <HBox>
+                                <Input
+                                    type="Number"
+                                    placeholder="Mín"
+                                    value="{filterModel>/priceMin}"
+                                    width="100px"
+                                />
+                                <Label text="-" class="sapUiTinyMarginBegin sapUiTinyMarginEnd" />
+                                <Input
+                                    type="Number"
+                                    placeholder="Máx"
+                                    value="{filterModel>/priceMax}"
+                                    width="100px"
+                                />
+                            </HBox>
+                        </f:content>
+                    </f:SimpleForm>
+                    <Toolbar>
+                        <ToolbarSpacer />
+                        <Button text="Aplicar Filtros" type="Emphasized" press=".onApplyFilters" />
+                        <Button text="Limpiar" press=".onClearFilters" />
+                    </Toolbar>
+                </Panel>
+
+                <!-- Productos encontrados -->
+                <Panel 
+                    headerText="Productos Encontrados ({filterModel>/totalProducts})" 
+                    class="sapUiSmallMarginTop"
+                >
+                    <Toolbar>
+                        <Title text="Seleccionados: {filterModel>/selectedCount}" level="H5" />
+                        <ToolbarSpacer />
+                        <Button 
+                            text="Seleccionar Todos" 
+                            press=".onSelectAllProducts"
+                        />
+                        <Button 
+                            text="Deseleccionar Todos" 
+                            press=".onDeselectAllProducts"
+                        />
+                    </Toolbar>
+
+                    <List
+                        items="{filterModel>/products}"
+                        mode="MultiSelect"
+                        includeItemInSelection="true"
+                        selectionChange=".onProductSelectionChange"
+                        growing="true"
+                        growingThreshold="20"
+                    >
+                        <CustomListItem>
+                            <VBox class="sapUiSmallMargin">
+                                <HBox justifyContent="SpaceBetween">
+                                    <VBox>
+                                        <Title level="H6" text="{filterModel>PRODUCTNAME}" />
+                                        <Text text="SKU: {filterModel>SKUID} | Marca: {filterModel>MARCA}" />
+                                    </VBox>
+                                    <Button
+                                        icon="sap-icon://navigation-down-arrow"
+                                        type="Transparent"
+                                        press=".onExpandProduct"
+                                    />
+                                </HBox>
+
+                                <!-- Presentaciones (mostrar cuando se expanda) -->
+                                <VBox visible="{filterModel>expanded}" class="sapUiSmallMarginTop">
+                                    <Title level="H6" text="Presentaciones" />
+                                    <List
+                                        items="{filterModel>presentaciones}"
+                                        mode="MultiSelect"
+                                        selectionChange=".onPresentacionSelectionChange"
+                                    >
+                                        <StandardListItem
+                                            title="{filterModel>NOMBREPRESENTACION}"
+                                            description="{filterModel>Descripcion}"
+                                            info="$ {filterModel>Precio}"
+                                            infoState="Success"
+                                        />
+                                    </List>
+                                </VBox>
+                            </VBox>
+                        </CustomListItem>
+                    </List>
+                </Panel>
+            </VBox>
+        </content>
+        
+        <buttons>
+            <Button text="Cancelar" press=".onFilterDialogCancel" />
+            <Button 
+                text="Confirmar Selección ({filterModel>/selectedCount})" 
+                type="Emphasized" 
+                press=".onFilterDialogConfirm"
+            />
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>

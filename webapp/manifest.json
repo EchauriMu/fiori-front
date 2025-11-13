@@ -154,6 +154,16 @@
                                         "target": "TargetPromociones"
                                     },
                                     {
+                                        "pattern": "promociones/crear",
+                                        "name": "RouteCrearPromocion",
+                                        "target": "TargetCrearPromocion"
+                                    },
+                                    {
+                                        "pattern": "promociones/calendario",
+                                        "name": "RouteCalendario",
+                                        "target": "TargetCalendario"
+                                    },
+                                    {
                                         "pattern": "categorias",
                                         "name": "RouteCategorias",
                                         "target": "TargetCategorias"
@@ -227,6 +237,18 @@
                 "TargetPromociones": {
                         "viewName": "Promociones",
                         "viewId": "promociones",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.promociones"
+                },
+                "TargetCrearPromocion": {
+                        "viewName": "CrearPromocion",
+                        "viewId": "crearPromocion",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.promociones"
+                },
+                "TargetCalendario": {
+                        "viewName": "Calendario",
+                        "viewId": "calendario",
                         "viewType": "XML",
                         "viewPath": "com.invertions.sapfiorimodinv.view.promociones"
                 },

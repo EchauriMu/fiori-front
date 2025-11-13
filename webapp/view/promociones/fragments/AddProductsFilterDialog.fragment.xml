@@ -1,0 +1,334 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+>
+    <Dialog
+        id="addProductsFilterDialog"
+        title="Seleccionar Productos y Presentaciones"
+        contentWidth="98%"
+        contentHeight="95%"
+        resizable="true"
+        draggable="true"
+        afterClose="onCloseFilterDialog"
+    >
+        <content>
+            <l:HorizontalLayout class="sapUiNoContentPadding">
+                
+                <!-- COLUMNA IZQUIERDA - FILTROS -->
+                <Panel
+                    width="35%"
+                    headerText="Filtros de Búsqueda"
+                    expandable="true"
+                    expanded="{filterModel>/filtersExpanded}"
+                    class="sapUiNoMargin"
+                >
+                    <headerToolbar>
+                        <OverflowToolbar>
+                            <Title text="Filtros de Búsqueda" level="H5" />
+                            <ToolbarSpacer />
+                            <Button
+                                text="{= ${filterModel>/activeFiltersCount} + ' activos' }"
+                                icon="sap-icon://filter"
+                                type="Transparent"
+                            />
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    
+                    <content>
+                        <VBox class="sapUiSmallMargin">
+                            
+                            <!-- Mensaje informativo -->
+                            <MessageStrip
+                                text="Use los filtros para encontrar productos específicos. Seleccione las presentaciones que desea incluir en la promoción."
+                                type="Information"
+                                showIcon="true"
+                                class="sapUiSmallMarginBottom"
+                            />
+
+                            <!-- Buscar -->
+                            <Label text="Buscar Producto:" class="sapUiSmallMarginTop" />
+                            <SearchField
+                                value="{filterModel>/searchTerm}"
+                                placeholder="Nombre, SKU, marca..."
+                                search="onFilterSearch"
+                                liveChange="onFilterSearch"
+                                width="100%"
+                                class="sapUiTinyMarginBottom"
+                            />
+
+                            <!-- Categoría -->
+                            <Label text="Categoría:" class="sapUiSmallMarginTop" />
+                            <MultiComboBox
+                                id="categoriesFilter"
+                                items="{filterModel>/allCategories}"
+                                selectedKeys="{filterModel>/filters/categorias}"
+                                selectionChange="onFilterCategoryChange"
+                                placeholder="Seleccionar categorías..."
+                                width="100%"
+                                class="sapUiTinyMarginBottom"
+                            >
+                                <core:Item 
+                                    key="{filterModel>CATID}" 
+                                    text="{filterModel>Nombre}"
+                                />
+                            </MultiComboBox>
+                            <Text text="Categorías: {= ${filterModel>/allCategories}.length || 0}" class="sapUiTinyText" />
+
+                            <!-- Marca -->
+                            <Label text="Marca:" class="sapUiSmallMarginTop" />
+                            <MultiComboBox
+                                id="brandsFilter"
+                                items="{filterModel>/allBrands}"
+                                selectedKeys="{filterModel>/filters/marcas}"
+                                selectionChange="onFilterBrandChange"
+                                placeholder="Seleccionar marcas..."
+                                width="100%"
+                                class="sapUiTinyMarginBottom"
+                            >
+                                <core:Item 
+                                    key="{filterModel>id}" 
+                                    text="{filterModel>name}"
+                                />
+                            </MultiComboBox>
+
+                            <!-- Rango de Precio -->
+                            <Label text="Rango de Precio:" class="sapUiSmallMarginTop" />
+                            <HBox class="sapUiTinyMarginBottom">
+                                <Input
+                                    value="{filterModel>/filters/precioMin}"
+                                    type="Number"
+                                    placeholder="Mínimo"
+                                    change="onFilterPriceChange"
+                                    width="48%"
+                                />
+                                <Text text=" - " class="sapUiTinyMargin" />
+                                <Input
+                                    value="{filterModel>/filters/precioMax}"
+                                    type="Number"
+                                    placeholder="Máximo"
+                                    change="onFilterPriceChange"
+                                    width="48%"
+                                />
+                            </HBox>
+
+                            <!-- Botones de acción -->
+                            <HBox justifyContent="End" class="sapUiSmallMarginTop">
+                                <Button
+                                    text="Limpiar"
+                                    icon="sap-icon://clear-filter"
+                                    press="onClearFilters"
+                                    enabled="{= ${filterModel>/activeFiltersCount} > 0 }"
+                                    class="sapUiTinyMarginEnd"
+                                />
+                            </HBox>
+
+                        </VBox>
+                    </content>
+                </Panel>
+
+                <!-- COLUMNA DERECHA - PRODUCTOS -->
+                <VBox width="65%" class="sapUiNoContentPadding">
+                    
+                    <!-- Header con contador -->
+                    <Toolbar>
+                        <Title text="Productos Disponibles" level="H5" />
+                        <ToolbarSpacer />
+                        <Text text="{filterModel>/selectedPresentacionesCount} presentación(es) seleccionada(s)" />
+                    </Toolbar>
+
+                    <!-- Buscador adicional de productos -->
+                    <VBox class="sapUiSmallMargin">
+                        <Label text="Buscar productos" class="sapUiTinyMarginBottom" />
+                        <SearchField
+                            value="{filterModel>/productSearchTerm}"
+                            placeholder="Buscar por nombre, SKU, marca o categoría..."
+                            search="onProductSearch"
+                            liveChange="onProductSearch"
+                            width="100%"
+                        />
+                    </VBox>
+
+                    <!-- Controles de selección -->
+                    <Toolbar>
+                        <CheckBox
+                            text="Seleccionar todos ({filterModel>/filteredProductsCount})"
+                            select="onSelectAllProducts"
+                        />
+                        <ToolbarSpacer />
+                        <Button
+                            text="Limpiar selección"
+                            icon="sap-icon://reset"
+                            press="onClearSelection"
+                            enabled="{= ${filterModel>/selectedPresentacionesCount} > 0 }"
+                            type="Transparent"
+                        />
+                    </Toolbar>
+
+                    <!-- Loading -->
+                    <FlexBox
+                        visible="{filterModel>/loading}"
+                        justifyContent="Center"
+                        alignItems="Center"
+                        class="sapUiMediumMargin"
+                    >
+                        <BusyIndicator size="Large" />
+                    </FlexBox>
+
+                    <!-- Lista de productos -->
+                    <ScrollContainer
+                        height="100%"
+                        width="100%"
+                        vertical="true"
+                        visible="{= !${filterModel>/loading} }"
+                    >
+                        <VBox class="sapUiSmallMargin">
+                            <List
+                                id="filterProductsList"
+                                items="{filterModel>/filteredProducts}"
+                                noDataText="{= ${filterModel>/activeFiltersCount} === 0 ? 'Aplica filtros para ver productos específicos' : 'No hay productos que coincidan con los filtros seleccionados' }"
+                                mode="None"
+                            >
+                                <CustomListItem>
+                                    <VBox width="100%" class="sapUiSmallMarginTopBottom">
+                                        
+                                        <!-- Card del Producto -->
+                                        <HBox 
+                                            justifyContent="SpaceBetween" 
+                                            alignItems="Center"
+                                            class="sapUiSmallPadding"
+                                            backgroundDesign="Solid"
+                                        >
+                                            <HBox alignItems="Center" width="70%">
+                                                <Avatar
+                                                    initials="{= ${filterModel>PRODUCTNAME}.substring(0,1) }"
+                                                    displaySize="XS"
+                                                    backgroundColor="Accent1"
+                                                    class="sapUiTinyMarginEnd"
+                                                />
+                                                <VBox width="90%">
+                                                    <Text 
+                                                        text="{filterModel>PRODUCTNAME}" 
+                                                        class="sapUiTextBold"
+                                                        wrapping="false"
+                                                    />
+                                                    <Text
+                                                        text="SKU: {filterModel>SKUID} • Marca: {filterModel>MARCA}"
+                                                        class="sapUiSmallText"
+                                                    />
+                                                </VBox>
+                                            </HBox>
+                                            <HBox alignItems="Center">
+                                                <Text 
+                                                    text="{path: 'filterModel>REGDATE', formatter: '.formatDate'}"
+                                                    class="sapUiSmallText sapUiTinyMarginEnd"
+                                                />
+                                                <Button
+                                                    icon="{= ${filterModel>expanded} ? 'sap-icon://navigation-up-arrow' : 'sap-icon://navigation-down-arrow' }"
+                                                    type="Transparent"
+                                                    press="onFilterToggleProduct"
+                                                    tooltip="{= ${filterModel>expanded} ? 'Ocultar presentaciones' : 'Ver presentaciones' }"
+                                                />
+                                            </HBox>
+                                        </HBox>
+
+                                        <!-- Presentaciones Expandidas -->
+                                        <VBox
+                                            visible="{filterModel>expanded}"
+                                            class="sapUiSmallMarginStart sapUiSmallMarginTop"
+                                        >
+                                            <!-- Loading de presentaciones -->
+                                            <FlexBox
+                                                visible="{filterModel>loadingPresentaciones}"
+                                                justifyContent="Center"
+                                                class="sapUiSmallPadding"
+                                            >
+                                                <BusyIndicator size="Small" />
+                                                <Text text="Cargando..." class="sapUiSmallMarginStart" />
+                                            </FlexBox>
+
+                                            <!-- Lista de presentaciones -->
+                                            <VBox visible="{= !${filterModel>loadingPresentaciones} }">
+                                                <List
+                                                    items="{filterModel>presentaciones}"
+                                                    noDataText="No hay presentaciones disponibles"
+                                                    mode="None"
+                                                >
+                                                    <CustomListItem press="onPresentacionPress">
+                                                        <HBox 
+                                                            justifyContent="SpaceBetween" 
+                                                            alignItems="Center"
+                                                            width="100%"
+                                                            class="sapUiTinyPadding"
+                                                        >
+                                                            <HBox alignItems="Center" width="60%">
+                                                                <CheckBox
+                                                                    selected="{filterModel>selected}"
+                                                                    select="onFilterPresentacionSelect"
+                                                                    enabled="{= !${filterModel>locked} }"
+                                                                    class="sapUiTinyMarginEnd"
+                                                                />
+                                                                <VBox width="85%">
+                                                                    <HBox alignItems="Center">
+                                                                        <Text
+                                                                            text="{filterModel>NOMBREPRESENTACION}"
+                                                                            class="sapUiTextBold"
+                                                                        />
+                                                                        <ObjectStatus
+                                                                            text="Ya en promoción"
+                                                                            state="Information"
+                                                                            visible="{filterModel>locked}"
+                                                                            class="sapUiTinyMarginStart"
+                                                                        />
+                                                                    </HBox>
+                                                                    <Text
+                                                                        text="ID: {filterModel>IdPresentaOK}"
+                                                                        class="sapUiSmallText"
+                                                                    />
+                                                                </VBox>
+                                                            </HBox>
+                                                            <VBox alignItems="End">
+                                                                <ObjectStatus
+                                                                    text="${filterModel>precio}"
+                                                                    state="Success"
+                                                                />
+                                                                <Text
+                                                                    text="{filterModel>listaPrecios}"
+                                                                    class="sapUiSmallText"
+                                                                    visible="{= ${filterModel>listaPrecios} !== '' }"
+                                                                />
+                                                            </VBox>
+                                                        </HBox>
+                                                    </CustomListItem>
+                                                </List>
+                                            </VBox>
+                                        </VBox>
+
+                                    </VBox>
+                                </CustomListItem>
+                            </List>
+                        </VBox>
+                    </ScrollContainer>
+
+                </VBox>
+
+            </l:HorizontalLayout>
+        </content>
+
+        <beginButton>
+            <Button
+                text="Agregar {filterModel>/selectedPresentacionesCount} Presentación(es)"
+                type="Emphasized"
+                press="onConfirmAddProducts"
+                enabled="{= ${filterModel>/selectedPresentacionesCount} > 0 }"
+            />
+        </beginButton>
+        <endButton>
+            <Button
+                text="Cancelar"
+                press="onCancelAddProducts"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

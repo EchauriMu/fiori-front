@@ -1,0 +1,306 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.promociones.CrearPromocion"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+    xmlns:core="sap.ui.core"
+>
+    <Page 
+        id="crearPromocionPage" 
+        title="Crear Nueva Promoción" 
+        showNavButton="true" 
+        navButtonPress=".onNavBack"
+    >
+        <content>
+            <Wizard 
+                id="createPromoWizard" 
+                class="sapUiResponsivePadding--header sapUiResponsivePadding--content" 
+                finishButtonText="Crear Promoción" 
+                complete=".onSavePromotion"
+            >
+                <!-- PASO 1: INFORMACIÓN GENERAL -->
+                <WizardStep
+                    id="InfoStep"
+                    title="Paso 1: Información General"
+                    validated="true"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Complete la información básica de la promoción. El ID se generará automáticamente."
+                        type="Information"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    
+                    <f:SimpleForm
+                        editable="true"
+                        layout="ResponsiveGridLayout"
+                        labelSpanXL="4"
+                        labelSpanL="3"
+                        labelSpanM="4"
+                        labelSpanS="12"
+                        emptySpanXL="0"
+                        emptySpanL="4"
+                        emptySpanM="0"
+                        emptySpanS="0"
+                        columnsXL="2"
+                        columnsL="1"
+                        columnsM="1"
+                    >
+                        <f:content>
+                            <core:Title text="Información de la Promoción" />
+
+                            <Label text="Plantilla" />
+                            <Select 
+                                selectedKey="{createPromo>/plantilla}" 
+                                change=".onPlantillaChange"
+                                width="100%"
+                            >
+                                <core:Item key="" text="Seleccionar plantilla..." />
+                                <core:Item key="black-friday" text="Black Friday" />
+                                <core:Item key="navidad" text="Navidad" />
+                                <core:Item key="flash-sale" text="Flash Sale" />
+                                <core:Item key="lanzamiento" text="Lanzamiento" />
+                                <core:Item key="personalizado" text="Personalizado" />
+                            </Select>
+
+                            <Label text="Título" required="true" />
+                            <Input 
+                                id="tituloInput"
+                                value="{createPromo>/titulo}" 
+                                liveChange=".onPromoInputChange"
+                                placeholder="Ej: Black Friday 2025"
+                                valueState="{= ${createPromo>/errors/titulo} ? 'Error' : 'None' }"
+                            />
+
+                            <Label text="Descripción" required="true" />
+                            <TextArea 
+                                value="{createPromo>/descripcion}" 
+                                liveChange=".onPromoInputChange"
+                                placeholder="Descripción de la promoción"
+                                valueState="{= ${createPromo>/errors/descripcion} ? 'Error' : 'None' }"
+                                rows="3"
+                                width="100%"
+                            />
+
+                            <Label text="Fecha de Inicio" required="true" />
+                            <DatePicker 
+                                value="{createPromo>/fechaInicio}"
+                                change=".onPromoInputChange"
+                                valueState="{= ${createPromo>/errors/fechaInicio} ? 'Error' : 'None' }"
+                                displayFormat="dd/MM/yyyy"
+                            />
+
+                            <Label text="Fecha de Fin" required="true" />
+                            <DatePicker 
+                                value="{createPromo>/fechaFin}"
+                                change=".onPromoInputChange"
+                                valueState="{= ${createPromo>/errors/fechaFin} ? 'Error' : 'None' }"
+                                displayFormat="dd/MM/yyyy"
+                            />
+                        </f:content>
+                    </f:SimpleForm>
+                </WizardStep>
+
+                <!-- PASO 2: CONFIGURACIÓN DE DESCUENTO -->
+                <WizardStep
+                    id="DiscountStep"
+                    title="Paso 2: Descuento y Reglas"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Configure el descuento y las reglas de aplicación de la promoción."
+                        type="Information"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    
+                    <f:SimpleForm
+                        editable="true"
+                        layout="ResponsiveGridLayout"
+                        labelSpanXL="4"
+                        labelSpanL="3"
+                        labelSpanM="4"
+                        labelSpanS="12"
+                    >
+                        <f:content>
+                            <core:Title text="Configuración de Descuento" />
+
+                            <Label text="Tipo de Descuento" required="true" />
+                            <Select 
+                                selectedKey="{createPromo>/tipoDescuento}" 
+                                change=".onTipoDescuentoChange"
+                                width="100%"
+                            >
+                                <core:Item key="PORCENTAJE" text="Porcentaje (%)" />
+                                <core:Item key="MONTO_FIJO" text="Monto Fijo ($)" />
+                            </Select>
+
+                            <Label 
+                                text="Porcentaje de Descuento (%)" 
+                                required="true"
+                                visible="{= ${createPromo>/tipoDescuento} === 'PORCENTAJE' }"
+                            />
+                            <Input 
+                                type="Number"
+                                value="{createPromo>/descuentoPorcentaje}" 
+                                liveChange=".onPromoInputChange"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                visible="{= ${createPromo>/tipoDescuento} === 'PORCENTAJE' }"
+                                valueState="{= ${createPromo>/errors/descuentoPorcentaje} ? 'Error' : 'None' }"
+                            />
+
+                            <Label 
+                                text="Monto de Descuento ($)" 
+                                required="true"
+                                visible="{= ${createPromo>/tipoDescuento} === 'MONTO_FIJO' }"
+                            />
+                            <Input 
+                                type="Number"
+                                value="{createPromo>/descuentoMonto}" 
+                                liveChange=".onPromoInputChange"
+                                min="0"
+                                step="0.01"
+                                visible="{= ${createPromo>/tipoDescuento} === 'MONTO_FIJO' }"
+                                valueState="{= ${createPromo>/errors/descuentoMonto} ? 'Error' : 'None' }"
+                            />
+
+                            <core:Title text="Reglas Adicionales" />
+
+                            <Label text="Permite Acumulación" />
+                            <CheckBox 
+                                selected="{createPromo>/permiteAcumulacion}"
+                                text="Permite acumular con otras promociones"
+                            />
+
+                            <Label text="Límite de Usos (opcional)" />
+                            <Input 
+                                type="Number"
+                                value="{createPromo>/limiteUsos}" 
+                                placeholder="Sin límite"
+                                min="1"
+                            />
+                        </f:content>
+                    </f:SimpleForm>
+                </WizardStep>
+
+                <!-- PASO 3: SELECCIÓN DE PRODUCTOS/PRESENTACIONES -->
+                <WizardStep
+                    id="ProductsStep"
+                    title="Paso 3: Productos y Presentaciones"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Seleccione los productos y presentaciones a los que se aplicará la promoción. Puede usar filtros para facilitar la selección."
+                        type="Information"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    
+                    <VBox>
+                        <Toolbar>
+                            <Title text="Presentaciones Seleccionadas: {= ${createPromo>/selectedPresentaciones}.length }" level="H4" />
+                            <ToolbarSpacer />
+                            <Button 
+                                text="Aplicar Filtros" 
+                                icon="sap-icon://filter"
+                                press=".onOpenFilterDialog"
+                                type="Emphasized"
+                            />
+                        </Toolbar>
+
+                        <!-- Lista de presentaciones seleccionadas -->
+                        <Panel headerText="Presentaciones Incluidas en la Promoción">
+                            <List
+                                items="{createPromo>/selectedPresentaciones}"
+                                noDataText="No hay presentaciones seleccionadas. Use el botón 'Aplicar Filtros' para seleccionar productos."
+                                mode="Delete"
+                                delete=".onRemovePresentacion"
+                            >
+                                <StandardListItem
+                                    title="{createPromo>NOMBREPRESENTACION}"
+                                    description="SKU: {createPromo>producto/SKUID} | Producto: {createPromo>producto/PRODUCTNAME}"
+                                    info="${createPromo>Precio}"
+                                    infoState="Success"
+                                    icon="sap-icon://product"
+                                />
+                            </List>
+                        </Panel>
+                    </VBox>
+                </WizardStep>
+
+                <!-- PASO 4: REVISIÓN -->
+                <WizardStep
+                    id="ReviewStep"
+                    title="Paso 4: Revisión y Confirmación"
+                    activate=".onStepActivate"
+                >
+                    <MessageStrip
+                        text="Revise toda la información antes de crear la promoción."
+                        type="Warning"
+                        showIcon="true"
+                        class="sapUiSmallMarginBottom"
+                    />
+                    
+                    <VBox>
+                        <Title level="H4" text="Información General" class="sapUiSmallMarginTopBottom" />
+                        <f:SimpleForm
+                            editable="false"
+                            layout="ResponsiveGridLayout"
+                            labelSpanXL="4" 
+                            labelSpanL="3" 
+                            labelSpanM="4" 
+                            labelSpanS="12"
+                        >
+                            <f:content>
+                                <Label text="Título" />
+                                <Text text="{createPromo>/titulo}" />
+                                
+                                <Label text="Descripción" />
+                                <Text text="{createPromo>/descripcion}" wrapping="true"/>
+                                
+                                <Label text="Vigencia" />
+                                <Text text="{path: 'createPromo>/fechaInicio', formatter: '.formatDate'} - {path: 'createPromo>/fechaFin', formatter: '.formatDate'}" />
+                                
+                                <Label text="Tipo de Descuento" />
+                                <Text text="{createPromo>/tipoDescuento}" />
+                                
+                                <Label text="Descuento" />
+                                <Text text="{= ${createPromo>/tipoDescuento} === 'PORCENTAJE' ? ${createPromo>/descuentoPorcentaje} + '%' : '$' + ${createPromo>/descuentoMonto} }" />
+                                
+                                <Label text="Permite Acumulación" />
+                                <Text text="{= ${createPromo>/permiteAcumulacion} ? 'Sí' : 'No' }" />
+                                
+                                <Label text="Límite de Usos" />
+                                <Text text="{= ${createPromo>/limiteUsos} ? ${createPromo>/limiteUsos} : 'Sin límite' }" />
+                            </f:content>
+                        </f:SimpleForm>
+
+                        <Title level="H4" text="Presentaciones ({= ${createPromo>/selectedPresentaciones}.length })" class="sapUiMediumMarginTop sapUiSmallMarginBottom"/>
+                        <List 
+                            items="{createPromo>/selectedPresentaciones}" 
+                            noDataText="No se agregaron presentaciones."
+                        >
+                            <StandardListItem
+                                title="{createPromo>NOMBREPRESENTACION}"
+                                description="Producto: {createPromo>producto/PRODUCTNAME} | SKU: {createPromo>producto/SKUID}"
+                                info="${createPromo>Precio}"
+                                icon="sap-icon://product"
+                            />
+                        </List>
+                    </VBox>
+                </WizardStep>
+            </Wizard>
+        </content>
+        
+        <footer>
+            <Toolbar>
+                <ToolbarSpacer />
+                <Button text="Cancelar" press=".onNavBack" />
+            </Toolbar>
+        </footer>
+    </Page>
+</mvc:View>

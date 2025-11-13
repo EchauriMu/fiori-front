@@ -1,0 +1,507 @@
+sap.ui.define([
+    "sap/ui/core/mvc/Controller",
+    "sap/ui/model/json/JSONModel",
+    "sap/m/MessageToast",
+    "sap/m/MessageBox",
+    "sap/ui/core/format/DateFormat",
+    "sap/m/VBox",
+    "sap/m/Text",
+    "sap/m/Title",
+    "sap/m/ObjectStatus"
+], function (Controller, JSONModel, MessageToast, MessageBox, DateFormat, VBox, Text, Title, ObjectStatus) {
+    "use strict";
+
+    const BASE_URL = "http://localhost:3033/api";
+
+    return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.Calendario", {
+
+        onInit: function () {
+            const today = new Date();
+            
+            const oModel = new JSONModel({
+                currentDate: today,
+                currentMonthYear: this._getMonthYearText(today),
+                viewMode: "month",
+                filters: {
+                    estado: "all",
+                    search: ""
+                },
+                promotions: [],
+                filteredPromotions: [],
+                calendarDays: []
+            });
+            
+            this.getView().setModel(oModel, "calendarModel");
+            
+            // Modelo para detalle de promoción
+            this.getView().setModel(new JSONModel({}), "detailModel");
+            
+            this.loadPromotions();
+            
+            this.getOwnerComponent().getRouter().getRoute("RouteCalendario")
+                .attachPatternMatched(this._onRouteMatched, this);
+        },
+
+        _onRouteMatched: function(oEvent) {
+            this.loadPromotions();
+        },
+
+        onNavBack: function () {
+            const oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RoutePromociones", {}, true);
+        },
+
+        _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
+            const dbServer = sessionStorage.getItem('DBServer');
+            if (dbServer === 'CosmosDB') {
+                oParams.DBServer = 'CosmosDB';
+            }
+
+            const oAppViewModel = this.getOwnerComponent().getModel("appView");
+            const loggedUser = oAppViewModel.getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser');
+            
+            if (loggedUser && !oParams.LoggedUser) {
+                oParams.LoggedUser = loggedUser;
+            }
+
+            const sQueryString = new URLSearchParams(oParams).toString();
+            const sFullUrl = `${BASE_URL}${sRelativeUrl}?${sQueryString}`;
+            
+            try {
+                const oResponse = await fetch(sFullUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(oData || {})
+                });
+
+                if (!oResponse.ok) {
+                    const oErrorJson = await oResponse.json();
+                    const sErrorMessage = oErrorJson.message || `Error ${oResponse.status}`;
+                    throw new Error(sErrorMessage);
+                }
+
+                const oJson = await oResponse.json();
+                return oJson;
+                
+            } catch (error) {
+                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
+                throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
+            }
+        },
+
+        loadPromotions: async function () {
+            const oModel = this.getView().getModel("calendarModel");
+            
+            try {
+                const oResponse = await this._callApi('/ztpromociones/crudPromociones', 'POST', {}, { 
+                    ProcessType: 'GetAll',
+                    DBServer: 'MongoDB'
+                });
+                
+                let aPromotions = [];
+                
+                if (oResponse && oResponse.value && Array.isArray(oResponse.value) && oResponse.value.length > 0) {
+                    const mainResponse = oResponse.value[0];
+                    if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
+                        const dataResponse = mainResponse.data[0];
+                        if (dataResponse.dataRes && Array.isArray(dataResponse.dataRes)) {
+                            aPromotions = dataResponse.dataRes;
+                        }
+                    }
+                }
+                
+                oModel.setProperty("/promotions", aPromotions);
+                this._applyFilters();
+                this._generateCalendarDays();
+                
+            } catch (error) {
+                console.error("Error al cargar promociones:", error);
+                MessageBox.error("Error al cargar promociones: " + error.message);
+                oModel.setProperty("/promotions", []);
+            }
+        },
+
+        _applyFilters: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const aPromotions = oModel.getProperty("/promotions");
+            const oFilters = oModel.getProperty("/filters");
+            
+            let aFiltered = aPromotions.filter(promo => {
+                // Filtro por estado
+                if (oFilters.estado !== "all") {
+                    const status = this._getPromotionStatus(promo);
+                    if (status !== oFilters.estado) return false;
+                }
+                
+                // Filtro por búsqueda
+                if (oFilters.search && oFilters.search.trim() !== "") {
+                    const searchLower = oFilters.search.toLowerCase();
+                    const matchesSearch = 
+                        (promo.Titulo && promo.Titulo.toLowerCase().includes(searchLower)) ||
+                        (promo.Descripcion && promo.Descripcion.toLowerCase().includes(searchLower)) ||
+                        (promo.IdPromoOK && promo.IdPromoOK.toLowerCase().includes(searchLower));
+                    
+                    if (!matchesSearch) return false;
+                }
+                
+                return true;
+            });
+            
+            // Ordenar por fecha de inicio
+            aFiltered.sort((a, b) => new Date(a.FechaIni) - new Date(b.FechaIni));
+            
+            oModel.setProperty("/filteredPromotions", aFiltered);
+        },
+
+        _getPromotionStatus: function(oPromotion) {
+            if (!oPromotion) return "finished";
+            
+            if (oPromotion.DELETED === true || oPromotion.ACTIVED === false) {
+                return "finished";
+            }
+            
+            const today = new Date();
+            const inicio = new Date(oPromotion.FechaIni);
+            const fin = new Date(oPromotion.FechaFin);
+            
+            if (today < inicio) return "scheduled";
+            if (today >= inicio && today <= fin) return "active";
+            return "finished";
+        },
+
+        _generateCalendarDays: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const currentDate = oModel.getProperty("/currentDate");
+            const aPromotions = oModel.getProperty("/filteredPromotions");
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            // Empezar desde el domingo de la semana que contiene el primer día
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const aDays = [];
+            const currentDay = new Date(startDate);
+            
+            // Generar 42 días (6 semanas)
+            for (let i = 0; i < 42; i++) {
+                const dayPromotions = aPromotions.filter(promo => {
+                    if (!promo.FechaIni || !promo.FechaFin) return false;
+                    
+                    const inicio = new Date(promo.FechaIni);
+                    const fin = new Date(promo.FechaFin);
+                    
+                    // Normalizar fechas para comparación (solo día)
+                    const promoStart = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+                    const promoEnd = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate());
+                    const checkDay = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
+                    
+                    return checkDay >= promoStart && checkDay <= promoEnd;
+                });
+                
+                aDays.push({
+                    date: new Date(currentDay),
+                    day: currentDay.getDate(),
+                    isCurrentMonth: currentDay.getMonth() === month,
+                    isToday: this._isToday(currentDay),
+                    promotions: dayPromotions,
+                    hasPromotions: dayPromotions.length > 0
+                });
+                
+                currentDay.setDate(currentDay.getDate() + 1);
+            }
+            
+            oModel.setProperty("/calendarDays", aDays);
+            this._renderCalendarGrid();
+        },
+
+        _renderCalendarGrid: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const aDays = oModel.getProperty("/calendarDays");
+            const oGrid = this.byId("calendarGrid");
+            
+            if (!oGrid) return;
+            
+            oGrid.removeAllContent();
+            
+            aDays.forEach(dayInfo => {
+                const oVBox = new VBox({
+                    alignItems: "Start",
+                    justifyContent: "Start"
+                }).addStyleClass("calendar-day-cell");
+                
+                if (!dayInfo.isCurrentMonth) {
+                    oVBox.addStyleClass("other-month");
+                }
+                
+                if (dayInfo.isToday) {
+                    oVBox.addStyleClass("today");
+                }
+                
+                // Número del día
+                const oDayText = new Text({
+                    text: dayInfo.day.toString()
+                }).addStyleClass("calendar-day-number");
+                
+                oVBox.addItem(oDayText);
+                
+                // Promociones (máximo 3)
+                if (dayInfo.promotions && dayInfo.promotions.length > 0) {
+                    dayInfo.promotions.slice(0, 3).forEach(promo => {
+                        const sColor = this.getPromotionColor(promo);
+                        const sIcon = this._getPromotionIcon(promo);
+                        
+                        const oPromoBox = new VBox({
+                            items: [
+                                new Text({
+                                    text: sIcon + " " + (promo.Titulo || "").substring(0, 15) + (promo.Titulo && promo.Titulo.length > 15 ? "..." : ""),
+                                    wrapping: false
+                                }).addStyleClass("calendar-promo-text")
+                            ]
+                        }).addStyleClass("calendar-promo-item");
+                        
+                        oPromoBox.addEventDelegate({
+                            onclick: function() {
+                                this.onPromotionPress({ getSource: function() { 
+                                    return { 
+                                        getBindingContext: function() { 
+                                            return { 
+                                                getObject: function() { return promo; } 
+                                            }; 
+                                        } 
+                                    }; 
+                                }});
+                            }.bind(this)
+                        });
+                        
+                        // Aplicar color de fondo
+                        oPromoBox.addStyleClass("promo-" + this._getPromotionStatus(promo));
+                        
+                        oVBox.addItem(oPromoBox);
+                    });
+                    
+                    // Indicador de más promociones
+                    if (dayInfo.promotions.length > 3) {
+                        oVBox.addItem(new Text({
+                            text: "+" + (dayInfo.promotions.length - 3) + " más"
+                        }).addStyleClass("calendar-more-promos"));
+                    }
+                }
+                
+                oGrid.addContent(oVBox);
+            });
+        },
+
+        _getPromotionIcon: function(oPromotion) {
+            const status = this._getPromotionStatus(oPromotion);
+            if (status === "active") return "●";
+            if (status === "scheduled") return "○";
+            return "◌";
+        },
+
+        _isToday: function(oDate) {
+            const today = new Date();
+            return oDate.getDate() === today.getDate() &&
+                   oDate.getMonth() === today.getMonth() &&
+                   oDate.getFullYear() === today.getFullYear();
+        },
+
+        _getMonthYearText: function(oDate) {
+            const oDateFormat = DateFormat.getDateInstance({
+                pattern: "MMMM yyyy"
+            });
+            return oDateFormat.format(oDate);
+        },
+
+        // Formatters
+        formatDate: function(sDate) {
+            if (!sDate) return "N/A";
+            try {
+                const oDate = new Date(sDate);
+                const oDateFormat = DateFormat.getDateInstance({
+                    pattern: "dd/MM/yyyy"
+                });
+                return oDateFormat.format(oDate);
+            } catch (e) {
+                return "Fecha inválida";
+            }
+        },
+
+        formatDateFull: function(sDate) {
+            if (!sDate) return "N/A";
+            try {
+                const oDate = new Date(sDate);
+                const oDateFormat = DateFormat.getDateInstance({
+                    pattern: "dd 'de' MMMM 'de' yyyy"
+                });
+                return oDateFormat.format(oDate);
+            } catch (e) {
+                return "Fecha inválida";
+            }
+        },
+
+        getPromotionColor: function(oPromotion) {
+            const status = this._getPromotionStatus(oPromotion);
+            if (status === "active") return "#388e3c";
+            if (status === "scheduled") return "#1976d2";
+            return "#757575";
+        },
+
+        getPromotionStatusText: function(oPromotion) {
+            const status = this._getPromotionStatus(oPromotion);
+            switch (status) {
+                case "active": return "Activa";
+                case "scheduled": return "Programada";
+                case "finished": return "Finalizada";
+                default: return "Desconocida";
+            }
+        },
+
+        getPromotionStatusState: function(oPromotion) {
+            const status = this._getPromotionStatus(oPromotion);
+            switch (status) {
+                case "active": return "Success";
+                case "scheduled": return "Information";
+                case "finished": return "Error";
+                default: return "None";
+            }
+        },
+
+        // Event Handlers
+        onFilterChange: function() {
+            this._applyFilters();
+            const oModel = this.getView().getModel("calendarModel");
+            const sViewMode = oModel.getProperty("/viewMode");
+            
+            if (sViewMode === "month") {
+                this._generateCalendarDays();
+            }
+        },
+
+        onViewModeChange: function(oEvent) {
+            const sKey = oEvent.getParameter("item").getKey();
+            const oModel = this.getView().getModel("calendarModel");
+            oModel.setProperty("/viewMode", sKey);
+            
+            if (sKey === "month") {
+                this._generateCalendarDays();
+            }
+        },
+
+        onPreviousMonth: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const currentDate = oModel.getProperty("/currentDate");
+            const newDate = new Date(currentDate);
+            newDate.setMonth(newDate.getMonth() - 1);
+            
+            oModel.setProperty("/currentDate", newDate);
+            oModel.setProperty("/currentMonthYear", this._getMonthYearText(newDate));
+            this._generateCalendarDays();
+        },
+
+        onNextMonth: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const currentDate = oModel.getProperty("/currentDate");
+            const newDate = new Date(currentDate);
+            newDate.setMonth(newDate.getMonth() + 1);
+            
+            oModel.setProperty("/currentDate", newDate);
+            oModel.setProperty("/currentMonthYear", this._getMonthYearText(newDate));
+            this._generateCalendarDays();
+        },
+
+        onToday: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const today = new Date();
+            
+            oModel.setProperty("/currentDate", today);
+            oModel.setProperty("/currentMonthYear", this._getMonthYearText(today));
+            this._generateCalendarDays();
+        },
+
+        onPromotionPress: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("calendarModel");
+            
+            let oPromotion;
+            if (oContext) {
+                oPromotion = oContext.getObject();
+            } else {
+                // Fallback para clics desde el calendario
+                oPromotion = oEvent.getSource().getObject ? oEvent.getSource().getObject() : null;
+            }
+            
+            if (!oPromotion) return;
+            
+            const oDetailModel = this.getView().getModel("detailModel");
+            oDetailModel.setData(oPromotion);
+            
+            this.byId("promoDetailDialog").open();
+        },
+
+        onCloseDetailDialog: function() {
+            this.byId("promoDetailDialog").close();
+        },
+
+        onManagePromotion: function() {
+            const oDetailModel = this.getView().getModel("detailModel");
+            const oPromotion = oDetailModel.getData();
+            
+            // Cerrar diálogo
+            this.byId("promoDetailDialog").close();
+            
+            // Navegar a edición (cuando se implemente)
+            MessageToast.show("Abriendo editor de promoción: " + oPromotion.Titulo);
+            
+            // TODO: Navegar a vista de edición
+        },
+
+        onExport: function() {
+            const oModel = this.getView().getModel("calendarModel");
+            const aPromotions = oModel.getProperty("/filteredPromotions");
+            
+            if (aPromotions.length === 0) {
+                MessageBox.warning("No hay promociones para exportar");
+                return;
+            }
+            
+            // Preparar datos CSV
+            const aHeaders = ['ID', 'Título', 'Descripción', 'Fecha Inicio', 'Fecha Fin', 'Descuento %', 'Estado', 'Creado Por'];
+            const aRows = aPromotions.map(promo => [
+                promo.IdPromoOK || '',
+                promo.Titulo || '',
+                promo.Descripcion || '',
+                this.formatDateFull(promo.FechaIni),
+                this.formatDateFull(promo.FechaFin),
+                promo.DescuentoPorcentaje || promo['Descuento%'] || '0',
+                this.getPromotionStatusText(promo),
+                promo.REGUSER || ''
+            ]);
+            
+            // Crear CSV
+            const sCsvContent = [
+                aHeaders.join(','),
+                ...aRows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+            
+            // Descargar archivo
+            const blob = new Blob(['\uFEFF' + sCsvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `promociones_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            MessageToast.show(`${aPromotions.length} promociones exportadas a CSV`);
+        }
+    });
+});
