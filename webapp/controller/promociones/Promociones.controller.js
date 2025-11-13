@@ -48,6 +48,22 @@ sap.ui.define([
             
             // Modelo para edición de promociones
             this.getView().setModel(new JSONModel({}), "editPromoModel");
+            // Modelo para edición masiva de promociones
+            this.getView().setModel(new JSONModel({
+                selectedIds: [],
+                saving: false,
+                errorMessage: "",
+                fields: {
+                    updateTitulo: false, Titulo: "",
+                    updateDescripcion: false, Descripcion: "",
+                    updateFechaIni: false, FechaIni: "",
+                    updateFechaFin: false, FechaFin: "",
+                    updateTipoDescuento: false, TipoDescuento: "PORCENTAJE",
+                    updateDescuentoPorcentaje: false, DescuentoPorcentaje: 0,
+                    updateDescuentoMonto: false, DescuentoMonto: 0,
+                    updateActived: false, ACTIVED: true
+                }
+            }), "bulkEditModel");
             
             // Modelo para filtros de productos
             this.getView().setModel(new JSONModel({
@@ -569,6 +585,20 @@ sap.ui.define([
             oModel.setProperty("/selectedCount", aSelectedItems.length);
         },
 
+        onRowPress: function(oEvent) {
+            const oItem = oEvent.getSource();
+            const oTable = this.byId("promotionsTable");
+            const bSelected = oItem.getSelected();
+            
+            // Toggle de selección: si está seleccionado, deseleccionar; si no, seleccionar
+            oTable.setSelectedItem(oItem, !bSelected);
+            
+            // Actualizar el contador de selección
+            const aSelectedItems = oTable.getSelectedItems();
+            const oModel = this.getView().getModel("promotionsModel");
+            oModel.setProperty("/selectedCount", aSelectedItems.length);
+        },
+
         onNewPromotion: function () {
             // Navegar a la vista de creación de promociones (CrearPromocion)
             const oRouter = this.getOwnerComponent().getRouter();
@@ -585,13 +615,21 @@ sap.ui.define([
             }
             
             if (aSelectedItems.length > 1) {
-                MessageBox.warning("Por favor selecciona solo una promoción para editar.");
+                // Edición masiva
+                const oModel = this.getView().getModel("promotionsModel");
+                const selectedIds = aSelectedItems.map(function (item) {
+                    const ctx = item.getBindingContext("promotionsModel");
+                    const obj = ctx.getObject();
+                    return obj.IdPromoOK;
+                }).filter(Boolean);
+
+                await this._openBulkEditDialog(selectedIds);
                 return;
             }
 
+            // Edición individual
             const oContext = aSelectedItems[0].getBindingContext("promotionsModel");
             const oPromotion = oContext.getObject();
-            
             await this._openEditDialog(oPromotion);
         },
 
@@ -1557,6 +1595,183 @@ sap.ui.define([
         },
 
         // ========== FIN MÉTODOS DE EDICIÓN ==========
+
+        // ========== INICIO EDICIÓN MASIVA ==========
+        _openBulkEditDialog: async function(selectedIds) {
+            const oView = this.getView();
+            if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+                MessageBox.warning("Selecciona al menos una promoción para editar.");
+                return;
+            }
+
+            if (!this._bulkEditDialog) {
+                this._bulkEditDialog = await Fragment.load({
+                    id: oView.getId(),
+                    name: "com.invertions.sapfiorimodinv.view.promociones.fragments.BulkEditDialog",
+                    controller: this
+                });
+                oView.addDependent(this._bulkEditDialog);
+            }
+
+            const oBulkModel = this.getView().getModel("bulkEditModel");
+            oBulkModel.setData({
+                selectedIds: selectedIds,
+                saving: false,
+                errorMessage: "",
+                fields: {
+                    updateTitulo: false, Titulo: "",
+                    updateDescripcion: false, Descripcion: "",
+                    updateFechaIni: false, FechaIni: "",
+                    updateFechaFin: false, FechaFin: "",
+                    updateTipoDescuento: false, TipoDescuento: "PORCENTAJE",
+                    updateDescuentoPorcentaje: false, DescuentoPorcentaje: 0,
+                    updateDescuentoMonto: false, DescuentoMonto: 0,
+                    updateActived: false, ACTIVED: true
+                }
+            });
+
+            this._bulkEditDialog.open();
+        },
+
+        onBulkTipoDescuentoChange: function(oEvent) {
+            const sKey = oEvent.getParameter("selectedItem").getKey();
+            const oBulkModel = this.getView().getModel("bulkEditModel");
+            oBulkModel.setProperty("/fields/TipoDescuento", sKey);
+        },
+
+        onBulkSavePromotions: async function() {
+            const oBulkModel = this.getView().getModel("bulkEditModel");
+            const oData = oBulkModel.getData();
+            const aIds = oData.selectedIds || [];
+            const f = oData.fields || {};
+
+            // Validar que haya al menos un campo a actualizar
+            if (!f.updateTitulo && !f.updateDescripcion && !f.updateFechaIni && !f.updateFechaFin &&
+                !f.updateTipoDescuento && !f.updateDescuentoPorcentaje && !f.updateDescuentoMonto && !f.updateActived) {
+                oBulkModel.setProperty("/errorMessage", "Selecciona al menos un campo para actualizar");
+                return;
+            }
+
+            // Validaciones de consistencia
+            if ((f.updateFechaIni && !f.FechaIni) || (f.updateFechaFin && !f.FechaFin)) {
+                oBulkModel.setProperty("/errorMessage", "Si actualizas fechas, ambas deben tener valor");
+                return;
+            }
+            if (f.updateFechaIni && f.updateFechaFin) {
+                if (new Date(f.FechaFin) <= new Date(f.FechaIni)) {
+                    oBulkModel.setProperty("/errorMessage", "La fecha de fin debe ser posterior a la de inicio");
+                    return;
+                }
+            }
+
+            if (f.updateTipoDescuento) {
+                if (f.TipoDescuento === "PORCENTAJE") {
+                    if (!f.updateDescuentoPorcentaje || f.DescuentoPorcentaje <= 0 || f.DescuentoPorcentaje > 100) {
+                        oBulkModel.setProperty("/errorMessage", "Define un porcentaje entre 1 y 100");
+                        return;
+                    }
+                } else if (f.TipoDescuento === "MONTO_FIJO") {
+                    if (!f.updateDescuentoMonto || f.DescuentoMonto <= 0) {
+                        oBulkModel.setProperty("/errorMessage", "Define un monto de descuento válido (> 0)");
+                        return;
+                    }
+                }
+            } else {
+                // Si no cambia tipo, pero se intenta cambiar valores, validar también
+                if (f.updateDescuentoPorcentaje) {
+                    if (f.DescuentoPorcentaje <= 0 || f.DescuentoPorcentaje > 100) {
+                        oBulkModel.setProperty("/errorMessage", "El porcentaje debe estar entre 1 y 100");
+                        return;
+                    }
+                }
+                if (f.updateDescuentoMonto) {
+                    if (f.DescuentoMonto <= 0) {
+                        oBulkModel.setProperty("/errorMessage", "El monto de descuento debe ser > 0");
+                        return;
+                    }
+                }
+            }
+
+            oBulkModel.setProperty("/saving", true);
+            oBulkModel.setProperty("/errorMessage", "");
+
+            try {
+                const oPromModel = this.getView().getModel("promotionsModel");
+                const aAll = oPromModel.getProperty("/promotions") || [];
+
+                // Map rápido por IdPromoOK
+                const mapById = new Map(aAll.map(p => [p.IdPromoOK, p]));
+
+                let successCount = 0;
+                for (const id of aIds) {
+                    const promo = mapById.get(id);
+                    if (!promo) continue;
+
+                    // Construir payload tomando valores actuales como base
+                    const updateData = {
+                        Titulo: promo.Titulo || '',
+                        Descripcion: promo.Descripcion || '',
+                        FechaIni: promo.FechaIni ? new Date(promo.FechaIni).toISOString() : new Date().toISOString(),
+                        FechaFin: promo.FechaFin ? new Date(promo.FechaFin).toISOString() : new Date().toISOString(),
+                        TipoDescuento: promo.TipoDescuento || 'PORCENTAJE',
+                        DescuentoPorcentaje: promo.DescuentoPorcentaje || promo["Descuento%"] || 0,
+                        DescuentoMonto: promo.DescuentoMonto || 0,
+                        ACTIVED: promo.ACTIVED !== false,
+                        ProductosAplicables: Array.isArray(promo.ProductosAplicables) ? promo.ProductosAplicables.map(function(p){
+                            return {
+                                IdPresentaOK: p.IdPresentaOK,
+                                SKUID: p.SKUID,
+                                NombreProducto: p.NombreProducto || '',
+                                NombrePresentacion: p.NombrePresentacion || p.NOMBREPRESENTACION || '',
+                                PrecioOriginal: p.PrecioOriginal || p.Precio || 0
+                            };
+                        }) : []
+                    };
+
+                    // Aplicar overrides seleccionados
+                    if (f.updateTitulo) updateData.Titulo = f.Titulo;
+                    if (f.updateDescripcion) updateData.Descripcion = f.Descripcion;
+                    if (f.updateFechaIni) updateData.FechaIni = new Date(f.FechaIni).toISOString();
+                    if (f.updateFechaFin) updateData.FechaFin = new Date(f.FechaFin).toISOString();
+                    if (f.updateTipoDescuento) updateData.TipoDescuento = f.TipoDescuento;
+                    if (f.updateDescuentoPorcentaje) {
+                        updateData.DescuentoPorcentaje = f.DescuentoPorcentaje;
+                        updateData.DescuentoMonto = 0;
+                    }
+                    if (f.updateDescuentoMonto) {
+                        updateData.DescuentoMonto = f.DescuentoMonto;
+                        updateData.DescuentoPorcentaje = 0;
+                    }
+                    if (f.updateActived) updateData.ACTIVED = !!f.ACTIVED;
+
+                    try {
+                        await this._callApi('/ztpromociones/crudPromociones', 'POST', updateData, {
+                            ProcessType: 'UpdateOne',
+                            IdPromoOK: id,
+                            DBServer: 'MongoDB'
+                        });
+                        successCount++;
+                    } catch (e) {
+                        // Continuar con el siguiente, acumulando errores en consola
+                        console.error('Fallo al actualizar promoción', id, e);
+                    }
+                }
+
+                MessageToast.show(`${successCount} promoción(es) actualizada(s)`);
+                this._bulkEditDialog.close();
+                this.loadPromotions();
+            } catch (error) {
+                console.error("Error en guardado masivo:", error);
+                oBulkModel.setProperty("/errorMessage", error.message || "Error al guardar cambios");
+            } finally {
+                oBulkModel.setProperty("/saving", false);
+            }
+        },
+
+        onBulkCloseDialog: function() {
+            this._bulkEditDialog.close();
+        },
+        // ========== FIN EDICIÓN MASIVA ==========
 
         onDeletePromotion: async function () {
             const oTable = this.byId("promotionsTable");

@@ -31,7 +31,7 @@
                             <Label text="Buscar Producto" />
                             <SearchField
                                 placeholder="Nombre, SKU, marca..."
-                                value="{filterModel>/searchText}"
+                                value="{filterModel>/searchTerm}"
                                 search=".onFilterSearch"
                                 width="100%"
                             />
@@ -39,17 +39,18 @@
                             <Label text="Categoría" />
                             <MultiComboBox
                                 placeholder="Seleccionar categorías..."
-                                items="{filterModel>/categories}"
-                                selectedKeys="{filterModel>/selectedCategories}"
+                                items="{filterModel>/allCategories}"
+                                selectionChange=".onFilterCategoryChange"
                             >
-                                <core:Item key="{filterModel>id}" text="{filterModel>name}" />
+                                <!-- Ajusta IdCategoriaOK/Descripcion a los campos reales de categoría -->
+                                <core:Item key="{filterModel>IdCategoriaOK}" text="{filterModel>Descripcion}" />
                             </MultiComboBox>
 
                             <Label text="Marca" />
                             <MultiComboBox
                                 placeholder="Seleccionar marcas..."
-                                items="{filterModel>/brands}"
-                                selectedKeys="{filterModel>/selectedBrands}"
+                                items="{filterModel>/allBrands}"
+                                selectionChange=".onFilterBrandChange"
                             >
                                 <core:Item key="{filterModel>id}" text="{filterModel>name}" />
                             </MultiComboBox>
@@ -59,29 +60,31 @@
                                 <Input
                                     type="Number"
                                     placeholder="Mín"
-                                    value="{filterModel>/priceMin}"
+                                    value="{filterModel>/filters/precioMin}"
                                     width="100px"
+                                    liveChange=".onFilterPriceChange"
                                 />
                                 <Label text="-" class="sapUiTinyMarginBegin sapUiTinyMarginEnd" />
                                 <Input
                                     type="Number"
                                     placeholder="Máx"
-                                    value="{filterModel>/priceMax}"
+                                    value="{filterModel>/filters/precioMax}"
                                     width="100px"
+                                    liveChange=".onFilterPriceChange"
                                 />
                             </HBox>
                         </f:content>
                     </f:SimpleForm>
                     <Toolbar>
                         <ToolbarSpacer />
-                        <Button text="Aplicar Filtros" type="Emphasized" press=".onApplyFilters" />
+                        <Button text="Aplicar Filtros" type="Emphasized" press=".onFilterSearch" />
                         <Button text="Limpiar" press=".onClearFilters" />
                     </Toolbar>
                 </Panel>
 
                 <!-- Productos encontrados -->
                 <Panel 
-                    headerText="Productos Encontrados ({filterModel>/totalProducts})" 
+                    headerText="Productos Encontrados ({filterModel>/filteredProductsCount})" 
                     class="sapUiSmallMarginTop"
                 >
                     <Toolbar>
@@ -98,10 +101,9 @@
                     </Toolbar>
 
                     <List
-                        items="{filterModel>/products}"
-                        mode="MultiSelect"
-                        includeItemInSelection="true"
-                        selectionChange=".onProductSelectionChange"
+                        items="{filterModel>/filteredProducts}"
+                        mode="None"
+                        includeItemInSelection="false"
                         growing="true"
                         growingThreshold="20"
                     >
@@ -115,7 +117,7 @@
                                     <Button
                                         icon="sap-icon://navigation-down-arrow"
                                         type="Transparent"
-                                        press=".onExpandProduct"
+                                        press=".onFilterToggleProduct"
                                     />
                                 </HBox>
 
@@ -124,14 +126,16 @@
                                     <Title level="H6" text="Presentaciones" />
                                     <List
                                         items="{filterModel>presentaciones}"
-                                        mode="MultiSelect"
-                                        selectionChange=".onPresentacionSelectionChange"
+                                        mode="None"
                                     >
                                         <StandardListItem
                                             title="{filterModel>NOMBREPRESENTACION}"
                                             description="{filterModel>Descripcion}"
-                                            info="$ {filterModel>Precio}"
+                                            info="$ {filterModel>precio}"
                                             infoState="Success"
+                                            selected="{filterModel>selected}"
+                                            type="Active"
+                                            press=".onPresentacionPress"
                                         />
                                     </List>
                                 </VBox>
@@ -143,11 +147,11 @@
         </content>
         
         <buttons>
-            <Button text="Cancelar" press=".onFilterDialogCancel" />
+            <Button text="Cancelar" press=".onCancelAddProducts" />
             <Button 
-                text="Confirmar Selección ({filterModel>/selectedCount})" 
+                text="Confirmar Selección ({filterModel>/selectedPresentacionesCount})" 
                 type="Emphasized" 
-                press=".onFilterDialogConfirm"
+                press=".onConfirmAddProducts"
             />
         </buttons>
     </Dialog>

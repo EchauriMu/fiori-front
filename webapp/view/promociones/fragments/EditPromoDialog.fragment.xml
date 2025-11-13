@@ -11,6 +11,8 @@
         contentHeight="85%"
         resizable="true"
         draggable="true"
+        busy="{editPromoModel>/saving}"
+        busyIndicatorDelay="0"
     >
         <content>
             <VBox class="sapUiSmallMargin">
@@ -284,22 +286,18 @@
             </VBox>
         </content>
 
-        <beginButton>
+        <buttons>
             <Button
                 text="Guardar Cambios"
                 type="Emphasized"
                 press="onEditSavePromotion"
                 enabled="{= !${editPromoModel>/saving} }"
             />
-        </beginButton>
-        <endButton>
             <Button
                 text="Cancelar"
                 press="onEditCloseDialog"
                 enabled="{= !${editPromoModel>/saving} }"
             />
-        </endButton>
-        <buttons>
             <Button
                 text="Eliminar Permanentemente"
                 type="Reject"

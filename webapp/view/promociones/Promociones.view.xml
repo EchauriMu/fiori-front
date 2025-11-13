@@ -111,7 +111,7 @@
                                 </columns>
                                 
                                 <items>
-                                    <ColumnListItem type="Navigation" press="onPromotionPress">
+                                    <ColumnListItem type="Active" press="onRowPress">
                                         <cells>
                                             <ObjectIdentifier
                                                 title="{promotionsModel>IdPromoOK}"

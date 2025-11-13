@@ -14,6 +14,31 @@ sap.ui.define([
 
         onInit: function () {
             this._initializeModel();
+
+            // Inicializar modelo de filtros para esta vista (similar a Promociones)
+            const oFilterModel = new JSONModel({
+                loading: false,
+                errorMessage: '',
+                searchTerm: '',
+                filters: {
+                    categorias: [],
+                    marcas: [],
+                    precioMin: '',
+                    precioMax: '',
+                    fechaIngresoDesde: '',
+                    fechaIngresoHasta: ''
+                },
+                filtersExpanded: true,
+                activeFiltersCount: 0,
+                allProducts: [],
+                allCategories: [],
+                allBrands: [],
+                filteredProducts: [],
+                filteredProductsCount: 0,
+                selectedPresentacionesCount: 0,
+                lockedPresentaciones: []
+            });
+            this.getView().setModel(oFilterModel, "filterModel");
             
             this.getOwnerComponent().getRouter().getRoute("RouteCrearPromocion")
                 .attachPatternMatched(this._onRouteMatched, this);
@@ -186,43 +211,113 @@ sap.ui.define([
             }
         },
 
-        onOpenFilterDialog: function() {
+        onOpenFilterDialog: async function() {
             const oView = this.getView();
-            
-            // Crear el diálogo si no existe
+            const oFilterModel = this.getView().getModel("filterModel");
+
+            // Asegurar que tengamos las presentaciones ya seleccionadas bloqueadas
+            const oCreateModel = this.getView().getModel("createPromo");
+            const aSelected = oCreateModel.getProperty("/selectedPresentaciones") || [];
+            const lockedIds = aSelected
+                .filter(function(p){ return p && p.IdPresentaOK; })
+                .map(function(p){ return p.IdPresentaOK; });
+            oFilterModel.setProperty("/lockedPresentaciones", lockedIds);
+            oFilterModel.setProperty("/selectedPresentacionesCount", 0);
+            oFilterModel.setProperty("/errorMessage", "");
+
             if (!this._filterDialog) {
-                Fragment.load({
+                this._filterDialog = await Fragment.load({
                     id: oView.getId(),
                     name: "com.invertions.sapfiorimodinv.view.promociones.fragments.FilterDialog",
                     controller: this
-                }).then(function(oDialog) {
-                    this._filterDialog = oDialog;
-                    oView.addDependent(oDialog);
-                    this._loadProductsForFilter();
-                    oDialog.open();
-                }.bind(this));
-            } else {
-                this._loadProductsForFilter();
-                this._filterDialog.open();
+                });
+                oView.addDependent(this._filterDialog);
             }
+
+            // Cargar datos de productos / categorías / marcas
+            await this._loadFilterData();
+
+            this._filterDialog.open();
         },
 
-        _loadProductsForFilter: async function() {
-            // TODO: Cargar productos desde la API para el filtro
-            console.log("Cargando productos para filtro...");
-        },
+        _loadFilterData: async function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/loading", true);
+            oFilterModel.setProperty("/errorMessage", "");
 
-        onFilterDialogConfirm: function(oEvent) {
-            // Obtener presentaciones seleccionadas del diálogo
-            const oModel = this.getView().getModel("createPromo");
-            const aSelected = []; // TODO: Obtener del modelo del filtro
-            
-            oModel.setProperty("/selectedPresentaciones", aSelected);
-            this._filterDialog.close();
-        },
+            try {
+                // Productos
+                const oProductsResponse = await this._callApi('/ztproductos/crudProductos', 'POST', {}, {
+                    ProcessType: 'GetAll',
+                    DBServer: 'MongoDB'
+                });
 
-        onFilterDialogCancel: function() {
-            this._filterDialog.close();
+                let aProducts = [];
+                if (oProductsResponse?.data?.[0]?.dataRes) {
+                    aProducts = oProductsResponse.data[0].dataRes;
+                } else if (oProductsResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                    aProducts = oProductsResponse.value[0].data[0].dataRes;
+                } else if (Array.isArray(oProductsResponse?.data)) {
+                    aProducts = oProductsResponse.data;
+                } else if (Array.isArray(oProductsResponse)) {
+                    aProducts = oProductsResponse;
+                }
+
+                const aActiveProducts = aProducts.filter(function(p) {
+                    return p.ACTIVED === true && p.DELETED !== true;
+                });
+
+                // Categorías
+                const oCategoriesResponse = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
+                    ProcessType: 'GetAll',
+                    DBServer: 'MongoDB'
+                });
+
+                let aCategories = [];
+                if (oCategoriesResponse?.data?.[0]?.dataRes) {
+                    aCategories = oCategoriesResponse.data[0].dataRes;
+                } else if (oCategoriesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                    aCategories = oCategoriesResponse.value[0].data[0].dataRes;
+                } else if (Array.isArray(oCategoriesResponse?.data)) {
+                    aCategories = oCategoriesResponse.data;
+                } else if (Array.isArray(oCategoriesResponse)) {
+                    aCategories = oCategoriesResponse;
+                }
+
+                const aActiveCategories = aCategories.filter(function(c) {
+                    return c.ACTIVED === true && c.DELETED !== true;
+                });
+
+                // Marcas únicas
+                const brandsSet = new Set();
+                aActiveProducts.forEach(function(p) {
+                    if (p.MARCA && p.MARCA.trim() !== '') {
+                        brandsSet.add(p.MARCA.trim());
+                    }
+                });
+
+                const aBrands = Array.from(brandsSet).map(function(marca) {
+                    const count = aActiveProducts.filter(function(p) { return p.MARCA === marca; }).length;
+                    return {
+                        id: marca,
+                        name: marca,
+                        productos: count
+                    };
+                }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+                oFilterModel.setProperty("/allProducts", aActiveProducts);
+                oFilterModel.setProperty("/allCategories", aActiveCategories);
+                oFilterModel.setProperty("/allBrands", aBrands);
+
+                // Aplicar filtros iniciales (sin filtros => todos)
+                this._applyProductFilters();
+
+            } catch (error) {
+                console.error("Error cargando datos de filtros (CrearPromocion):", error);
+                oFilterModel.setProperty("/errorMessage", "Error al cargar productos: " + error.message);
+            } finally {
+                oFilterModel.setProperty("/loading", false);
+            }
         },
 
         onRemovePresentacion: function(oEvent) {
@@ -236,6 +331,174 @@ sap.ui.define([
             aPresentaciones.splice(iIndex, 1);
             oModel.setProperty("/selectedPresentaciones", aPresentaciones);
             oModel.refresh(true);
+        },
+
+        // ======== MÉTODOS COMPARTIDOS DE FILTROS (simplificados) ========
+
+        _applyProductFilters: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const aAllProducts = oFilterModel.getProperty("/allProducts") || [];
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            const sSearchTerm = oFilterModel.getProperty("/searchTerm") || '';
+
+            let aFiltered = aAllProducts.filter(function(product) {
+                // Búsqueda
+                if (sSearchTerm && sSearchTerm.trim() !== '') {
+                    const searchLower = sSearchTerm.toLowerCase();
+                    const matchesSearch =
+                        (product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(searchLower)) ||
+                        (product.SKUID && product.SKUID.toLowerCase().includes(searchLower)) ||
+                        (product.MARCA && product.MARCA.toLowerCase().includes(searchLower));
+                    if (!matchesSearch) { return false; }
+                }
+
+                // Marcas
+                if (oFilters.marcas && oFilters.marcas.length > 0) {
+                    if (!product.MARCA || !oFilters.marcas.includes(product.MARCA)) {
+                        return false;
+                    }
+                }
+
+                // Categorías (suponiendo array CATEGORIAS)
+                if (oFilters.categorias && oFilters.categorias.length > 0) {
+                    if (!product.CATEGORIAS || !Array.isArray(product.CATEGORIAS)) {
+                        return false;
+                    }
+                    const hasCategory = product.CATEGORIAS.some(function(cat) {
+                        return oFilters.categorias.includes(cat);
+                    });
+                    if (!hasCategory) { return false; }
+                }
+
+                // Precio
+                if (oFilters.precioMin && product.PRECIO < parseFloat(oFilters.precioMin)) {
+                    return false;
+                }
+                if (oFilters.precioMax && product.PRECIO > parseFloat(oFilters.precioMax)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            aFiltered = aFiltered.map(function(product) {
+                return {
+                    SKUID: product.SKUID,
+                    PRODUCTNAME: product.PRODUCTNAME,
+                    MARCA: product.MARCA,
+                    PRECIO: product.PRECIO,
+                    CATEGORIAS: product.CATEGORIAS,
+                    REGDATE: product.REGDATE,
+                    ACTIVED: product.ACTIVED,
+                    expanded: false,
+                    presentaciones: [],
+                    presentacionesCount: 0,
+                    loadingPresentaciones: false
+                };
+            });
+
+            oFilterModel.setProperty("/filteredProducts", aFiltered);
+            oFilterModel.setProperty("/filteredProductsCount", aFiltered.length);
+        },
+
+        onFilterSearch: function(oEvent) {
+            const sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/searchTerm", sValue);
+            this._applyProductFilters();
+        },
+
+        onFilterCategoryChange: function(oEvent) {
+            const aSelectedItems = oEvent.getParameter("selectedItems") || [];
+            const aKeys = aSelectedItems.map(function(item) { return item.getKey(); });
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/filters/categorias", aKeys);
+            this._applyProductFilters();
+        },
+
+        onFilterBrandChange: function(oEvent) {
+            const aSelectedItems = oEvent.getParameter("selectedItems") || [];
+            const aKeys = aSelectedItems.map(function(item) { return item.getKey(); });
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/filters/marcas", aKeys);
+            this._applyProductFilters();
+        },
+
+        onFilterPriceChange: function() {
+            this._applyProductFilters();
+        },
+
+        onClearFilters: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/searchTerm", "");
+            oFilterModel.setProperty("/filters", {
+                categorias: [],
+                marcas: [],
+                precioMin: '',
+                precioMax: '',
+                fechaIngresoDesde: '',
+                fechaIngresoHasta: ''
+            });
+            this._applyProductFilters();
+        },
+
+        // El resto de manejadores de selección de presentaciones se toma de Promociones.controller
+        onPresentacionPress: function(oEvent) {
+            const oItem = oEvent.getSource();
+            const oContext = oItem.getBindingContext("filterModel");
+            const oPresentacion = oContext.getObject();
+
+            if (oPresentacion.locked) {
+                MessageToast.show("Esta presentación ya está en la promoción");
+                return;
+            }
+
+            const sPath = oContext.getPath();
+            const oFilterModel = this.getView().getModel("filterModel");
+            const bCurrentlySelected = oPresentacion.selected;
+
+            oFilterModel.setProperty(sPath + "/selected", !bCurrentlySelected);
+        },
+
+        onConfirmAddProducts: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oCreateModel = this.getView().getModel("createPromo");
+            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
+            const aCurrent = oCreateModel.getProperty("/selectedPresentaciones") || [];
+
+            const aNewPresentaciones = [];
+            aProducts.forEach(function(product) {
+                if (product.presentaciones && Array.isArray(product.presentaciones)) {
+                    product.presentaciones.forEach(function(pres) {
+                        if (pres.selected && !pres.locked) {
+                            aNewPresentaciones.push({
+                                IdPresentaOK: pres.IdPresentaOK,
+                                SKUID: product.SKUID,
+                                NOMBREPRESENTACION: pres.NOMBREPRESENTACION,
+                                Precio: pres.precio,
+                                producto: {
+                                    SKUID: product.SKUID,
+                                    PRODUCTNAME: product.PRODUCTNAME
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            const aCombined = aCurrent.concat(aNewPresentaciones);
+            oCreateModel.setProperty("/selectedPresentaciones", aCombined);
+
+            MessageToast.show(aNewPresentaciones.length + " presentación(es) agregada(s) a la promoción");
+            if (this._filterDialog) {
+                this._filterDialog.close();
+            }
+        },
+
+        onCancelAddProducts: function() {
+            if (this._filterDialog) {
+                this._filterDialog.close();
+            }
         },
 
         onStepActivate: function(oEvent) {
