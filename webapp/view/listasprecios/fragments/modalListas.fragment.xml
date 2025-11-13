@@ -9,6 +9,10 @@
         title="{= ${detailView>/editableLista} ? 'Editar Lista de Precios' : (${detailView>/IDLISTAOK} ? 'Detalle de Lista' : 'Nueva Lista de Precios')}"
         type="Standard"
         class="sapUiSmallMargin"
+        contentHeight="80vh"
+        contentWidth="45vw"
+        resizable="true"
+        draggable="true"
     >
         <!-- Contenido principal -->
         <content>
@@ -113,19 +117,39 @@
                                 
                                 <!-- MultiComboBox para seleccionar SKUs -->
                                 <MultiComboBox
+                                    id="skuMultiCombo"
                                     items="{detailView>/availableProducts}"
+                                    selectedKeys="{path: 'detailView>/editableLista/SKUSIDS'}"
                                     selectionChange=".onSKUSIDsChange"
                                     enabled="{detailView>/editing}"
+                                    width="100%"
+                                    placeholder="Selecciona SKUs..."
                                     class="sapUiSmallMarginBottom"
                                 >
                                     <core:Item key="{detailView>SKUID}" text="{detailView>PRODUCTNAME}"/>
                                 </MultiComboBox>
 
-                                <!-- Mostrar SKUs seleccionados como Text -->
-                                <Label text="SKUs Seleccionados:" class="sapUiSmallMarginTop"/>
-                                <Text 
-                                    text="{= ${detailView>/editableLista/SKUSIDS}.length > 0 ? ${detailView>/editableLista/SKUSIDS}.join(', ') : 'Sin SKUs seleccionados'}"
+                                <!-- SKUs Seleccionados: Mostrar el primero + contador -->
+                                <VBox 
+                                    visible="{= ${detailView>/editableLista/SKUSIDS}.length > 0 }"
                                     class="sapUiSmallMarginTop"
+                                >
+                                    <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                                        <Token 
+                                            text="{path: 'detailView>/editableLista/SKUSIDS', formatter: '.formatterFirstSKU'}"
+                                            tooltip="{path: 'detailView>/editableLista/SKUSIDS', formatter: '.formatterAllSKUs'}"
+                                        />
+                                        <Text 
+                                            text="{path: 'detailView>/editableLista/SKUSIDS', formatter: '.formatterSKUCount'}"
+                                            class="sapUiSmallMarginStart sapUiSmallText"
+                                        />
+                                    </HBox>
+                                </VBox>
+                                
+                                <Text 
+                                    text="Sin SKUs seleccionados"
+                                    visible="{= ${detailView>/editableLista/SKUSIDS}.length === 0 }"
+                                    class="sapUiSmallMarginTop sapUiTinyText"
                                 />
                             </VBox>
                         </content>

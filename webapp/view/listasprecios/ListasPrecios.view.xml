@@ -10,9 +10,10 @@
         id="idListasPage"
         title="{i18n>listasPageTitle}"
         showHeader="true"
-        class="sapUiContentPadding"
         navButtonPress=".onNavBack"
         showNavButton="true"
+        class="sapUiResponsiveContentPadding"
+        enableScrolling="false"
     >
         <m:customHeader>
             <m:Bar>
@@ -32,18 +33,17 @@
                     
                     <m:Button icon="sap-icon://add" text="{i18n>listasAddButton}" type="Emphasized" press="onOpenListaDialog" />
                     
-                    <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press=".onTableAction" enabled="{= ${view>/selectedListaIDs}.length === 1 }" tooltip="{i18n>listasEditTooltip}">
-                        <m:customData><core:CustomData key="action" value="EDIT"/></m:customData>
+                    <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press=".onEditLista" enabled="{= ${view>/selectedListaIDs}.length === 1 }" tooltip="{i18n>listasEditTooltip}">
                     </m:Button>
                     
-                    <m:Button icon="sap-icon://accept" text="Activar" type="Accept" press=".onToggleSelectedListasStatus" enabled="{= ${view>/selectedListaIDs}.length > 0 }" tooltip="Activar o desactivar listas seleccionadas" />
+                    <m:Button icon="sap-icon://accept" text="{view>/statusButtonText}" type="Accept" press=".onToggleSelectedListasStatus" enabled="{= ${view>/selectedListaIDs}.length > 0 }" tooltip="Activar o desactivar listas seleccionadas" />
                     
                     <m:Button icon="sap-icon://delete" text="Eliminar" type="Negative" press=".onDeleteSelectedListas" enabled="{= ${view>/selectedListaIDs}.length > 0 }" tooltip="{i18n>listasDeleteTooltip}" />
                 </m:contentRight>
             </m:Bar>
         </m:customHeader>
         
-        <m:VBox class="sapUiSmallMargin">
+        <m:VBox class="sapUiNoMargin" height="100%" width="100%">
             
             <m:MessageStrip
                 visible="{= !!${view>/error} }"
@@ -81,7 +81,8 @@
                 items="{path: 'view>/filteredListas'}"
                 visible="{= !${view>/loading} &amp;&amp; ${view>/filteredListas}.length > 0 }"
                 noDataText="No hay listas de precios para mostrar"
-                class="listasTableStyle"
+                class="listasTableStyle sapUiResponsiveMargin"
+                width="100%"
             >
                 <m:columns>
                     <m:Column width="40px" minScreenWidth="Tablet" hAlign="Center">
@@ -136,7 +137,7 @@
                 </m:columns>
 
                 <m:items>
-                    <m:ColumnListItem type="Active" press="onRowClick" class="ui5-table-row-hover">
+                    <m:ColumnListItem type="Inactive" class="ui5-table-row-hover">
                         <m:cells>
                             <m:CheckBox 
                                 select="onRowSelectChange"
@@ -145,7 +146,26 @@
                             
                             <m:Text text="{view>IDLISTAOK}" class="sapUiForceMonospace sapUiForceBold"/>
                             
-                            <m:Text text="{path: 'view>SKUSIDS', formatter: '.formatterSKUList'}" class="sapUiForceMedium"/>
+                            <!-- SKUs: Mostrar primero + botón expandible -->
+                            <m:HBox alignItems="Center">
+                                <m:VBox>
+                                    <m:Token 
+                                        text="{path: 'view>SKUSIDS', formatter: '.formatterFirstSKU'}"
+                                        tooltip="{path: 'view>SKUSIDS', formatter: '.formatterAllSKUs'}"
+                                    />
+                                    <m:Text 
+                                        text="{path: 'view>SKUSIDS', formatter: '.formatterSKUCount'}"
+                                        class="sapUiSmallText sapUiTinyMarginTop"
+                                    />
+                                </m:VBox>
+                                <m:Button
+                                    icon="{= ${view>expanded} ? 'sap-icon://navigation-up-arrow' : 'sap-icon://navigation-down-arrow'}"
+                                    type="Transparent"
+                                    press=".onToggleRowExpansion"
+                                    visible="{= ${view>SKUSIDS}.length > 1 }"
+                                    tooltip="{= ${view>expanded} ? 'Ocultar SKUs' : 'Ver todos los SKUs'}"
+                                />
+                            </m:HBox>
                             
                             <m:VBox>
                                 <m:Text text="{view>DESLISTA}" class="sapUiForceBold"/>

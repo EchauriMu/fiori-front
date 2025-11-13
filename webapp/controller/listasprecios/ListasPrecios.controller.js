@@ -34,7 +34,9 @@ sap.ui.define([
                 selectedLista: null,
                 activeCount: 0,
                 deletedCount: 0,
-                totalCount: 0
+                totalCount: 0,
+                expandedRows: {},
+                statusButtonText: "Activar"
             });
             this.getView().setModel(oViewModel, "view");
 
@@ -62,6 +64,9 @@ sap.ui.define([
                 editableLista: null
             });
             this.getView().setModel(oDetailViewModel, "detailView");
+
+            // Inicializar variable de seguimiento
+            this._currentEditingListaID = null;
 
             // Cargar datos de listas
             this.loadListas();
@@ -238,7 +243,8 @@ sap.ui.define([
         // ====================================================================
 
         onSelectAll: function (oEvent) {
-            const bSelectAll = oEvent.getParameter("selected");
+            const oCBCheckBox = oEvent.getSource();
+            const bSelectAll = oCBCheckBox.getSelected();
             const oViewModel = this.getView().getModel("view");
             const aFilteredListas = oViewModel.getProperty("/filteredListas");
             
@@ -247,19 +253,21 @@ sap.ui.define([
                 : [];
             
             oViewModel.setProperty("/selectedListaIDs", aSelectedListaIDs);
+            this.onTableSelectionChange();
         },
 
         onRowSelectChange: function (oEvent) {
             const oViewModel = this.getView().getModel("view");
-            const bIsSelected = oEvent.getParameter("selected");
-            const oContext = oEvent.getSource().getBindingContext("view");
+            const oCBCheckBox = oEvent.getSource();
+            const bSelected = oCBCheckBox.getSelected();
+            const oContext = oCBCheckBox.getBindingContext("view");
             
             if (!oContext) return;
             
             const sListaID = oContext.getProperty("IDLISTAOK");
             let aSelectedListaIDs = oViewModel.getProperty("/selectedListaIDs").slice();
 
-            if (bIsSelected) {
+            if (bSelected) {
                 if (!aSelectedListaIDs.includes(sListaID)) {
                     aSelectedListaIDs.push(sListaID);
                 }
@@ -268,6 +276,49 @@ sap.ui.define([
             }
             
             oViewModel.setProperty("/selectedListaIDs", aSelectedListaIDs);
+            this.onTableSelectionChange();
+        },
+
+        onTableSelectionChange: function () {
+            const oViewModel = this.getView().getModel("view");
+            const aSelectedListaIDs = oViewModel.getProperty("/selectedListaIDs");
+
+            if (aSelectedListaIDs.length === 0) {
+                oViewModel.setProperty("/statusButtonText", "Activar");
+                return;
+            }
+
+            // Determine if we should show "Activar" or "Desactivar" based on majority state
+            const aListas = oViewModel.getProperty("/listas");
+            const aSelectedListas = aSelectedListaIDs.map(id => aListas.find(l => l.IDLISTAOK === id)).filter(l => l);
+
+            const iActiveCount = aSelectedListas.filter(l => l && l.ACTIVED === true).length;
+            const bActivate = iActiveCount <= aSelectedListas.length / 2; // Activate if less than half are active
+
+            const sButtonText = bActivate ? "Activar" : "Desactivar";
+            oViewModel.setProperty("/statusButtonText", sButtonText);
+        },
+
+        onToggleRowExpansion: function (oEvent) {
+            const oViewModel = this.getView().getModel("view");
+            const oContext = oEvent.getSource().getBindingContext("view");
+            
+            if (!oContext) return;
+            
+            const sListaID = oContext.getProperty("IDLISTAOK");
+            const oExpandedRows = oViewModel.getProperty("/expandedRows") || {};
+            
+            // Toggle expansion state
+            oExpandedRows[sListaID] = !oExpandedRows[sListaID];
+            oViewModel.setProperty("/expandedRows", oExpandedRows);
+            
+            // Actualizar la propiedad expanded en el objeto de lista
+            const aFilteredListas = oViewModel.getProperty("/filteredListas");
+            const oLista = aFilteredListas.find(l => l.IDLISTAOK === sListaID);
+            if (oLista) {
+                oLista.expanded = oExpandedRows[sListaID];
+                oViewModel.refresh(true);
+            }
         },
 
         onRowClick: async function (oEvent) {
@@ -276,15 +327,17 @@ sap.ui.define([
                 const oLista = oListaContext.getObject();
                 const oDetailModel = this.getView().getModel("detailView");
 
-                // Limpiar y establecer datos de la lista
-                const oCleanDetailData = { ...oLista };
-                oDetailModel.setData(oCleanDetailData);
-                
-                // Reiniciar explícitamente las propiedades del modal
-                oDetailModel.setProperty("/editing", false);
-                oDetailModel.setProperty("/saving", false);
-                oDetailModel.setProperty("/editableLista", null);
+                // Configurar para modo lectura (no edición)
+                oDetailModel.setData({
+                    ...oLista,
+                    availableProducts: [],
+                    editing: false,
+                    saving: false,
+                    editableLista: null
+                });
 
+                this._currentEditingListaID = oLista.IDLISTAOK;
+                
                 // Cargar productos disponibles
                 this._loadAvailableProducts();
 
@@ -297,6 +350,63 @@ sap.ui.define([
                     });
                     this.getView().addDependent(this._oListaDetailDialog);
                 }
+                this._oListaDetailDialog.open();
+            }
+        },
+
+        // Nuevo método: Editar desde botón
+        onEditLista: function () {
+            const oViewModel = this.getView().getModel("view");
+            const aSelectedListaIDs = oViewModel.getProperty("/selectedListaIDs") || [];
+            
+            if (aSelectedListaIDs.length === 0) {
+                MessageBox.warning("Por favor selecciona una lista para editar.");
+                return;
+            }
+            
+            if (aSelectedListaIDs.length > 1) {
+                MessageBox.warning("Por favor selecciona solo una lista para editar.");
+                return;
+            }
+            
+            const aListas = oViewModel.getProperty("/filteredListas") || [];
+            const oLista = aListas.find(l => l.IDLISTAOK === aSelectedListaIDs[0]);
+            
+            if (!oLista) {
+                MessageBox.error("No se pudo encontrar la lista seleccionada.");
+                return;
+            }
+            
+            const oDetailModel = this.getView().getModel("detailView");
+            
+            // Deep copy para evitar modificar el original
+            const oListaCopy = JSON.parse(JSON.stringify(oLista));
+            
+            oDetailModel.setData({
+                ...oLista,
+                availableProducts: [],
+                editing: true,
+                saving: false,
+                editableLista: oListaCopy
+            });
+            
+            this._currentEditingListaID = oLista.IDLISTAOK;
+            this._loadAvailableProducts();
+            this._openListaDialogEdit();
+        },
+
+        _openListaDialogEdit: function () {
+            if (!this._oListaDetailDialog) {
+                Fragment.load({
+                    id: this.getView().getId(),
+                    name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
+                    controller: this
+                }).then((oDialog) => {
+                    this._oListaDetailDialog = oDialog;
+                    this.getView().addDependent(this._oListaDetailDialog);
+                    this._oListaDetailDialog.open();
+                });
+            } else {
                 this._oListaDetailDialog.open();
             }
         },
@@ -326,8 +436,8 @@ sap.ui.define([
             const oDetailModel = this.getView().getModel("detailView");
             const oUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser");
 
-            // Limpiar para crear nueva lista
-            oDetailModel.setData({
+            // Crear nueva lista en modo edición
+            const oNewLista = {
                 IDLISTAOK: "",
                 SKUSIDS: [],
                 IDINSTITUTOOK: "",
@@ -343,13 +453,18 @@ sap.ui.define([
                 MODUSER: null,
                 MODDATE: null,
                 ACTIVED: true,
-                DELETED: false,
+                DELETED: false
+            };
+
+            oDetailModel.setData({
+                ...oNewLista,
                 availableProducts: [],
-                editing: false,
+                editing: true,
                 saving: false,
-                editableLista: null
+                editableLista: oNewLista
             });
 
+            this._currentEditingListaID = null;
             this._loadAvailableProducts();
 
             if (!this._oListaDetailDialog) {
@@ -373,17 +488,6 @@ sap.ui.define([
             }
         },
 
-        onEditLista: function () {
-            const oDetailModel = this.getView().getModel("detailView");
-            const oCurrentLista = oDetailModel.getData();
-            
-            // Crear una copia profunda para la edición
-            const oListaCopy = JSON.parse(JSON.stringify(oCurrentLista));
-
-            oDetailModel.setProperty("/editableLista", oListaCopy);
-            oDetailModel.setProperty("/editing", true);
-        },
-
         onCancelEditLista: function () {
             const oDetailModel = this.getView().getModel("detailView");
             oDetailModel.setProperty("/editing", false);
@@ -393,9 +497,21 @@ sap.ui.define([
         onSaveLista: async function () {
             const oDetailModel = this.getView().getModel("detailView");
             const oEditableLista = oDetailModel.getProperty("/editableLista");
+            const i18n = this.getOwnerComponent().getModel("i18n").getResourceBundle();
 
             if (!oEditableLista) {
-                MessageBox.error("No hay datos para guardar.");
+                MessageBox.error(i18n.getText("listasLoadErrorMessage"));
+                return;
+            }
+
+            // Validar campos requeridos
+            if (!oEditableLista.DESLISTA || !oEditableLista.DESLISTA.trim()) {
+                MessageBox.error("La descripción de la lista es requerida.");
+                return;
+            }
+
+            if (!oEditableLista.IDINSTITUTOOK || !oEditableLista.IDINSTITUTOOK.trim()) {
+                MessageBox.error("El instituto es requerido.");
                 return;
             }
 
@@ -419,15 +535,15 @@ sap.ui.define([
                     DELETED: Boolean(oEditableLista.DELETED)
                 };
 
+                const bIsNewLista = !this._currentEditingListaID;
                 const oUpdatedLista = await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
-                    ProcessType: oEditableLista.IDLISTAOK ? 'UpdateOne' : 'AddOne',
+                    ProcessType: bIsNewLista ? 'AddOne' : 'UpdateOne',
                     IDLISTAOK: oEditableLista.IDLISTAOK
                 });
 
-                const i18n = this.getOwnerComponent().getModel("i18n").getResourceBundle();
-                const sMessage = oEditableLista.IDLISTAOK ? 
-                    i18n.getText("listasLoadSuccessMessage") : 
-                    i18n.getText("listasLoadSuccessMessage");
+                const sMessage = bIsNewLista ? 
+                    "Lista de precios creada correctamente" : 
+                    "Lista de precios actualizada correctamente";
                 MessageToast.show(sMessage);
 
                 // Recargar datos
@@ -441,10 +557,12 @@ sap.ui.define([
                 // Salir del modo edición
                 oDetailModel.setProperty("/editing", false);
                 oDetailModel.setProperty("/editableLista", null);
+                this._currentEditingListaID = null;
+                this.onCloseListaDialog();
 
             } catch (error) {
                 const i18n = this.getOwnerComponent().getModel("i18n").getResourceBundle();
-                MessageBox.error(i18n.getText("listasLoadErrorMessage"));
+                MessageBox.error("Error al guardar: " + (error.message || i18n.getText("listasLoadErrorMessage")));
             } finally {
                 oDetailModel.setProperty("/saving", false);
             }
@@ -516,12 +634,14 @@ sap.ui.define([
         },
 
         onSKUSIDsChange: function (oEvent) {
-            const aSelectedItems = oEvent.getParameter("items");
             const oDetailModel = this.getView().getModel("detailView");
+            const aSelectedItems = oEvent.getParameter("selectedItems");
             
-            if (oEvent.getParameter("selectedItems")) {
-                const aSelectedSkuIds = oEvent.getParameter("selectedItems").map(item => item.getKey());
-                oDetailModel.setProperty("/SKUSIDS", aSelectedSkuIds);
+            if (aSelectedItems && aSelectedItems.length > 0) {
+                const aSelectedSkuIds = aSelectedItems.map(item => item.getKey());
+                oDetailModel.setProperty("/editableLista/SKUSIDS", aSelectedSkuIds);
+            } else {
+                oDetailModel.setProperty("/editableLista/SKUSIDS", []);
             }
         },
 
@@ -563,43 +683,87 @@ sap.ui.define([
         // ACCIONES EN LOTE
         // ====================================================================
 
-        onToggleSelectedListasStatus: async function () {
+        onToggleSelectedListasStatus: function () {
             const oViewModel = this.getView().getModel("view");
             const aSelectedListaIDs = oViewModel.getProperty("/selectedListaIDs");
             
             if (aSelectedListaIDs.length === 0) {
-                MessageBox.information("Selecciona al menos una lista de precios.");
+                MessageBox.warning("Por favor selecciona al menos una lista de precios.");
                 return;
             }
-
+            
+            // Obtener los objetos de las listas seleccionadas
             const aListas = oViewModel.getProperty("/listas");
-            const listasArray = aSelectedListaIDs.map(id => aListas.find(l => l.IDLISTAOK === id)).filter(l => l);
-            const activasCount = listasArray.filter(l => l && l.ACTIVED === true).length;
-            const inactivasCount = listasArray.filter(l => l && (l.ACTIVED === false || l.DELETED === true)).length;
+            const aSelectedListas = aSelectedListaIDs.map(id => aListas.find(l => l.IDLISTAOK === id)).filter(l => l);
             
-            const shouldActivate = inactivasCount > activasCount;
-            const action = shouldActivate ? 'activar' : 'desactivar';
+            // Contar cuántas están activas
+            const iActiveCount = aSelectedListas.filter(l => l.ACTIVED === true).length;
+            const bActivate = iActiveCount <= aSelectedListas.length / 2; // Activar si menos de la mitad están activas
             
-            if (!window.confirm(`¿Está seguro que desea ${action} ${aSelectedListaIDs.length} lista(s)?`)) {
-                return;
-            }
-
-            oViewModel.setProperty("/loading", true);
-            try {
-                for (const sListaID of aSelectedListaIDs) {
-                    const sProcessType = shouldActivate ? 'ActivateOne' : 'DeleteLogic';
-                    await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', {}, {
-                        ProcessType: sProcessType,
-                        IDLISTAOK: sListaID
-                    });
+            const sMessage = bActivate 
+                ? "¿Activar " + aSelectedListaIDs.length + " lista(s)?"
+                : "¿Desactivar " + aSelectedListaIDs.length + " lista(s)?";
+            
+            const that = this;
+            MessageBox.confirm(sMessage, {
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        that._updateStatusForListas(aSelectedListas, bActivate);
+                    }
                 }
-                MessageToast.show(`${aSelectedListaIDs.length} lista(s) ${action}da(s) correctamente.`);
-                await this.loadListas();
-            } catch (oError) {
-                MessageBox.error(`Error al ${action} listas: ${oError.message}`);
-            } finally {
-                oViewModel.setProperty("/loading", false);
-            }
+            });
+        },
+
+        _updateStatusForListas: function(aListas, bActivate) {
+            const that = this;
+            const oViewModel = this.getView().getModel("view");
+            oViewModel.setProperty("/loading", true);
+            
+            let iUpdated = 0;
+            const updateNext = function() {
+                if (iUpdated >= aListas.length) {
+                    oViewModel.setProperty("/loading", false);
+                    MessageToast.show("Estado actualizado correctamente");
+                    oViewModel.setProperty("/selectedListaIDs", []);
+                    that.loadListas();
+                    return;
+                }
+                
+                const oLista = aListas[iUpdated];
+                const sProcessType = bActivate ? 'ActivateOne' : 'DeactivateOne';
+                
+                // Preparar el payload completo con todos los campos necesarios
+                const payload = {
+                    IDLISTAOK: oLista.IDLISTAOK,
+                    SKUSIDS: JSON.stringify(Array.isArray(oLista.SKUSIDS) ? oLista.SKUSIDS : []),
+                    IDINSTITUTOOK: oLista.IDINSTITUTOOK || "",
+                    IDLISTABK: oLista.IDLISTABK || "",
+                    DESLISTA: oLista.DESLISTA || "",
+                    FECHAEXPIRAINI: oLista.FECHAEXPIRAINI || null,
+                    FECHAEXPIRAFIN: oLista.FECHAEXPIRAFIN || null,
+                    IDTIPOLISTAOK: oLista.IDTIPOLISTAOK || "",
+                    IDTIPOGENERALISTAOK: oLista.IDTIPOGENERALISTAOK || "ESPECIFICA",
+                    IDTIPOFORMULAOK: oLista.IDTIPOFORMULAOK || "FIJO",
+                    REGUSER: oLista.REGUSER || "SYSTEM",
+                    ACTIVED: bActivate,
+                    DELETED: false
+                };
+                
+                that._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
+                    ProcessType: sProcessType,
+                    IDLISTAOK: oLista.IDLISTAOK
+                })
+                    .then(function() {
+                        iUpdated++;
+                        updateNext();
+                    })
+                    .catch(function(error) {
+                        oViewModel.setProperty("/loading", false);
+                        MessageBox.error("Error al actualizar estado de " + oLista.IDLISTAOK + ": " + error.message);
+                    });
+            };
+            
+            updateNext();
         },
 
         onDeleteSelectedListas: async function () {
@@ -619,7 +783,7 @@ sap.ui.define([
             try {
                 for (const sListaID of aSelectedListaIDs) {
                     await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', {}, {
-                        ProcessType: 'DeleteLogic',
+                        ProcessType: 'DeleteHard',
                         IDLISTAOK: sListaID
                     });
                 }
@@ -674,6 +838,21 @@ sap.ui.define([
         formatterSKUList: function (aSkuIds) {
             if (!aSkuIds || aSkuIds.length === 0) return "Sin SKUs";
             return aSkuIds.slice(0, 3).join(", ") + (aSkuIds.length > 3 ? `... (+${aSkuIds.length - 3})` : "");
+        },
+
+        formatterFirstSKU: function (aSkuIds) {
+            if (!aSkuIds || aSkuIds.length === 0) return "";
+            return aSkuIds[0];
+        },
+
+        formatterAllSKUs: function (aSkuIds) {
+            if (!aSkuIds || aSkuIds.length === 0) return "Sin SKUs";
+            return aSkuIds.join(", ");
+        },
+
+        formatterSKUCount: function (aSkuIds) {
+            if (!aSkuIds || aSkuIds.length <= 1) return "";
+            return `+ ${aSkuIds.length - 1} más`;
         },
 
         formatterIsListaSelected: function(aSelectedListaIDs, sListaID) {
