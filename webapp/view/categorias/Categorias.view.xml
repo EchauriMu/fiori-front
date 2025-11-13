@@ -2,14 +2,171 @@
     controllerName="com.invertions.sapfiorimodinv.controller.categorias.Categorias"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
+    xmlns:core="sap.ui.core"
 >
     <Page
-        title="{i18n>categoriasPageTitle}"
+        id="categoriasPage"
+        title="Categorías"
         showNavButton="true"
-        navButtonPress=".onNavBack"
+        navButtonPress="onNavBack"
     >
         <content>
-            <Text text="Aquí se gestionarán las Categorías." class="sapUiSmallMargin"/>
+            <VBox class="sapUiMediumMargin">
+                <!-- Header Section -->
+                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
+                    <VBox>
+                        <Title text="Gestión de Categorías" level="H2" />
+                    </VBox>
+                    <Button
+                        id="addCategoryBtn"
+                        text="Nueva Categoría"
+                        type="Emphasized"
+                        icon="sap-icon://add"
+                        press="onNewCategory"
+                    />
+                </HBox>
+
+                <!-- Mensaje de error -->
+                <MessageStrip
+                    id="errorStrip"
+                    type="Error"
+                    text="{categoriasModel>/errorMessage}"
+                    visible="{= !!${categoriasModel>/errorMessage} }"
+                    showIcon="true"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <!-- Indicador de carga -->
+                <VBox
+                    visible="{categoriasModel>/loading}"
+                    justifyContent="Center"
+                    alignItems="Center"
+                    class="sapUiMediumMarginBottom"
+                    height="200px"
+                >
+                    <BusyIndicator />
+                    <Text text="Cargando categorías..." class="sapUiSmallMarginStart" />
+                </VBox>
+
+                <!-- Mensaje vacío -->
+                <VBox
+                    visible="{= !${categoriasModel>/loading} &amp;&amp; ${categoriasModel>/categories}.length === 0 }"
+                    justifyContent="Center"
+                    alignItems="Center"
+                    height="300px"
+                >
+                    <Text text="No hay categorías disponibles" />
+                    <Button
+                        text="Crear la primera categoría"
+                        type="Emphasized"
+                        icon="sap-icon://add"
+                        press="onNewCategory"
+                        class="sapUiMediumMarginTop"
+                    />
+                </VBox>
+
+                <!-- Panel con tabla -->
+                <Panel expandable="true" expanded="true" visible="{= ${categoriasModel>/categories}.length > 0 }">
+                    <content>
+                        <VBox>
+                            <!-- Título y búsqueda -->
+                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
+                                <VBox>
+                                    <Title text="Lista de Categorías" level="H3" />
+                                    <Text text="{categoriasModel>/totalCategories} categorías encontradas" />
+                                </VBox>
+                                <HBox>
+                                    <SearchField
+                                        id="searchCategoriesField"
+                                        placeholder="Buscar por nombre o CATID..."
+                                        value="{categoriasModel>/searchText}"
+                                        search="onSearch"
+                                        width="250px"
+                                    />
+                                    <Button
+                                        id="editCategoryBtn"
+                                        text="Editar"
+                                        icon="sap-icon://edit"
+                                        type="Transparent"
+                                        press="onEditCategory"
+                                    />
+                                    <Button
+                                        id="toggleStatusBtn"
+                                        text="{categoriasModel>/statusButtonText}"
+                                        icon="sap-icon://accept"
+                                        type="Success"
+                                        press="onToggleStatus"
+                                    />
+                                    <Button
+                                        id="deleteCategoryBtn"
+                                        text="Eliminar"
+                                        icon="sap-icon://delete"
+                                        type="Negative"
+                                        press="onDeleteCategory"
+                                    />
+                                </HBox>
+                            </HBox>
+
+                            <!-- Tabla de categorías -->
+                            <Table
+                                id="categoriesTable"
+                                items="{path: 'categoriasModel>/categories'}"
+                                mode="MultiSelect"
+                                selectionChange="onTableSelectionChange"
+                                class="sapUiResponsiveMargin"
+                                width="auto"
+                                noDataText="No hay categorías para mostrar"
+                            >
+                                <columns>
+                                    <Column width="10%">
+                                        <Text text="CATID" />
+                                    </Column>
+                                    <Column width="25%">
+                                        <Text text="Nombre" />
+                                    </Column>
+                                    <Column width="15%">
+                                        <Text text="Padre" />
+                                    </Column>
+                                    <Column width="12%">
+                                        <Text text="Creado" />
+                                    </Column>
+                                    <Column width="15%">
+                                        <Text text="Modificación" />
+                                    </Column>
+                                    <Column width="12%">
+                                        <Text text="Estado" />
+                                    </Column>
+                                </columns>
+
+                                <items>
+                                    <ColumnListItem type="Active" press="onCategoryPress">
+                                        <cells>
+                                            <ObjectIdentifier
+                                                title="{categoriasModel>CATID}"
+                                                text=""
+                                            />
+                                            <Text text="{categoriasModel>Nombre}" wrapping="true" />
+                                            <Text text="{categoriasModel>PadreCATID}" wrapping="true" />
+                                            <VBox>
+                                                <Text text="{path: 'categoriasModel>REGDATE', formatter: '.formatDate'}" class="sapUiTinyText" />
+                                                <Text text="{categoriasModel>REGUSER}" class="sapUiTinyText" />
+                                            </VBox>
+                                            <VBox>
+                                                <Text text="{path: 'categoriasModel>MODDATE', formatter: '.formatDate'}" class="sapUiTinyText" />
+                                                <Text text="{categoriasModel>MODUSER}" class="sapUiTinyText" />
+                                            </VBox>
+                                            <ObjectStatus
+                                                text="{path: 'categoriasModel>', formatter: '.getStatusText'}"
+                                                state="{path: 'categoriasModel>', formatter: '.getStatusState'}"
+                                            />
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </VBox>
+                    </content>
+                </Panel>
+            </VBox>
         </content>
     </Page>
 </mvc:View>

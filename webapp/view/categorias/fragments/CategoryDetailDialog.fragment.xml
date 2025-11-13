@@ -1,0 +1,102 @@
+<core:FragmentDefinition
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns="sap.m"
+>
+    <Dialog
+        id="categoryDialog"
+        title="{= ${categoriasModel>/editingCategory/CATID} ? 'Editar Categoría' : 'Nueva Categoría'}"
+        type="Standard"
+        class="sapUiResponsiveMargin"
+        contentHeight="auto"
+        resizable="true"
+        draggable="true"
+    >
+        <content>
+            <VBox class="sapUiMediumMargin">
+                <!-- Error Message -->
+                <MessageStrip
+                    type="Error"
+                    text="{categoriasModel>/formError}"
+                    visible="{= !!${categoriasModel>/formError} }"
+                    showIcon="true"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <!-- Form Section -->
+                <f:SimpleForm editable="true" layout="ResponsiveGridLayout">
+                    <!-- CATID Field (disabled) -->
+                    <f:content>
+                        <Label text="Identificador (CATID)" />
+                        <Input
+                            value="{categoriasModel>/editingCategory/CATID}"
+                            enabled="false"
+                            width="100%"
+                        />
+
+                        <!-- Nombre Field -->
+                        <Label text="Nombre de la Categoría" />
+                        <Input
+                            id="categoryNameInput"
+                            value="{categoriasModel>/editingCategory/Nombre}"
+                            placeholder="Ej: Electrónica"
+                            width="100%"
+                            change="onCategoryNameChange"
+                        />
+
+                        <!-- Padre CATID Field -->
+                        <Label text="Categoría Padre (Opcional)" />
+                        <ComboBox
+                            id="parentCategoryCombo"
+                            items="{categoriasModel>/availableParents}"
+                            selectedKey="{categoriasModel>/editingCategory/PadreCATID}"
+                            width="100%"
+                            change="onParentCategoryChange"
+                        >
+                            <core:Item key="{categoriasModel>CATID}" text="{categoriasModel>Nombre} ({categoriasModel>CATID})" />
+                        </ComboBox>
+
+                        <!-- Audit Information (only for edit mode) -->
+                        <core:Title visible="{= !!${categoriasModel>/editingCategory/CATID} }" text="Información de Auditoría" level="H6" />
+                        
+                        <Label text="Creado Por" visible="{= !!${categoriasModel>/editingCategory/CATID} }" />
+                        <VBox visible="{= !!${categoriasModel>/editingCategory/CATID} }" class="sapUiSmallMarginBottom">
+                            <Text text="{categoriasModel>/editingCategory/REGUSER}" />
+                            <Text text="{categoriasModel>/editingCategory/REGDATE}" class="sapUiTinyText" />
+                        </VBox>
+
+                        <Label text="Modificado Por" visible="{= !!${categoriasModel>/editingCategory/CATID} }" />
+                        <VBox visible="{= !!${categoriasModel>/editingCategory/CATID} }" class="sapUiSmallMarginBottom">
+                            <Text text="{categoriasModel>/editingCategory/MODUSER}" />
+                            <Text text="{categoriasModel>/editingCategory/MODDATE}" class="sapUiTinyText" />
+                        </VBox>
+                    </f:content>
+                </f:SimpleForm>
+            </VBox>
+        </content>
+
+        <!-- Dialog Buttons -->
+        <buttons>
+            <Button
+                text="Eliminar"
+                type="Negative"
+                icon="sap-icon://delete"
+                visible="{= !!${categoriasModel>/editingCategory/CATID} }"
+                press="onDeleteFromModal"
+            />
+            <Button
+                text="Cancelar"
+                type="Transparent"
+                icon="sap-icon://decline"
+                press="onCloseDialog"
+            />
+            <Button
+                text="Guardar"
+                type="Emphasized"
+                icon="sap-icon://save"
+                press="onSaveCategory"
+            />
+        </buttons>
+    </Dialog>
+</core:FragmentDefinition>
