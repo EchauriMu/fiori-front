@@ -32,25 +32,26 @@
                         <TextArea value="{detailView>/editableProduct/DESSKU}" visible="{= ${detailView>/editing} }" width="100%" placeholder="Descripción del producto"/>
 
                         <Label text="Estado" design="Bold"/>
+                        <!-- INICIO DE LA CORRECCIÓN: Nuevo diseño para el control de estado -->
                         <HBox alignItems="Center" class="sapUiTinyMarginBottom">
-                            <ObjectStatus
-                                visible="{= !${detailView>/editing} }"
-                                class="sapUiTinyMarginEnd"
+                            <GenericTag
                                 text="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusText'}"
-                                state="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusState'}"
-                                inverted="true" />
-                            
+                                status="{parts: [{path: 'detailView>/ACTIVED'}, {path: 'detailView>/DELETED'}], formatter: '.formatterProductStatusState'}"
+                                class="sapUiTinyMarginEnd" />
                             <Switch
                                 state="{detailView>/ACTIVED}"
-                                enabled="{= !${detailView>/editing} }"
-                                customTextOn="Activo"
-                                customTextOff="Inactivo"
+                                enabled="{= !${detailView>/statusSubmitting} }"
                                 change="onToggleProductStatus"
-                                tooltip="Cambiar estado del producto"
-                            />
-
+                                tooltip="{= ${detailView>/ACTIVED} ? 'Desactivar' : 'Activar' }">
+                                <layoutData>
+                                    <FlexItemData growFactor="0" />
+                                </layoutData>
+                            </Switch>
+                            <Text text="{= ${detailView>/statusSubmitting} ? 'Actualizando...' : (${detailView>/ACTIVED} ? 'Desactivar' : 'Activar')}" class="sapUiTinyMarginBegin"/>
+                            <ToolbarSpacer />
                             <Button icon="sap-icon://edit" type="Transparent" press="onEditProduct" visible="{= !${detailView>/editing} }" class="sapUiTinyMarginBegin"/>
                         </HBox>
+                        <!-- FIN DE LA CORRECCIÓN -->
 
                         <f:SimpleForm
                             editable="false"
@@ -81,8 +82,14 @@
 
                                 <Label text="Categorías" />
                                 <Text text="{path: 'detailView>/CATEGORIAS', formatter: '.formatterCategories'}" visible="{= !${detailView>/editing} }"/>
-                                <!-- TODO: Add a MultiComboBox for editing categories -->
-                                <Text text="Control de edición de categorías pendiente" visible="{= ${detailView>/editing} }"/>
+                                <!-- INICIO DE LA CORRECCIÓN: Reemplazar Text con MultiComboBox -->
+                                <MultiComboBox
+                                    visible="{= ${detailView>/editing} }"
+                                    selectedKeys="{detailView>/editableProduct/CATEGORIAS}"
+                                    items="{path: 'detailView>/allCategories'}">
+                                    <core:Item key="{detailView>CATID}" text="{detailView>Nombre}" />
+                                </MultiComboBox>
+                                <!-- FIN DE LA CORRECCIÓN -->
 
                                 <Label text="Info Adicional" visible="{= !!${detailView>/INFOAD} }"/>
                                 <Text text="{detailView>/INFOAD}" visible="{= !!${detailView>/INFOAD} }"/>

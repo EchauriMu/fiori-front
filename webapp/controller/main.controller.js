@@ -67,12 +67,20 @@ sap.ui.define([
                 // --- Estado de Edición ---
                 editing: false,
                 saving: false,
-                editableProduct: null // Copia del producto para edición
+                editableProduct: null, // Copia del producto para edición
+                // --- INICIO DE LA CORRECCIÓN: Estado para el Switch de Activo/Inactivo ---
+                statusSubmitting: false
+                ,
+                // --- Lista completa de categorías para el MultiComboBox ---
+                allCategories: []
             });
             this.getView().setModel(oDetailViewModel, "detailView");
 
             // Cargar datos de productos
             this.loadProducts();
+            // --- INICIO DE LA CORRECCIÓN: Llamar a la carga de categorías ---
+            this._loadAllCategories();
+            // --- FIN DE LA CORRECCIÓN ---
         },
         
         // ====================================================================
@@ -154,6 +162,16 @@ sap.ui.define([
                         }
                     }
                 }
+                // --- INICIO DE LA CORRECCIÓN: Adaptar _callApi para la respuesta de categorías ---
+                // La API de categorías devuelve los datos en: oJson.data[0].dataRes
+                if (oJson && oJson.data && Array.isArray(oJson.data) && oJson.data.length > 0) {
+                    const mainResponse = oJson.data[0];
+                    if (mainResponse.dataRes && Array.isArray(mainResponse.dataRes)) {
+                        console.log("DataRes encontrado en oJson.data[0].dataRes:", mainResponse.dataRes);
+                        return mainResponse.dataRes;
+                    }
+                }
+                // --- FIN DE LA CORRECCIÓN ---
                 
                 console.warn("Estructura de respuesta no esperada, devolviendo JSON completo");
                 return oJson; 
@@ -165,7 +183,7 @@ sap.ui.define([
         },
 
         // ====================================================================
-        // LÓGICA DE CARGA DE PRODUCTOS (Sin cambios)
+        // LÓGICA DE CARGA DE DATOS
         // ====================================================================
         
         loadProducts: async function () {
@@ -208,6 +226,29 @@ sap.ui.define([
             }
         },
         
+        // --- INICIO DE LA CORRECCIÓN: Cargar categorías ---
+        _loadAllCategories: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            console.log("Iniciando carga de categorías...");
+            try {
+                const aCategories = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, { ProcessType: 'GetAll' });
+                console.log("Respuesta de la API de categorías recibida:", aCategories);
+
+                if (!Array.isArray(aCategories)) {
+                    console.error("La respuesta de la API de categorías no es un array. Respuesta:", aCategories);
+                    throw new Error("La respuesta de la API de categorías no es un array válido.");
+                }
+
+                oDetailModel.setProperty("/allCategories", aCategories);
+                console.log(`Carga exitosa. Se han asignado ${aCategories.length} categorías al modelo 'detailView>/allCategories'.`);
+            } catch (error) {
+                // No mostramos un MessageBox para no interrumpir al usuario, solo registramos el error.
+                console.error("Error al cargar categorías para el modal de detalle: ", error.message);
+            }
+        },
+        // --- FIN DE LA CORRECCIÓN ---
+
+
         onSearch: function (oEvent) {
             const sQuery = oEvent.getParameter("newValue") || oEvent.getParameter("query") || "";
             this._applyFilter(sQuery);
@@ -344,11 +385,20 @@ sap.ui.define([
                 const oProduct = oProductContext.getObject();
                 const oDetailModel = this.getView().getModel("detailView");
 
-                // 1. Limpiar y establecer datos del producto principal
-                const oCleanDetailData = { ...oProduct };
-                oDetailModel.setData(oCleanDetailData); // Limpia el modelo con los datos del producto
+            // --- INICIO DE LA CORRECCIÓN: No usar setData para no borrar 'allCategories' ---
+            // 1. Limpiar y establecer datos del producto principal usando setProperty
+            console.log("onRowClick: Abriendo modal para el producto:", oProduct);
+            console.log("onRowClick: 'allCategories' ANTES de actualizar el modelo:", oDetailModel.getProperty("/allCategories").length, "categorías.");
+
+            // Copiamos las propiedades del producto al modelo una por una
+            for (const key in oProduct) {
+                if (Object.prototype.hasOwnProperty.call(oProduct, key)) {
+                    oDetailModel.setProperty(`/${key}`, oProduct[key]);
+                }
+            }
+            // --- FIN DE LA CORRECCIÓN ---
                 
-                // Reiniciar explícitamente las propiedades del modal
+            // 2. Reiniciar explícitamente las propiedades del modal
                 oDetailModel.setProperty("/presentations", []);
                 oDetailModel.setProperty("/selectedPresentation", null);
                 oDetailModel.setProperty("/selectedPresentationKey", null); // <-- CORRECCIÓN: Reiniciar la clave
@@ -366,8 +416,10 @@ sap.ui.define([
                 oDetailModel.setProperty("/saving", false);
                 oDetailModel.setProperty("/editableProduct", null);
 
+                console.log("onRowClick: 'allCategories' DESPUÉS de actualizar el modelo:", oDetailModel.getProperty("/allCategories").length, "categorías.");
 
-                // 2. Abrir el Dialog
+
+                // 3. Abrir el Dialog
                 if (!this._oProductDetailDialog) {
                     this._oProductDetailDialog = await Fragment.load({
                         id: this.getView().getId(),
@@ -378,7 +430,7 @@ sap.ui.define([
                 }
                 this._oProductDetailDialog.open();
 
-                // 3. Cargar datos secundarios (presentaciones)
+                // 4. Cargar datos secundarios (presentaciones)
                 this._loadProductPresentations(oProduct.SKUID);
             }
         },
@@ -467,11 +519,32 @@ sap.ui.define([
         onEditProduct: function () {
             const oDetailModel = this.getView().getModel("detailView");
             const oCurrentProduct = oDetailModel.getData();
+            console.log("onEditProduct: Producto actual antes de editar:", oCurrentProduct);
             
-            // Crear una copia profunda del producto para la edición
+            // Crear una copia profunda del producto para la edición.
             const oProductCopy = JSON.parse(JSON.stringify(oCurrentProduct));
 
+            // --- INICIO DE LA CORRECCIÓN: Asegurar que CATEGORIAS sea un array ---
+            // El MultiComboBox espera un array de strings para 'selectedKeys'.
+            // La data del producto puede tener CATEGORIAS como un string JSON "[]" o "[\"CAT1\", \"CAT2\"]".
+            // Forzamos la conversión si es un string, sin importar si está vacío o no.
+            console.log(`onEditProduct: Tipo de 'CATEGORIAS' es '${typeof oProductCopy.CATEGORIAS}'. Valor:`, oProductCopy.CATEGORIAS);
+            if (typeof oProductCopy.CATEGORIAS === 'string') {
+                try {
+                    oProductCopy.CATEGORIAS = JSON.parse(oProductCopy.CATEGORIAS);
+                    console.log("onEditProduct: 'CATEGORIAS' parseado a array:", oProductCopy.CATEGORIAS);
+                } catch (e) {
+                    console.warn("onEditProduct: No se pudo parsear 'CATEGORIAS' como JSON. Se usará un array vacío. Valor original:", oProductCopy.CATEGORIAS);
+                    oProductCopy.CATEGORIAS = []; // Fallback a un array vacío si el parseo falla
+                }
+            } else if (!Array.isArray(oProductCopy.CATEGORIAS)) {
+                console.warn("onEditProduct: 'CATEGORIAS' no es un string ni un array. Se establecerá como array vacío. Valor original:", oProductCopy.CATEGORIAS);
+                oProductCopy.CATEGORIAS = []; // Si no es string ni array, lo inicializamos vacío.
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
             oDetailModel.setProperty("/editableProduct", oProductCopy);
+            console.log("onEditProduct: 'editableProduct' establecido en el modelo:", oProductCopy);
             oDetailModel.setProperty("/editing", true);
         },
 
@@ -595,11 +668,14 @@ sap.ui.define([
             const sActionText = bState ? "activar" : "desactivar";
             const sProcessType = bState ? "ActivateOne" : "DeleteLogic";
 
+            // --- INICIO DE LA CORRECCIÓN: Bloquear el Switch durante la llamada ---
+            oDetailModel.setProperty("/statusSubmitting", true);
+            // --- FIN DE LA CORRECCIÓN ---
+
             MessageBox.confirm(`¿Estás seguro de que deseas ${sActionText} el producto "${sProductName}"?`, {
                 title: "Confirmar Cambio de Estado",
                 onClose: async (sAction) => {
                     if (sAction === MessageBox.Action.OK) {
-                        oDetailModel.setProperty("/loadingPresentations", true); // Reutilizamos el busy indicator
                         try {
                             await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
                                 ProcessType: sProcessType,
@@ -612,7 +688,8 @@ sap.ui.define([
                             MessageBox.error(`Error al ${sActionText} el producto: ${oError.message}`);
                             oEvent.getSource().setState(!bState); // Revertir en caso de error
                         } finally {
-                            oDetailModel.setProperty("/loadingPresentations", false);
+                            // --- INICIO DE LA CORRECCIÓN: Desbloquear el Switch ---
+                            oDetailModel.setProperty("/statusSubmitting", false);
                         }
                     } else {
                         oEvent.getSource().setState(!bState); // Revertir si el usuario cancela
