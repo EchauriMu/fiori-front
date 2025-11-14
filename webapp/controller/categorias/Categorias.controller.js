@@ -310,6 +310,15 @@ sap.ui.define([
             return "Warning";
         },
 
+        _generateCATID: function(sName) {
+            if (!sName) return "";
+            // Normalize and sanitize: trim, uppercase, replace spaces and special chars with underscore
+            var s = sName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+            // Remove leading/trailing underscores and collapse multiple underscores
+            s = s.replace(/^_+|_+$/g, "").replace(/_+/g, "_");
+            return s ? "CAT_" + s : "";
+        },
+
         onNavBack: function () {
             var oHistory = sap.ui.core.routing.History.getInstance();
             var sPreviousHash = oHistory.getPreviousHash();
@@ -353,13 +362,9 @@ sap.ui.define([
             var oModel = this.getView().getModel("categoriasModel");
             var oEditingCategory = oModel.getProperty("/editingCategory");
             
-            // Generate CATID from Nombre if it's new (no parent and no existing CATID)
+            // Generate CATID from Nombre if it's new (format: CAT_NOMBRE)
             if (!this._currentEditingCATID && sValue) {
-                var sPadrePrefix = "";
-                if (oEditingCategory.PadreCATID) {
-                    sPadrePrefix = oEditingCategory.PadreCATID + "_";
-                }
-                var sGeneratedCATID = sPadrePrefix + sValue.trim().toUpperCase().replace(/\s+/g, "_");
+                var sGeneratedCATID = this._generateCATID(sValue);
                 oModel.setProperty("/editingCategory/CATID", sGeneratedCATID);
             }
         },
@@ -368,13 +373,9 @@ sap.ui.define([
             var oModel = this.getView().getModel("categoriasModel");
             var oEditingCategory = oModel.getProperty("/editingCategory");
             
-            // Regenerate CATID when parent changes (only for NEW categories)
+            // Regenerate CATID when parent changes (only for NEW categories, format: CAT_NOMBRE)
             if (!this._currentEditingCATID && oEditingCategory.Nombre) {
-                var sPadrePrefix = "";
-                if (oEditingCategory.PadreCATID) {
-                    sPadrePrefix = oEditingCategory.PadreCATID + "_";
-                }
-                var sGeneratedCATID = sPadrePrefix + oEditingCategory.Nombre.trim().toUpperCase().replace(/\s+/g, "_");
+                var sGeneratedCATID = this._generateCATID(oEditingCategory.Nombre);
                 oModel.setProperty("/editingCategory/CATID", sGeneratedCATID);
             }
         },
