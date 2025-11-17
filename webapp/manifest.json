@@ -113,6 +113,11 @@
                     "target": "TargetAddPresentation"
                 },
                 {
+                    "pattern": "products/{skuid}/presentations/{presentationId}/edit",
+                    "name": "RouteEditPresentation",
+                    "target": "TargetEditPresentation"
+                },
+                {
                     "pattern": "salesforecast",
                     "name": "RouteSalesForecast",
                     "target": "TargetSalesForecast"
@@ -188,6 +193,12 @@
                 "TargetAddPresentation": {
                     "viewName": "AddPresentation",
                     "viewId": "addPresentation",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.presentaciones"
+                },
+                "TargetEditPresentation": {
+                    "viewName": "EditPresentation",
+                    "viewId": "editPresentation",
                     "viewType": "XML",
                     "viewPath": "com.invertions.sapfiorimodinv.view.presentaciones"
                 },

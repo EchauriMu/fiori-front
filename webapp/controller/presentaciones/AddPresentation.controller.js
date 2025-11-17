@@ -116,8 +116,8 @@ sap.ui.define([
             aFiles.forEach(file => {
                 const oReader = new FileReader();
                 oReader.onload = (e) => {
-                    // Solo guardar la porción Base64 después del encabezado
-                    const sBase64String = e.target.result.split(',')[1]; 
+                    // Guardar el string Base64 completo, incluyendo el prefijo data:
+                    const sFullBase64String = e.target.result;
                     const aCurrentFiles = oModel.getProperty("/files");
                     
                     // Determinar el FILETYPE
@@ -133,7 +133,7 @@ sap.ui.define([
                     }
 
                     const oNewFile = {
-                        fileBase64: sBase64String, // Solo el contenido Base64
+                        fileBase64: sFullBase64String, // String Base64 completo
                         FILETYPE: sFileType,
                         originalname: file.name,
                         mimetype: file.type,
@@ -189,14 +189,19 @@ sap.ui.define([
                 return obj;
             }, {});
 
-            // Mapear archivos: eliminar 'originalname' y 'mimetype' que no son necesarios para el backend
+            // Mapear archivos para el payload. El backend espera todas las propiedades.
             const aFilesPayload = oData.files.map(file => ({
                 fileBase64: file.fileBase64,
                 FILETYPE: file.FILETYPE,
                 PRINCIPAL: file.PRINCIPAL,
-                INFOAD: file.INFOAD
+                INFOAD: file.INFOAD,
+                originalname: file.originalname,
+                mimetype: file.mimetype
             }));
             
+            // Obtener el usuario actual del modelo global para añadirlo al payload
+            const oCurrentUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser");
+
             const oPayload = {
                 IdPresentaOK: oData.IdPresentaOK,
                 SKUID: oData.productSKU,
@@ -205,13 +210,16 @@ sap.ui.define([
                 ACTIVED: oData.ACTIVED,
                 PropiedadesExtras: JSON.stringify(oPropertiesObject),
                 files: aFilesPayload
+                // ...oCurrentUser se elimina del payload
             };
 
             try {
-                // Asumiendo que esta función está disponible en tu componente principal
-                const oMainController = this.getOwnerComponent().getRootViewController();
-                await oMainController._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', oPayload, {
-                    ProcessType: 'AddOne'
+                // Llamamos a la función _callApi directamente desde el Component.js
+                // Pasamos la ruta y los parámetros por separado para que la función _callApi los construya.
+                await this.getOwnerComponent()._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', oPayload, null, {
+                    ProcessType: 'AddOne',
+                    DBServer: 'MongoDB',
+                    LoggedUser: oCurrentUser.USERNAME // Añadimos el usuario como parámetro de URL
                 });
 
                 MessageToast.show("Presentación creada correctamente.");

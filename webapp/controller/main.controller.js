@@ -718,14 +718,65 @@ sap.ui.define([
             }
         },
 
-        onEditPresentation: function () {
-            MessageToast.show("Lógica para editar presentación pendiente.");
+        onEditPresentation: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const sSKU = oDetailModel.getProperty("/SKUID");
+            // Usamos 'selectedPresentationKey' que ya está bindeado al Select
+            const sPresentationId = oDetailModel.getProperty("/selectedPresentationKey");
+
+            if (!sSKU || !sPresentationId) {
+                MessageToast.show("Por favor, seleccione una presentación para poder editarla.");
+                return;
+            }
+
+            // Navegar a la nueva ruta de edición, pasando los parámetros
+            this.getOwnerComponent().getRouter().navTo("RouteEditPresentation", {
+                skuid: sSKU,
+                presentationId: sPresentationId
+            });
+
+            // Cerramos el diálogo de detalles después de navegar para una mejor experiencia de usuario
+            if (this._oProductDetailDialog) {
+                this._oProductDetailDialog.close();
+            }
         },
 
-        onDeletePresentation: function () {
+        onDeletePresentation: function (oEvent) {
             const oDetailModel = this.getView().getModel("detailView");
+            const sSKUID = oDetailModel.getProperty("/SKUID");
+            const sPresentationId = oDetailModel.getProperty("/selectedPresentationKey");
             const sPresentationName = oDetailModel.getProperty("/selectedPresentation/NOMBREPRESENTACION");
-            MessageBox.confirm(`¿Seguro que deseas eliminar la presentación "${sPresentationName}"?`);
+
+            if (!sPresentationId) {
+                MessageToast.show("Por favor, seleccione una presentación para eliminar.");
+                return;
+            }
+
+            MessageBox.confirm(`¿Seguro que deseas eliminar la presentación "${sPresentationName || sPresentationId}"?`, {
+                title: "Confirmar Eliminación",
+                onClose: async (sAction) => {
+                    if (sAction === MessageBox.Action.OK) {
+                        oDetailModel.setProperty("/loadingPresentations", true);
+                        try {
+                            // Usamos el mismo endpoint y ProcessType que en la vista de selección
+                            await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {
+                                IdPresentaOKs: [sPresentationId]
+                            }, {
+                                ProcessType: 'DeleteMany'
+                            });
+
+                            MessageToast.show("Presentación eliminada correctamente.");
+                            // Recargar las presentaciones del producto actual
+                            this._loadProductPresentations(sSKUID);
+
+                        } catch (error) {
+                            MessageBox.error("Error al eliminar la presentación: " + error.message);
+                        } finally {
+                            oDetailModel.setProperty("/loadingPresentations", false);
+                        }
+                    }
+                }
+            });
         },
 
         // ====================================================================

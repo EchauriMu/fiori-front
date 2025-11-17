@@ -1,1 +1,113 @@
-//view, controller, main, manifest, json 18n para ruteos y mostrar pantallas nuevas
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.presentaciones.EditPresentation"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout">
+
+    <Page
+        id="editPresentationPage"
+        title="{i18n>editPresentationTitle}"
+        showNavButton="true"
+        navButtonPress=".onNavBack">
+        <headerContent>
+            <Button
+                text="{= ${editModel>/isSubmitting} ? ${i18n>editPresentationSavingButton} : ${i18n>editPresentationSaveButton}}"
+                type="Emphasized"
+                press=".onSave"
+                enabled="{= !${editModel>/isSubmitting} }" />
+            <Button
+                text="{i18n>editPresentationCancelButton}"
+                press=".onNavBack"
+                enabled="{= !${editModel>/isSubmitting} }" />
+        </headerContent>
+        <content>
+            <BusyIndicator busy="{editModel>/isLoading}" class="sapUiMediumMarginTop" />
+            <VBox visible="{= !${editModel>/isLoading} }">
+                <f:SimpleForm
+                    editable="true"
+                    layout="ResponsiveGridLayout"
+                    labelSpanXL="4" labelSpanL="3" labelSpanM="4" labelSpanS="12"
+                    adjustLabelSpan="false"
+                    emptySpanXL="0" emptySpanL="4" emptySpanM="0" emptySpanS="0"
+                    columnsXL="2" columnsL="1" columnsM="1"
+                    singleContainerFullSize="false">
+                    <f:content>
+                        <core:Title text="{i18n>editPresentationTitle}" xmlns:core="sap.ui.core" />
+                        <Label text="{i18n>editPresentationIdLabel}" />
+                        <Input value="{editModel>/presentationData/IdPresentaOK}" editable="false" />
+
+                        <Label text="{i18n>editPresentationNameLabel}" required="true" />
+                        <Input
+                            value="{editModel>/presentationData/NOMBREPRESENTACION}"
+                            placeholder="{i18n>editPresentationNamePlaceholder}"
+                            required="true" />
+
+                        <Label text="{i18n>editPresentationDescLabel}" />
+                        <TextArea
+                            value="{editModel>/presentationData/Descripcion}"
+                            placeholder="{i18n>editPresentationDescPlaceholder}"
+                            rows="3" />
+
+                        <Label text="{i18n>editPresentationActiveLabel}" />
+                        <Switch state="{editModel>/presentationData/ACTIVED}" />
+
+                        <core:Title text="{i18n>editPresentationPropsTitle}" xmlns:core="sap.ui.core" />
+                        <Label text="{i18n>editPresentationPropKeyLabel}" />
+                        <Input id="propKeyInput" value="{editModel>/newProperty/key}" placeholder="{i18n>editPresentationPropKeyPlaceholder}" />
+                        <Label text="{i18n>editPresentationPropValueLabel}" />
+                        <Input id="propValueInput" value="{editModel>/newProperty/value}" placeholder="{i18n>editPresentationPropValuePlaceholder}" />
+                        <Label />
+                        <Button
+                            icon="sap-icon://add"
+                            text="{i18n>editPresentationAddPropButton}"
+                            press=".onAddProperty"
+                            enabled="{= !!${editModel>/newProperty/key} }" />
+
+                        <List
+                            headerText="Propiedades añadidas"
+                            items="{editModel>/propiedadesExtras}"
+                            noDataText="Aún no hay propiedades extras">
+                            <CustomListItem>
+                                <HBox alignItems="Center" class="sapUiSmallMarginBeginEnd">
+                                    <VBox class="sapUiSmallMarginEnd">
+                                        <Text text="{editModel>key}" class="sapUiTinyMarginBottom" />
+                                        <ObjectStatus title="{editModel>value}" state="Indication06" />
+                                    </VBox>
+                                    <Button
+                                        icon="sap-icon://delete"
+                                        type="Transparent"
+                                        press=".onRemoveProperty" />
+                                </HBox>
+                            </CustomListItem>
+                        </List>
+
+                        <core:Title text="{i18n>editPresentationFilesTitle}" xmlns:core="sap.ui.core" />
+                        <Label text="Archivos" />
+                        <UploadCollection
+                            id="UploadCollection"
+                            multiple="true"
+                            change=".onFileChange"
+                            fileDeleted=".onFileDeleted"
+                            uploadUrl="/your/upload/endpoint"
+                            uploadEnabled="false"
+                            items="{
+                                path: 'editModel>/files',
+                                templateShareable: true
+                            }">
+                            <items>
+                                <UploadCollectionItem
+                                    documentId="{editModel>FILEID}"
+                                    fileName="{editModel>originalname}"
+                                    mimeType="{editModel>mimetype}"
+                                    url="{editModel>FILE}" 
+                                    thumbnailUrl="{= ${editModel>FILETYPE} === 'IMG' ? ${editModel>FILE} : '' }" 
+                                    enableEdit="false" />
+                            </items>
+                        </UploadCollection>
+                    </f:content>
+                </f:SimpleForm>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>
