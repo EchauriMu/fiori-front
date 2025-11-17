@@ -698,8 +698,24 @@ sap.ui.define([
             });
         },
 
-        onAddPresentation: function () {
-            MessageToast.show("Lógica para añadir presentación pendiente.");
+        onAddPresentation: function (oEvent) {
+            console.log("onAddPresentation: Botón 'Insertar' presionado.");
+
+            const oDetailModel = this.getView().getModel("detailView");
+            console.log("onAddPresentation: Modelo 'detailView' obtenido:", oDetailModel.getData());
+
+            const sSKUID = oDetailModel.getProperty("/SKUID");
+            console.log("onAddPresentation: SKUID obtenido del modelo:", sSKUID);
+
+            if (sSKUID) {
+                console.log("onAddPresentation: SKUID válido encontrado. Navegando a 'RouteAddPresentation' con skuid:", sSKUID);
+                // Cerramos el diálogo actual y navegamos a la nueva vista
+                this.onCloseProductDetailDialog();
+                this.getOwnerComponent().getRouter().navTo("RouteAddPresentation", { skuid: sSKUID });
+            } else {
+                console.error("onAddPresentation: No se encontró un SKUID válido en el modelo 'detailView'. No se puede navegar.");
+                MessageToast.show("Error: No se pudo obtener el SKUID del producto para añadir la presentación.");
+            }
         },
 
         onEditPresentation: function () {

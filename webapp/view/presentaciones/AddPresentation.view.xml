@@ -1,0 +1,131 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.presentaciones.AddPresentation"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+    xmlns:u="sap.ui.unified"
+    xmlns:core="sap.ui.core">
+
+    <Page id="addPresentationPage" title="{i18n>addPresentationTitle}" showNavButton="true" navButtonPress=".onNavBack">
+        <content>
+            <f:SimpleForm
+                editable="true"
+                layout="ResponsiveGridLayout"
+                labelSpanXL="4"
+                labelSpanL="3"
+                labelSpanM="4"
+                labelSpanS="12"
+                adjustLabelSpan="false"
+                emptySpanXL="0"
+                emptySpanL="4"
+                emptySpanM="0"
+                emptySpanS="0"
+                columnsXL="2"
+                columnsL="1"
+                columnsM="1"
+                class="sapUiResponsiveMargin">
+                <f:content>
+                    <core:Title text="Información Básica" />
+                    <Label text="Producto (SKU)" />
+                    <Input value="{presentationModel>/productSKU}" editable="false" />
+
+                    <Label text="Nombre de la Presentación" required="true" />
+                    <Input
+                        value="{presentationModel>/NOMBREPRESENTACION}"
+                        liveChange=".onNameChange"
+                        required="true"
+                        placeholder="Ej. Versión 256GB Negro Fantasma" />
+
+                    <Label text="ID Presentación (auto-generado)" />
+                    <Input value="{presentationModel>/IdPresentaOK}" editable="false" />
+
+                    <Label text="Descripción" required="true" />
+                    <TextArea
+                        value="{presentationModel>/Descripcion}"
+                        rows="3"
+                        width="100%"
+                        required="true"
+                        placeholder="Breve descripción de la presentación" />
+
+                    <Label text="Estado" />
+                    <Switch state="{presentationModel>/ACTIVED}" customTextOn="Activo" customTextOff="Inactivo" />
+
+                    <core:Title text="Propiedades Extras" />
+                    <Panel backgroundDesign="Transparent" class="sapUiNoContentPadding">
+                        <content>
+                            <HBox alignItems="End" class="sapUiSmallMarginBottom">
+                                <VBox class="sapUiTinyMarginEnd">
+                                    <Label text="Propiedad" />
+                                    <Input value="{presentationModel>/newPropKey}" placeholder="Ej: Color" />
+                                </VBox>
+                                <VBox class="sapUiTinyMarginEnd">
+                                    <Label text="Valor" />
+                                    <Input value="{presentationModel>/newPropValue}" placeholder="Ej: Negro Fantasma" />
+                                </VBox>
+                                <Button icon="sap-icon://add" press=".onAddProperty" tooltip="Añadir Propiedad" enabled="{= !!${presentationModel>/newPropKey} }" />
+                            </HBox>
+                            <List
+                                items="{presentationModel>/extraProperties}"
+                                noDataText="No hay propiedades extras añadidas.">
+                                <CustomListItem>
+                                    <HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiTinyMargin">
+                                        <Text text="{presentationModel>key}: {presentationModel>value}" />
+                                        <Button icon="sap-icon://delete" type="Transparent" press=".onRemoveProperty" />
+                                    </HBox>
+                                </CustomListItem>
+                            </List>
+                        </content>
+                    </Panel>
+
+                    <core:Title text="Archivos" />
+                    <Panel backgroundDesign="Transparent" class="sapUiNoContentPadding">
+                        <content>
+                            <u:FileUploader
+                                name="fileUploader"
+                                multiple="true"
+                                fileType="jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,mp4"
+                                change=".onFileChange"
+                                buttonText="Subir Archivos"
+                                buttonOnly="true"
+                                icon="sap-icon://upload" />
+                            <List
+                                class="sapUiSmallMarginTop"
+                                items="{presentationModel>/files}"
+                                noDataText="No hay archivos seleccionados.">
+                                <CustomListItem>
+                                    <HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiTinyMargin">
+                                        <HBox alignItems="Center">
+                                            <core:Icon
+                                                src="{= ${presentationModel>FILETYPE} === 'IMG' ? 'sap-icon://picture' : (${presentationModel>FILETYPE} === 'PDF' ? 'sap-icon://pdf-attachment' : 'sap-icon://document') }"
+                                                class="sapUiTinyMarginEnd" />
+                                            <Text text="{presentationModel>originalname}" />
+                                            <Label text="(Principal)" visible="{presentationModel>PRINCIPAL}" class="sapUiTinyMarginBegin" design="Bold"/>
+                                        </HBox>
+                                        <Button icon="sap-icon://delete" type="Transparent" press=".onRemoveFile" />
+                                    </HBox>
+                                </CustomListItem>
+                            </List>
+                        </content>
+                    </Panel>
+
+                </f:content>
+            </f:SimpleForm>
+        </content>
+        <footer>
+            <OverflowToolbar>
+                <ToolbarSpacer />
+                <Button
+                    text="Aceptar"
+                    type="Emphasized"
+                    icon="sap-icon://accept"
+                    press=".onSubmit"
+                    enabled="{= !${presentationModel>/isSubmitting} }" />
+                <Button
+                    text="Cancelar"
+                    press=".onNavBack"
+                    enabled="{= !${presentationModel>/isSubmitting} }" />
+            </OverflowToolbar>
+        </footer>
+    </Page>
+</mvc:View>
