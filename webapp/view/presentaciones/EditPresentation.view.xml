@@ -8,6 +8,7 @@
     <Page
         id="editPresentationPage"
         title="{i18n>editPresentationTitle}"
+        showSubHeader="true"
         showNavButton="true"
         navButtonPress=".onNavBack">
         <headerContent>
@@ -19,8 +20,13 @@
             <Button
                 text="{i18n>editPresentationCancelButton}"
                 press=".onNavBack"
-                enabled="{= !${editModel>/isSubmitting} }" />
+                enabled="{= !${editModel>/isSubmitting} }" /> 
         </headerContent>
+        <subHeader>
+            <Toolbar>
+                <Title text="{parts: ['editModel>/presentationData/IdPresentaOK'], formatter: '.formatSubtitle'}" />
+            </Toolbar>
+        </subHeader> 
         <content>
             <BusyIndicator busy="{editModel>/isLoading}" class="sapUiMediumMarginTop" />
             <VBox visible="{= !${editModel>/isLoading} }">
@@ -35,7 +41,7 @@
                     <f:content>
                         <core:Title text="{i18n>editPresentationTitle}" xmlns:core="sap.ui.core" />
                         <Label text="{i18n>editPresentationIdLabel}" />
-                        <Input value="{editModel>/presentationData/IdPresentaOK}" editable="false" />
+                        <Text text="{editModel>/presentationData/IdPresentaOK}" class="sapMObjectIdentifier" />
 
                         <Label text="{i18n>editPresentationNameLabel}" required="true" />
                         <Input
@@ -89,12 +95,22 @@
                             multiple="true"
                             change=".onFileChange"
                             fileDeleted=".onFileDeleted"
-                            uploadUrl="/your/upload/endpoint"
-                            uploadEnabled="false"
+                            beforeUploadStarts=".onBeforeUploadStarts"
+                            uploadComplete=".onUploadComplete"
+                            uploadUrl="/api/upload"
+                            noDataText="{i18n>editPresentationNoFilesText}"
+                            uploadButtonVisible="true"
+                            uploadEnabled="true"
                             items="{
                                 path: 'editModel>/files',
                                 templateShareable: true
                             }">
+                            <toolbar>
+                                <OverflowToolbar>
+                                    <ToolbarSpacer/>
+                                    <Button text="{i18n>editPresentationUploadButton}" press=".onStartUpload" type="Emphasized" enabled="{= ${editModel>/newFilesCount} > 0 }" />
+                                </OverflowToolbar>
+                            </toolbar>
                             <items>
                                 <UploadCollectionItem
                                     documentId="{editModel>FILEID}"

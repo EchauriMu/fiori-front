@@ -103,9 +103,9 @@
                     "target": "TargetMain"
                 },
                 {
-                    "pattern": "add-product",
-                    "name": "RouteAddProduct",
-                    "target": "TargetAddProduct"
+                    "pattern": "products/{skuid}/select-presentation",
+                    "name": "RouteSelectPresentationToEdit",
+                    "target": "TargetSelectPresentationToEdit"
                 },
                 {
                     "pattern": "add-presentation/{skuid}",
@@ -116,6 +116,11 @@
                     "pattern": "products/{skuid}/presentations/{presentationId}/edit",
                     "name": "RouteEditPresentation",
                     "target": "TargetEditPresentation"
+                },
+                {
+                    "pattern": "add-product",
+                    "name": "RouteAddProduct",
+                    "target": "TargetAddProduct"
                 },
                 {
                     "pattern": "salesforecast",
@@ -199,6 +204,12 @@
                 "TargetEditPresentation": {
                     "viewName": "EditPresentation",
                     "viewId": "editPresentation",
+                    "viewType": "XML",
+                    "viewPath": "com.invertions.sapfiorimodinv.view.presentaciones"
+                },
+                "TargetSelectPresentationToEdit": {
+                    "viewName": "SelectPresentationToEditPage",
+                    "viewId": "selectPresentationToEditPage",
                     "viewType": "XML",
                     "viewPath": "com.invertions.sapfiorimodinv.view.presentaciones"
                 },

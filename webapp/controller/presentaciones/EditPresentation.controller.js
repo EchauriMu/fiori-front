@@ -25,7 +25,8 @@ sap.ui.define([
                     value: ""
                 },
                 isLoading: true,
-                isSubmitting: false
+                isSubmitting: false,
+                newFilesCount: 0
             });
             this.getView().setModel(oEditModel, "editModel");
         },
@@ -38,6 +39,7 @@ sap.ui.define([
             oModel.setProperty("/isLoading", true);
             oModel.setProperty("/skuid", sSKU);
             oModel.setProperty("/presentationId", sPresentationId);
+            oModel.setProperty("/newFilesCount", 0); // Reset counter on route match
 
             try {
                 // CORRECTION: The backend expects all identifiers and process types
@@ -69,10 +71,10 @@ sap.ui.define([
                     }
                     oModel.setProperty("/propiedadesExtras", props);
 
-                    // Los archivos ya vienen en la respuesta
-                    oModel.setProperty("/files", presentation.Files || []);
+                    // Cargar archivos por separado para evitar problemas de binding
+                    this._loadFilesForPresentation(sPresentationId);
                 } else {
-                    throw new Error("No se encontró la presentación.");
+                    throw new Error("No se encontró la presentación o la respuesta de la API no es válida.");
                 }
 
             } catch (error) {
@@ -81,6 +83,26 @@ sap.ui.define([
                 });
             } finally {
                 oModel.setProperty("/isLoading", false);
+            }
+        },
+
+        _loadFilesForPresentation: async function (sPresentationId) {
+            const oModel = this.getView().getModel("editModel");
+            try {
+                const aFiles = await this._callApi(
+                    '/ztpresentaciones-archivos/presentacionesArchivosCRUD',
+                    'POST', {}, {
+                        ProcessType: 'GetByIdPresentaOK',
+                        idpresentaok: sPresentationId
+                    }
+                );
+
+                if (Array.isArray(aFiles)) {
+                    oModel.setProperty("/files", aFiles);
+                }
+            } catch (error) {
+                // No mostrar un error bloqueante, solo en consola, para no interrumpir la edición.
+                console.error("Error al cargar archivos de la presentación:", error);
             }
         },
 
@@ -109,38 +131,70 @@ sap.ui.define([
 
         onFileChange: function (oEvent) {
             const oModel = this.getView().getModel("editModel");
-            const aFiles = oEvent.getParameter("files");
+            const oUploadCollection = this.byId("UploadCollection");
+            const aCustomerFiles = oEvent.getParameter("files");
 
-            aFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const sBase64 = e.target.result;
-                    const aCurrentFiles = oModel.getProperty("/files");
-                    const newFile = {
-                        fileBase64: sBase64,
-                        FILETYPE: file.type.startsWith('image/') ? 'IMG' : (file.type === 'application/pdf' ? 'PDF' : 'OTHER'),
-                        originalname: file.name,
-                        mimetype: file.type,
-                        PRINCIPAL: aCurrentFiles.length === 0,
-                        INFOAD: `Archivo ${file.name}`
-                    };
-                    aCurrentFiles.push(newFile);
-                    oModel.setProperty("/files", aCurrentFiles);
-                };
-                reader.readAsDataURL(file);
-            });
+            // Añadir cabeceras necesarias para la subida
+            const dbServer = sessionStorage.getItem('DBServer');
+            const loggedUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser');
+
+            oUploadCollection.addHeaderParameter(new sap.ui.core.Item({
+                key: "x-file-info", // El backend debe leer esta cabecera
+                text: JSON.stringify({
+                    idpresentaok: oModel.getProperty("/presentationId"),
+                    MODUSER: loggedUser,
+                    DBServer: dbServer
+                })
+            }));
+
+            // Actualizar el contador de archivos nuevos
+            const iNewFileCount = oModel.getProperty("/newFilesCount") + aCustomerFiles.length;
+            oModel.setProperty("/newFilesCount", iNewFileCount);
+        },
+
+        onStartUpload: function () {
+            const oUploadCollection = this.byId("UploadCollection");
+            const aItems = oUploadCollection.getItems();
+            // Solo subir si hay archivos nuevos pendientes
+            if (this.getView().getModel("editModel").getProperty("/newFilesCount") > 0) {
+                oUploadCollection.upload();
+            } else {
+                MessageToast.show("No hay archivos nuevos para subir.");
+            }
         },
 
         onFileDeleted: function (oEvent) {
-            const oItem = oEvent.getParameter("item");
-            const oCtx = oItem.getBindingContext("editModel");
-            const sPath = oCtx.getPath();
-            const iIndex = parseInt(sPath.split("/").pop(), 10);
-
             const oModel = this.getView().getModel("editModel");
-            const aFiles = oModel.getProperty("/files");
-            aFiles.splice(iIndex, 1);
-            oModel.setProperty("/files", aFiles);
+            const oItem = oEvent.getParameter("item");
+            const oItemData = oItem.getBindingContext("editModel").getObject();
+
+            // Si el archivo no tiene FILEID, es un archivo nuevo que se está eliminando de la cola de subida.
+            if (!oItemData.FILEID) {
+                const iNewFileCount = oModel.getProperty("/newFilesCount") - 1;
+                oModel.setProperty("/newFilesCount", iNewFileCount);
+            } else {
+                // Si tiene FILEID, es un archivo existente que se debe borrar del servidor.
+                // Aquí iría la lógica para llamar a la API y borrar el archivo del backend.
+                // Por ahora, solo lo quitamos de la vista.
+                MessageToast.show(`El archivo ${oItemData.originalname} se eliminará al guardar.`);
+            }
+        },
+
+        onUploadComplete: function (oEvent) {
+            const oModel = this.getView().getModel("editModel");
+            const sPresentationId = oModel.getProperty("/presentationId");
+
+            // Limpiar cabeceras para la próxima subida
+            const oUploadCollection = this.byId("UploadCollection");
+            oUploadCollection.removeAllHeaderParameters();
+
+            // Refrescar la lista de archivos desde el backend
+            this._loadFilesForPresentation(sPresentationId);
+
+            // Reiniciar el contador de archivos nuevos
+            oModel.setProperty("/newFilesCount", 0);
+
+            MessageToast.show("Archivos subidos correctamente.");
         },
 
         onSave: async function () {

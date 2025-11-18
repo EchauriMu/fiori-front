@@ -74,7 +74,14 @@ sap.ui.define([
         onEditPress: function (oEvent) {
             // Detener la propagación para que no se active onCardPress
             oEvent.stopPropagation();
-            this.onCardPress(oEvent); // Reutilizar la misma lógica
+            const oBindingContext = oEvent.getSource().getBindingContext("selectModel");
+            const sPresentationId = oBindingContext.getProperty("IdPresentaOK");
+            const sSKU = this.getView().getModel("selectModel").getProperty("/skuid");
+
+            this.getOwnerComponent().getRouter().navTo("RouteEditPresentation", {
+                skuid: sSKU,
+                presentationId: sPresentationId
+            });
         },
 
         onMultiModeChange: function (oEvent) {
@@ -157,12 +164,27 @@ sap.ui.define([
             oModel.setProperty("/loading", true);
 
             try {
-                // Replicating React's bulk delete logic: iterate and call delete for each ID.
-                const deletePromises = aIdsToDelete.map(id => {
-                    return this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
-                        ProcessType: 'DeleteHard', // Matching React service's default
-                        idpresentaok: id
-                });
+                let deletePromises;
+
+                if (aIdsToDelete.length === 1) {
+                    // Lógica para borrado individual, como en el handleDeleteSingle de React
+                    const sIdToDelete = aIdsToDelete[0];
+                    const promise = this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                        ProcessType: 'DeleteHard', // Usamos el ProcessType para borrado único
+                        idpresentaok: sIdToDelete,
+                        MODUSER: this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || "SYSTEM"
+                    });
+                    deletePromises = [promise];
+                } else {
+                    // Lógica para borrado masivo (bulk)
+                    // El backend espera un payload con los IDs, no en la URL
+                    const payload = { IdPresentaOKs: aIdsToDelete };
+                    const promise = this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', payload, {
+                        ProcessType: 'DeleteMany', // Usamos el ProcessType para borrado múltiple
+                        MODUSER: this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || "SYSTEM"
+                    });
+                    deletePromises = [promise];
+                }
 
                 await Promise.all(deletePromises);
 

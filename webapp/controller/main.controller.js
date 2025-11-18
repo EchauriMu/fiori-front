@@ -758,11 +758,13 @@ sap.ui.define([
                     if (sAction === MessageBox.Action.OK) {
                         oDetailModel.setProperty("/loadingPresentations", true);
                         try {
-                            // Usamos el mismo endpoint y ProcessType que en la vista de selección
-                            await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {
-                                IdPresentaOKs: [sPresentationId]
-                            }, {
-                                ProcessType: 'DeleteMany'
+                            // CORRECCIÓN: Usar el ProcessType para borrado individual ('DeleteHard')
+                            // y pasar el ID como parámetro, no en el cuerpo de la petición.
+                            await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', 
+                            {}, // El cuerpo de la petición va vacío para un borrado individual
+                            {
+                                ProcessType: 'DeleteHard',
+                                idpresentaok: sPresentationId
                             });
 
                             MessageToast.show("Presentación eliminada correctamente.");
