@@ -225,6 +225,117 @@
                         </content>
                     </Panel>
 
+                    <!-- Sección de Productos con Presentaciones (solo en modo detalle, no edición) -->
+                    <Panel 
+                        headerText="Productos Registrados en esta Lista" 
+                        class="sapUiSmallMargin"
+                        expandable="true"
+                        expanded="false"
+                        visible="{= !${detailView>/editing} &amp;&amp; !!${detailView>/IDLISTAOK}}"
+                    >
+                        <content>
+                            <VBox class="sapUiSmallMargin">
+                                <!-- Buscador -->
+                                <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                                    <SearchField 
+                                        placeholder="Buscar por producto..."
+                                        value="{detailView>/searchSKU}"
+                                        width="250px"
+                                    />
+                                    <Text 
+                                        text="{= 'Total: ' + ${detailView>/SKUSIDS/length}}"
+                                        class="sapUiForceBold sapUiSmallMarginStart"
+                                    />
+                                </HBox>
+
+                                <!-- Loading -->
+                                <VBox 
+                                    visible="{detailView>/loadingProductos}"
+                                    alignItems="Center"
+                                    justifyContent="Center"
+                                    height="150px"
+                                >
+                                    <BusyIndicator busy="true"/>
+                                </VBox>
+
+                                <!-- Error Message -->
+                                <MessageStrip
+                                    text="{detailView>/errorProductos}"
+                                    type="Error"
+                                    showCloseButton="false"
+                                    visible="{= !!${detailView>/errorProductos}}"
+                                    class="sapUiSmallMarginBottom"
+                                />
+
+                                <!-- Lista de Productos -->
+                                <List 
+                                    items="{detailView>/productosLista}"
+                                    visible="{= ${detailView>/productosLista}.length > 0}"
+                                >
+                                    <CustomListItem>
+                                        <VBox width="100%">
+                                            <Panel
+                                                expandable="true"
+                                                expanded="false"
+                                                headerText="{SKUID} - {PRODUCTNAME}"
+                                                width="100%"
+                                                class="sapUiSmallMarginBottom"
+                                            >
+                                                <content>
+                                                    <!-- Info Producto -->
+                                                    <f:SimpleForm layout="ResponsiveGridLayout" editable="false" class="sapUiSmallMarginBottom">
+                                                        <f:content>
+                                                            <Label text="SKU"/>
+                                                            <Text text="{SKUID}"/>
+
+                                                            <Label text="Producto"/>
+                                                            <Text text="{PRODUCTNAME}"/>
+
+                                                            <Label text="Marca"/>
+                                                            <Text text="{MARCA}"/>
+                                                        </f:content>
+                                                    </f:SimpleForm>
+
+                                                    <!-- Presentaciones -->
+                                                    <Panel 
+                                                        headerText="Presentaciones"
+                                                        expandable="true"
+                                                        expanded="true"
+                                                        width="100%"
+                                                        class="sapUiSmallMarginTop"
+                                                    >
+                                                        <content>
+                                                            <List items="{presentaciones}">
+                                                                <StandardListItem
+                                                                    title="{IdPresentaOK}"
+                                                                    description="{Presentacion}"
+                                                                />
+                                                            </List>
+                                                            <MessageStrip
+                                                                text="Sin presentaciones"
+                                                                type="Information"
+                                                                showCloseButton="false"
+                                                                visible="{= !${presentaciones} || (Array.isArray(${presentaciones}) &amp;&amp; ${presentaciones}.length === 0)}"
+                                                            />
+                                                        </content>
+                                                    </Panel>
+                                                </content>
+                                            </Panel>
+                                        </VBox>
+                                    </CustomListItem>
+                                </List>
+
+                                <!-- Sin productos -->
+                                <MessageStrip
+                                    text="No hay productos registrados en esta lista. Haz clic en 'Editar' para agregar SKUs."
+                                    type="Information"
+                                    showCloseButton="false"
+                                    visible="{= ${detailView>/productosLista}.length === 0 &amp;&amp; !${detailView>/loadingProductos}}"
+                                />
+                            </VBox>
+                        </content>
+                    </Panel>
+
                     <!-- Sección de Control de Estado (solo en modo detalle, no edición) -->
                     <Panel 
                         headerText="Control de Estado" 

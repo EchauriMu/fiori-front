@@ -137,7 +137,7 @@
                 </m:columns>
 
                 <m:items>
-                    <m:ColumnListItem type="Inactive" class="ui5-table-row-hover">
+                    <m:ColumnListItem type="Active" press="onRowClick">
                         <m:cells>
                             <m:CheckBox 
                                 select="onRowSelectChange"
@@ -146,24 +146,13 @@
                             
                             <m:Text text="{view>IDLISTAOK}" class="sapUiForceMonospace sapUiForceBold"/>
                             
-                            <!-- SKUs: Mostrar primero + botón expandible -->
+                            <!-- SKUs: Button con tooltip -->
                             <m:HBox alignItems="Center">
-                                <m:VBox>
-                                    <m:Token 
-                                        text="{path: 'view>SKUSIDS', formatter: '.formatterFirstSKU'}"
-                                        tooltip="{path: 'view>SKUSIDS', formatter: '.formatterAllSKUs'}"
-                                    />
-                                    <m:Text 
-                                        text="{path: 'view>SKUSIDS', formatter: '.formatterSKUCount'}"
-                                        class="sapUiSmallText sapUiTinyMarginTop"
-                                    />
-                                </m:VBox>
                                 <m:Button
-                                    icon="{= ${view>expanded} ? 'sap-icon://navigation-up-arrow' : 'sap-icon://navigation-down-arrow'}"
+                                    text="{= 'SKUs (' + ${view>SKUSIDS}.length + ')'}"
                                     type="Transparent"
-                                    press=".onToggleRowExpansion"
-                                    visible="{= ${view>SKUSIDS}.length > 1 }"
-                                    tooltip="{= ${view>expanded} ? 'Ocultar SKUs' : 'Ver todos los SKUs'}"
+                                    tooltip="{path: 'view>SKUSIDS', formatter: '.formatterAllSKUs'}"
+                                    class="skuPopoverButton"
                                 />
                             </m:HBox>
                             

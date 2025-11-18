@@ -61,15 +61,110 @@ sap.ui.define([
                 availableProducts: [],
                 editing: false,
                 saving: false,
-                editableLista: null
+                editableLista: null,
+                activeTab: "config",
+                // Nuevas propiedades para productos con presentaciones
+                productosLista: [],
+                presentacionesPorSKU: {},
+                archivosPorSKU: {},
+                expandedProducts: {},
+                expandedPresentaciones: {},
+                loadingProductos: false,
+                errorProductos: "",
+                searchSKU: ""
             });
             this.getView().setModel(oDetailViewModel, "detailView");
 
             // Inicializar variable de seguimiento
             this._currentEditingListaID = null;
+            this._oListaDetailDialogNew = null;
+            this._oProductosListaDialogNew = null;
+
+            // Cargar el modal al inicializar
+            this._loadModalFragment();
+            this._loadProductosModalFragment();
 
             // Cargar datos de listas
             this.loadListas();
+        },
+
+        _loadModalFragment: function () {
+            const that = this;
+            if (that._oListaDetailDialogNew) {
+                console.log("Modal ya cargado");
+                return;
+            }
+            
+            Fragment.load({
+                id: this.getView().getId(),
+                name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
+                controller: this
+            }).then((oDialog) => {
+                console.log("Modal fragment cargado exitosamente");
+                that._oListaDetailDialogNew = oDialog;
+                that.getView().addDependent(that._oListaDetailDialogNew);
+            }).catch((error) => {
+                console.error("Error cargando modal fragment:", error);
+                MessageBox.error("Error al cargar el modal: " + (error.message || error));
+            });
+        },
+
+        _loadProductosModalFragment: function () {
+            const that = this;
+            if (that._oProductosListaDialogNew) {
+                console.log("Modal de productos ya cargado");
+                return;
+            }
+            
+            Fragment.load({
+                id: this.getView().getId(),
+                name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalProductosLista",
+                controller: this
+            }).then((oDialog) => {
+                console.log("Modal de productos cargado exitosamente");
+                that._oProductosListaDialogNew = oDialog;
+                that.getView().addDependent(that._oProductosListaDialogNew);
+            }).catch((error) => {
+                console.error("Error cargando modal de productos:", error);
+                MessageBox.error("Error al cargar el modal de productos: " + (error.message || error));
+            });
+        },
+
+        _openProductosListaDialog: function () {
+            if (this._oProductosListaDialogNew) {
+                console.log("Abriendo modal de productos");
+                this._oProductosListaDialogNew.open();
+            } else {
+                console.error("Modal de productos no está cargado aún");
+                MessageBox.error("Error: No se pudo abrir el modal de productos. Intenta de nuevo.");
+            }
+        },
+
+        onCloseProductosDialog: function () {
+            if (this._oProductosListaDialogNew) {
+                this._oProductosListaDialogNew.close();
+            }
+        },
+
+        onSearchProductos: function (oEvent) {
+            const sSearchTerm = oEvent.getParameter("value") || "";
+            const oDetailModel = this.getView().getModel("detailView");
+            const aProductosLista = oDetailModel.getProperty("/productosLista") || [];
+            
+            if (!sSearchTerm) {
+                oDetailModel.setProperty("/searchSKU", sSearchTerm);
+                return;
+            }
+
+            const sLowerSearch = sSearchTerm.toLowerCase();
+            const aFiltered = aProductosLista.filter(oProducto => 
+                (oProducto.SKUID && oProducto.SKUID.toLowerCase().includes(sLowerSearch)) ||
+                (oProducto.PRODUCTNAME && oProducto.PRODUCTNAME.toLowerCase().includes(sLowerSearch)) ||
+                (oProducto.MARCA && oProducto.MARCA.toLowerCase().includes(sLowerSearch))
+            );
+
+            oDetailModel.setProperty("/searchSKU", sSearchTerm);
+            oDetailModel.setProperty("/productosListaFiltered", aFiltered);
         },
 
         // ====================================================================
@@ -321,36 +416,63 @@ sap.ui.define([
             }
         },
 
-        onRowClick: async function (oEvent) {
-            const oListaContext = oEvent.getSource().getBindingContext("view");
-            if (oListaContext) {
-                const oLista = oListaContext.getObject();
-                const oDetailModel = this.getView().getModel("detailView");
+        onRowClick: function (oEvent) {
+            const oSource = oEvent.getSource();
+            const oListaContext = oSource.getBindingContext("view");
+            
+            if (!oListaContext) {
+                console.error("No context found");
+                MessageBox.error("Error: No se pudo obtener los datos de la lista");
+                return;
+            }
+            
+            const oLista = oListaContext.getObject();
+            console.log("onRowClick: Abriendo lista", oLista);
+            
+            const oDetailModel = this.getView().getModel("detailView");
 
-                // Configurar para modo lectura (no edición)
-                oDetailModel.setData({
-                    ...oLista,
-                    availableProducts: [],
-                    editing: false,
-                    saving: false,
-                    editableLista: null
-                });
+            // Configurar para modo lectura (no edición)
+            const newData = {
+                ...oLista,
+                availableProducts: [],
+                editing: false,
+                saving: false,
+                editableLista: null,
+                activeTab: "config",
+                productosLista: [],
+                presentacionesPorSKU: {},
+                archivosPorSKU: {},
+                expandedProducts: {},
+                searchSKU: "",
+                productosListaFiltered: []
+            };
+            
+            oDetailModel.setData(newData);
+            console.log("Modelo actualizado:", oDetailModel.getData());
 
-                this._currentEditingListaID = oLista.IDLISTAOK;
-                
-                // Cargar productos disponibles
-                this._loadAvailableProducts();
+            this._currentEditingListaID = oLista.IDLISTAOK;
+            this._loadAvailableProducts();
+            // Cargar productos y luego abrir el modal
+            this._loadProductosListaAndOpen();
+        },
 
-                // Abrir el Dialog
-                if (!this._oListaDetailDialog) {
-                    this._oListaDetailDialog = await Fragment.load({
-                        id: this.getView().getId(),
-                        name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
-                        controller: this
-                    });
-                    this.getView().addDependent(this._oListaDetailDialog);
-                }
-                this._oListaDetailDialog.open();
+        _loadProductosListaAndOpen: async function () {
+            // Cargar los productos
+            console.error("⏳⏳⏳ ANTES de _loadProductosLista");
+            console.error("⏳⏳⏳ SKUSIDS:", this.getView().getModel("detailView").getProperty("/SKUSIDS"));
+            await this._loadProductosLista();
+            // Luego abrir el modal
+            console.log("✓ Productos cargados, abriendo modal");
+            this._openProductosListaDialog();
+        },
+
+        _openListaDialogNew: function () {
+            if (this._oListaDetailDialogNew) {
+                console.log("Abriendo modal dialog");
+                this._oListaDetailDialogNew.open();
+            } else {
+                console.error("Modal dialog no está cargado aún");
+                MessageBox.error("Error: No se pudo abrir el modal. Intenta de nuevo.");
             }
         },
 
@@ -387,7 +509,8 @@ sap.ui.define([
                 availableProducts: [],
                 editing: true,
                 saving: false,
-                editableLista: oListaCopy
+                editableLista: oListaCopy,
+                activeTab: "config"
             });
             
             this._currentEditingListaID = oLista.IDLISTAOK;
@@ -396,18 +519,18 @@ sap.ui.define([
         },
 
         _openListaDialogEdit: function () {
-            if (!this._oListaDetailDialog) {
+            if (!this._oListaDetailDialogNew) {
                 Fragment.load({
                     id: this.getView().getId(),
                     name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
                     controller: this
                 }).then((oDialog) => {
-                    this._oListaDetailDialog = oDialog;
-                    this.getView().addDependent(this._oListaDetailDialog);
-                    this._oListaDetailDialog.open();
+                    this._oListaDetailDialogNew = oDialog;
+                    this.getView().addDependent(this._oListaDetailDialogNew);
+                    this._oListaDetailDialogNew.open();
                 });
             } else {
-                this._oListaDetailDialog.open();
+                this._oListaDetailDialogNew.open();
             }
         },
 
@@ -461,24 +584,25 @@ sap.ui.define([
                 availableProducts: [],
                 editing: true,
                 saving: false,
-                editableLista: oNewLista
+                editableLista: oNewLista,
+                activeTab: "config"
             });
 
             this._currentEditingListaID = null;
             this._loadAvailableProducts();
 
-            if (!this._oListaDetailDialog) {
+            if (!this._oListaDetailDialogNew) {
                 Fragment.load({
                     id: this.getView().getId(),
                     name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
                     controller: this
                 }).then((oDialog) => {
-                    this._oListaDetailDialog = oDialog;
-                    this.getView().addDependent(this._oListaDetailDialog);
-                    this._oListaDetailDialog.open();
+                    this._oListaDetailDialogNew = oDialog;
+                    this.getView().addDependent(this._oListaDetailDialogNew);
+                    this._oListaDetailDialogNew.open();
                 });
             } else {
-                this._oListaDetailDialog.open();
+                this._oListaDetailDialogNew.open();
             }
         },
 
@@ -558,7 +682,7 @@ sap.ui.define([
                 oDetailModel.setProperty("/editing", false);
                 oDetailModel.setProperty("/editableLista", null);
                 this._currentEditingListaID = null;
-                this.onCloseListaDialog();
+                this.onCloseListaDialogNew();
 
             } catch (error) {
                 const i18n = this.getOwnerComponent().getModel("i18n").getResourceBundle();
@@ -588,7 +712,7 @@ sap.ui.define([
             if (bEditing) {
                 this.onCancelEditLista();
             } else {
-                this.onCloseListaDialog();
+                this.onCloseListaDialogNew();
             }
         },
 
@@ -668,7 +792,7 @@ sap.ui.define([
                             });
                             MessageToast.show(i18n.getText("listasDeleteSuccessMessage", [sListaDesc]));
                             await this.loadListas();
-                            this.onCloseListaDialog();
+                            this.onCloseListaDialogNew();
                         } catch (oError) {
                             MessageBox.error(i18n.getText("listasDeleteErrorMessage"));
                         } finally {
@@ -863,6 +987,225 @@ sap.ui.define([
         formatterListCount: function(aListas) {
             if (!aListas) return "0 listas encontradas";
             return aListas.length + " lista" + (aListas.length !== 1 ? "s" : "") + " encontrada(s)";
+        },
+
+        // ====================================================================
+        // MÉTODOS NUEVOS PARA EL MODAL MEJORADO
+        // ====================================================================
+
+        onTabSelect: function(oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const sSelectedKey = oEvent.getParameter("selectedKey");
+            oDetailModel.setProperty("/activeTab", sSelectedKey);
+        },
+
+        onCloseListaDialogNew: function () {
+            if (this._oListaDetailDialogNew) {
+                this._oListaDetailDialogNew.close();
+            }
+        },
+
+        /**
+         * Carga los productos registrados en la lista actual con sus presentaciones
+         */
+        _loadProductosLista: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const aSkusList = oDetailModel.getProperty("/SKUSIDS") || [];
+            
+            if (!Array.isArray(aSkusList) || aSkusList.length === 0) {
+                console.warn("No hay SKUs para cargar");
+                oDetailModel.setProperty("/productosLista", []);
+                oDetailModel.setProperty("/loadingProductos", false);
+                return Promise.resolve([]);
+            }
+
+            oDetailModel.setProperty("/loadingProductos", true);
+            oDetailModel.setProperty("/errorProductos", "");
+
+            try {
+                const aProductosConPresentaciones = [];
+
+                // Cargar TODOS los productos de una vez
+                const aAllProducts = await this._callApi('/ztproducts/crudProducts', 'POST', {}, { 
+                    ProcessType: 'GetAll'
+                });
+
+                if (!Array.isArray(aAllProducts) || aAllProducts.length === 0) {
+                    console.warn("No se encontraron productos");
+                    oDetailModel.setProperty("/productosLista", []);
+                    oDetailModel.setProperty("/loadingProductos", false);
+                    return [];
+                }
+
+                // Crear un mapa de productos por SKUID
+                const oProductosMap = {};
+                aAllProducts.forEach(oProduct => {
+                    if (oProduct.SKUID) {
+                        oProductosMap[oProduct.SKUID] = oProduct;
+                    }
+                });
+
+                // Procesar cada SKU y cargar presentaciones individualmente
+                for (const sSKUID of aSkusList) {
+                    const oProducto = oProductosMap[sSKUID];
+                    
+                    if (!oProducto) {
+                        console.warn(`No se encontró producto para SKU: ${sSKUID}`);
+                        continue;
+                    }
+
+                    let aPresentaciones = [];
+                    try {
+                        const oPresentacionesResponse = await this._callApi(
+                            '/ztproducts-presentaciones/productsPresentacionesCRUD', 
+                            'POST', 
+                            {}, 
+                            { 
+                                ProcessType: 'GetBySKUID',
+                                skuid: sSKUID
+                            }
+                        );
+                        
+                        // Extraer presentaciones de la respuesta
+                        if (oPresentacionesResponse && oPresentacionesResponse.value && Array.isArray(oPresentacionesResponse.value) && oPresentacionesResponse.value.length > 0) {
+                            const mainResponse = oPresentacionesResponse.value[0];
+                            if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
+                                const dataResponse = mainResponse.data[0];
+                                if (dataResponse.dataRes && Array.isArray(dataResponse.dataRes)) {
+                                    aPresentaciones = dataResponse.dataRes;
+                                }
+                            }
+                        } else if (Array.isArray(oPresentacionesResponse)) {
+                            aPresentaciones = oPresentacionesResponse;
+                        }
+                        
+                    } catch (error) {
+                        console.error(`Error cargando presentaciones para ${sSKUID}:`, error.message);
+                        aPresentaciones = [];
+                    }
+
+                    const oProductoCompleto = {
+                        ...oProducto,
+                        presentaciones: aPresentaciones,
+                        expanded: false
+                    };
+                    
+                    aProductosConPresentaciones.push(oProductoCompleto);
+                }
+
+                oDetailModel.setProperty("/productosLista", aProductosConPresentaciones);
+                
+                return aProductosConPresentaciones;
+
+            } catch (error) {
+                console.error("Error al cargar lista de productos:", error);
+                oDetailModel.setProperty("/errorProductos", error.message);
+                oDetailModel.setProperty("/productosLista", []);
+                return [];
+            } finally {
+                oDetailModel.setProperty("/loadingProductos", false);
+            }
+        },
+
+        /**
+         * Maneja la expansión/colapso de productos
+         */
+        onToggleProductExpanded: function (oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("detailView");
+            
+            if (!oContext) return;
+            
+            const sSKUID = oContext.getProperty("SKUID");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oExpandedProducts = oDetailModel.getProperty("/expandedProducts") || {};
+            
+            oExpandedProducts[sSKUID] = !oExpandedProducts[sSKUID];
+            oDetailModel.setProperty("/expandedProducts", oExpandedProducts);
+            
+            // Si se está expandiendo, cargar imágenes del producto
+            if (oExpandedProducts[sSKUID]) {
+                this._loadProductImages(sSKUID);
+            }
+            
+            oDetailModel.refresh(true);
+        },
+
+        /**
+         * Carga las imágenes del producto
+         */
+        _loadProductImages: async function (sSKUID) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const aProductosLista = oDetailModel.getProperty("/productosLista") || [];
+            const oProducto = aProductosLista.find(p => p.SKUID === sSKUID);
+            
+            if (!oProducto) return;
+            
+            try {
+                const aFiles = await this._callApi('/ztproducts-files/productsFilesCRUD', 'POST', {}, {
+                    ProcessType: 'GetBySKUID',
+                    skuid: sSKUID
+                });
+
+                if (!Array.isArray(aFiles)) {
+                    oProducto.imageFiles = [];
+                    oDetailModel.refresh(true);
+                    return;
+                }
+
+                // Filtrar solo imágenes (IMG o IMAGE)
+                const aImageFiles = aFiles.filter(f => f.FILETYPE === 'IMG' || f.FILETYPE === 'IMAGE');
+                
+                // Asignar al producto
+                oProducto.imageFiles = aImageFiles && aImageFiles.length > 0 ? aImageFiles : [];
+                
+                console.log(`Imágenes cargadas para ${sSKUID}:`, oProducto.imageFiles.length);
+                oDetailModel.refresh(true);
+                
+            } catch (error) {
+                console.error(`Error cargando imágenes para ${sSKUID}:`, error);
+                oProducto.imageFiles = [];
+                oDetailModel.refresh(true);
+            }
+        },
+
+        /**
+         * Maneja la expansión/colapso de presentaciones
+         */
+        onTogglePresentacionExpanded: function (oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("detailView");
+            
+            if (!oContext) return;
+            
+            const sIdPresentaOK = oContext.getProperty("IdPresentaOK");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oExpandedPresentaciones = oDetailModel.getProperty("/expandedPresentaciones") || {};
+            
+            oExpandedPresentaciones[sIdPresentaOK] = !oExpandedPresentaciones[sIdPresentaOK];
+            oDetailModel.setProperty("/expandedPresentaciones", oExpandedPresentaciones);
+            oDetailModel.refresh(true);
+        },
+
+        /**
+         * Formatea un número como moneda
+         */
+        formatterCurrency: function (nValue) {
+            if (!nValue && nValue !== 0) return "N/A";
+            return "$" + nValue.toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        },
+
+        /**
+         * Guarda los precios de los productos
+         */
+        onGuardarPrecios: function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            MessageToast.show("Funcionalidad de guardar precios en desarrollo");
+            console.log("Guardar precios llamado");
         }
     });
 });
+

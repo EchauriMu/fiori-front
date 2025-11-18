@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:mvc="sap.ui.core.mvc"
+>
+    <Popover
+        id="idSKUPopover"
+        placement="Bottom"
+        showHeader="false"
+        class="sapUiSmallMargin"
+    >
+        <VBox class="sapUiSmallMargin" width="300px">
+            <!-- Título -->
+            <HBox>
+                <Title 
+                    level="H5" 
+                    text="Productos registrados ({view>SKUSIDS/length})"
+                    class="sapUiBoldText"
+                />
+            </HBox>
+
+            <!-- Lista de SKUs (máximo 10) -->
+            <VBox class="sapUiSmallMarginTop">
+                <List
+                    items="{
+                        path: 'view>SKUSIDS',
+                        startIndex: 0,
+                        length: 10
+                    }"
+                    mode="None"
+                    noDataText="Sin SKUs"
+                    class="sapUiSmallMargin"
+                    width="100%"
+                >
+                    <StandardListItem
+                        title="{view>}"
+                        type="Inactive"
+                        class="sapUiSmallMarginBottom"
+                    />
+                </List>
+            </VBox>
+
+            <!-- Mensaje de "más" si hay más de 10 -->
+            <VBox visible="{= ${view>SKUSIDS}.length > 10 }" class="sapUiSmallMarginTop">
+                <Text 
+                    text="{= '+' + (${view>SKUSIDS}.length - 10) + ' más...'}"
+                    class="sapUiTinyText sapUiGreyText sapUiTinyMarginBegin"
+                    textAlign="Center"
+                />
+            </VBox>
+        </VBox>
+    </Popover>
+</core:FragmentDefinition>
