@@ -247,8 +247,8 @@ sap.ui.define([
             const sQueryString = new URLSearchParams(oParams).toString();
             const sFullUrl = `${BASE_URL}${sRelativeUrl}?${sQueryString}`;
             
-            console.log("URL completa:", sFullUrl);
-            console.log("Datos enviados:", oData);
+            console.log("🔗 URL completa:", sFullUrl);
+            console.log("📤 Datos enviados:", JSON.stringify(oData, null, 2));
             
             try {
                 const oResponse = await fetch(sFullUrl, {
@@ -259,14 +259,23 @@ sap.ui.define([
                     body: JSON.stringify(oData || {})
                 });
 
+                // Leer la respuesta como texto primero para debug
+                const sResponseText = await oResponse.text();
+                console.log("📥 Respuesta del servidor (status: " + oResponse.status + "):", sResponseText);
+
                 if (!oResponse.ok) {
-                    const oErrorJson = await oResponse.json();
-                    const sErrorMessage = oErrorJson.message || `Error ${oResponse.status}`;
-                    throw new Error(sErrorMessage);
+                    try {
+                        const oErrorJson = JSON.parse(sResponseText);
+                        const sErrorMessage = oErrorJson.message || oErrorJson.error || `Error ${oResponse.status}`;
+                        console.error("❌ Error detallado:", oErrorJson);
+                        throw new Error(sErrorMessage);
+                    } catch (parseError) {
+                        throw new Error(`Error ${oResponse.status}: ${sResponseText}`);
+                    }
                 }
 
-                const oJson = await oResponse.json();
-                console.log("Respuesta JSON completa:", oJson);
+                const oJson = JSON.parse(sResponseText);
+                console.log("✅ Respuesta JSON completa:", oJson);
                 
                 if (oJson && oJson.value && Array.isArray(oJson.value) && oJson.value.length > 0) {
                     const mainResponse = oJson.value[0];
@@ -278,7 +287,7 @@ sap.ui.define([
                         
                         if (dataResponse.dataRes && Array.isArray(dataResponse.dataRes)) {
                             console.log("DataRes encontrado:", dataResponse.dataRes);
-                            console.log("Cantidad de listas:", dataResponse.dataRes.length);
+                            console.log("Cantidad de elementos:", dataResponse.dataRes.length);
                             return dataResponse.dataRes;
                         }
                     }
@@ -288,7 +297,7 @@ sap.ui.define([
                 return oJson; 
                 
             } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
+                console.error(`❌ Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
         },
@@ -331,11 +340,22 @@ sap.ui.define([
                 }
 
                 const aNormalizedListas = aListasList.map(lista => {
+                    // Convertir fechas ISO a yyyy-MM-dd
+                    const convertDate = (dateStr) => {
+                        if (!dateStr) return dateStr;
+                        if (typeof dateStr === 'string' && dateStr.includes('T')) {
+                            return dateStr.substring(0, 10); // "2025-01-01T00:00:00.000Z" → "2025-01-01"
+                        }
+                        return dateStr;
+                    };
+
                     return {
                         ...lista,
                         SKUSIDS: Array.isArray(lista.SKUSIDS) 
                             ? lista.SKUSIDS 
                             : (typeof lista.SKUSIDS === 'string' ? JSON.parse(lista.SKUSIDS) : []),
+                        FECHAEXPIRAINI: convertDate(lista.FECHAEXPIRAINI),
+                        FECHAEXPIRAFIN: convertDate(lista.FECHAEXPIRAFIN),
                         REGDATE: lista.REGDATE || null,
                         MODDATE: lista.MODDATE || null,
                         ACTIVED: lista.ACTIVED !== undefined ? lista.ACTIVED : true,
@@ -653,44 +673,65 @@ sap.ui.define([
                 return;
             }
 
+            // Validar fechas
+            if (!oEditableLista.FECHAEXPIRAINI) {
+                MessageBox.error("La fecha de inicio de vigencia es requerida.");
+                return;
+            }
+
+            if (!oEditableLista.FECHAEXPIRAFIN) {
+                MessageBox.error("La fecha de fin de vigencia es requerida.");
+                return;
+            }
+
             oDetailModel.setProperty("/saving", true);
 
             try {
+                // Formatear las fechas asegurando que sean válidas
+                const sFechaInicio = this._formatDateForOutput(oEditableLista.FECHAEXPIRAINI);
+                const sFechaFin = this._formatDateForOutput(oEditableLista.FECHAEXPIRAFIN);
+
+                if (!sFechaInicio || !sFechaFin) {
+                    MessageBox.error("Las fechas no pudieron ser procesadas correctamente.");
+                    oDetailModel.setProperty("/saving", false);
+                    return;
+                }
+
                 // Preparar payload
                 const payload = {
-                    IDLISTAOK: oEditableLista.IDLISTAOK || `LIS-${Date.now()}`,
+                    IDLISTAOK: oEditableLista.IDLISTAOK,
                     SKUSIDS: JSON.stringify(Array.isArray(oEditableLista.SKUSIDS) ? oEditableLista.SKUSIDS : []),
-                    IDINSTITUTOOK: oEditableLista.IDINSTITUTOOK,
-                    IDLISTABK: oEditableLista.IDLISTABK,
-                    DESLISTA: oEditableLista.DESLISTA,
-                    FECHAEXPIRAINI: oEditableLista.FECHAEXPIRAINI || null,
-                    FECHAEXPIRAFIN: oEditableLista.FECHAEXPIRAFIN || null,
-                    IDTIPOLISTAOK: oEditableLista.IDTIPOLISTAOK,
-                    IDTIPOGENERALISTAOK: oEditableLista.IDTIPOGENERALISTAOK,
-                    IDTIPOFORMULAOK: oEditableLista.IDTIPOFORMULAOK,
-                    REGUSER: oEditableLista.REGUSER,
+                    IDINSTITUTOOK: oEditableLista.IDINSTITUTOOK.trim(),
+                    IDLISTABK: oEditableLista.IDLISTABK || "",
+                    DESLISTA: oEditableLista.DESLISTA.trim(),
+                    FECHAEXPIRAINI: sFechaInicio,
+                    FECHAEXPIRAFIN: sFechaFin,
+                    IDTIPOLISTAOK: oEditableLista.IDTIPOLISTAOK || "GENERAL",
+                    IDTIPOGENERALISTAOK: oEditableLista.IDTIPOGENERALISTAOK || "ESPECIFICA",
+                    IDTIPOFORMULAOK: oEditableLista.IDTIPOFORMULAOK || "FIJO",
+                    REGUSER: oEditableLista.REGUSER || "admin",
                     ACTIVED: Boolean(oEditableLista.ACTIVED),
                     DELETED: Boolean(oEditableLista.DELETED)
                 };
 
-                const bIsNewLista = !this._currentEditingListaID;
-                const oUpdatedLista = await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
-                    ProcessType: bIsNewLista ? 'AddOne' : 'UpdateOne',
+                console.log("=== GUARDANDO LISTA ===");
+                console.log("IDLISTAOK:", payload.IDLISTAOK);
+                console.log("FECHAEXPIRAINI original:", oEditableLista.FECHAEXPIRAINI);
+                console.log("FECHAEXPIRAINI formateada:", sFechaInicio);
+                console.log("FECHAEXPIRAFIN original:", oEditableLista.FECHAEXPIRAFIN);
+                console.log("FECHAEXPIRAFIN formateada:", sFechaFin);
+                console.log("📤 Payload completo:", JSON.stringify(payload, null, 2));
+
+                // Siempre es UpdateOne cuando editamos
+                await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
+                    ProcessType: 'UpdateOne',
                     IDLISTAOK: oEditableLista.IDLISTAOK
                 });
 
-                const sMessage = bIsNewLista ? 
-                    "Lista de precios creada correctamente" : 
-                    "Lista de precios actualizada correctamente";
-                MessageToast.show(sMessage);
+                MessageToast.show("Lista de precios actualizada correctamente");
 
                 // Recargar datos
                 await this.loadListas();
-
-                // Actualizar el modelo del detalle
-                const oCurrentDetailData = oDetailModel.getData();
-                const oNewData = { ...oCurrentDetailData, ...oEditableLista };
-                oDetailModel.setData(oNewData);
 
                 // Salir del modo edición
                 oDetailModel.setProperty("/editing", false);
@@ -699,8 +740,8 @@ sap.ui.define([
                 this.onCloseListaDialogNew();
 
             } catch (error) {
-                const i18n = this.getOwnerComponent().getModel("i18n").getResourceBundle();
-                MessageBox.error("Error al guardar: " + (error.message || i18n.getText("listasLoadErrorMessage")));
+                console.error("❌ Error al guardar lista:", error);
+                MessageBox.error("Error al guardar: " + (error.message || "Error desconocido"));
             } finally {
                 oDetailModel.setProperty("/saving", false);
             }
@@ -743,7 +784,7 @@ sap.ui.define([
             }
 
             const sActionText = bState ? "activar" : "desactivar";
-            const sProcessType = bState ? "ActivateOne" : "DeleteLogic";
+            const that = this;
 
             MessageBox.confirm(`¿Estás seguro de que deseas ${sActionText} la lista "${sListaDesc}"?`, {
                 title: "Confirmar Cambio de Estado",
@@ -751,14 +792,53 @@ sap.ui.define([
                     if (sAction === MessageBox.Action.OK) {
                         oDetailModel.setProperty("/saving", true);
                         try {
-                            await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', {}, {
-                                ProcessType: sProcessType,
+                            const oViewModel = that.getView().getModel("view");
+                            const aListas = oViewModel.getProperty("/filteredListas") || [];
+                            const oOriginalLista = aListas.find(l => l.IDLISTAOK === sListaID);
+
+                            if (!oOriginalLista) {
+                                throw new Error("No se pudo encontrar la lista en la tabla.");
+                            }
+
+                            // Las fechas YA ESTÁN en yyyy-MM-dd gracias a loadListas()
+                            // Solo extraer si aún fueran ISO (por compatibilidad)
+                            let sFechaInicio = oOriginalLista.FECHAEXPIRAINI || "";
+                            let sFechaFin = oOriginalLista.FECHAEXPIRAFIN || "";
+                            
+                            if (typeof sFechaInicio === 'string' && sFechaInicio.includes('T')) {
+                                sFechaInicio = sFechaInicio.substring(0, 10);
+                            }
+                            if (typeof sFechaFin === 'string' && sFechaFin.includes('T')) {
+                                sFechaFin = sFechaFin.substring(0, 10);
+                            }
+
+                            const payload = {
+                                IDLISTAOK: sListaID,
+                                SKUSIDS: JSON.stringify(Array.isArray(oOriginalLista.SKUSIDS) ? oOriginalLista.SKUSIDS : []),
+                                IDINSTITUTOOK: oOriginalLista.IDINSTITUTOOK || "",
+                                IDLISTABK: oOriginalLista.IDLISTABK || "",
+                                DESLISTA: oOriginalLista.DESLISTA || "",
+                                FECHAEXPIRAINI: sFechaInicio,
+                                FECHAEXPIRAFIN: sFechaFin,
+                                IDTIPOLISTAOK: oOriginalLista.IDTIPOLISTAOK || "GENERAL",
+                                IDTIPOGENERALISTAOK: oOriginalLista.IDTIPOGENERALISTAOK || "ESPECIFICA",
+                                IDTIPOFORMULAOK: oOriginalLista.IDTIPOFORMULAOK || "FIJO",
+                                REGUSER: oOriginalLista.REGUSER || "admin",
+                                ACTIVED: bState,
+                                DELETED: !bState
+                            };
+
+                            console.log("📤 Payload toggle:", JSON.stringify(payload, null, 2));
+
+                            await that._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
+                                ProcessType: 'UpdateOne',
                                 IDLISTAOK: sListaID
                             });
                             MessageToast.show(`Lista ${sActionText}da correctamente.`);
-                            await this.loadListas();
+                            await that.loadListas();
                             oDetailModel.setProperty("/ACTIVED", bState);
                         } catch (oError) {
+                            console.error("❌ Error al cambiar estado:", oError);
                             MessageBox.error(`Error al ${sActionText} la lista: ${oError.message}`);
                             oEvent.getSource().setState(!bState);
                         } finally {
@@ -868,7 +948,17 @@ sap.ui.define([
                 }
                 
                 const oLista = aListas[iUpdated];
-                const sProcessType = bActivate ? 'ActivateOne' : 'DeactivateOne';
+                
+                // Convertir fechas ISO a yyyy-MM-dd si es necesario
+                let sFechaInicio = oLista.FECHAEXPIRAINI || "";
+                let sFechaFin = oLista.FECHAEXPIRAFIN || "";
+                
+                if (typeof sFechaInicio === 'string' && sFechaInicio.includes('T')) {
+                    sFechaInicio = sFechaInicio.substring(0, 10);
+                }
+                if (typeof sFechaFin === 'string' && sFechaFin.includes('T')) {
+                    sFechaFin = sFechaFin.substring(0, 10);
+                }
                 
                 // Preparar el payload completo con todos los campos necesarios
                 const payload = {
@@ -877,18 +967,18 @@ sap.ui.define([
                     IDINSTITUTOOK: oLista.IDINSTITUTOOK || "",
                     IDLISTABK: oLista.IDLISTABK || "",
                     DESLISTA: oLista.DESLISTA || "",
-                    FECHAEXPIRAINI: oLista.FECHAEXPIRAINI || null,
-                    FECHAEXPIRAFIN: oLista.FECHAEXPIRAFIN || null,
+                    FECHAEXPIRAINI: sFechaInicio,
+                    FECHAEXPIRAFIN: sFechaFin,
                     IDTIPOLISTAOK: oLista.IDTIPOLISTAOK || "",
                     IDTIPOGENERALISTAOK: oLista.IDTIPOGENERALISTAOK || "ESPECIFICA",
                     IDTIPOFORMULAOK: oLista.IDTIPOFORMULAOK || "FIJO",
                     REGUSER: oLista.REGUSER || "SYSTEM",
                     ACTIVED: bActivate,
-                    DELETED: false
+                    DELETED: !bActivate
                 };
                 
                 that._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
-                    ProcessType: sProcessType,
+                    ProcessType: 'UpdateOne',
                     IDLISTAOK: oLista.IDLISTAOK
                 })
                     .then(function() {
@@ -948,24 +1038,74 @@ sap.ui.define([
         },
 
         /**
-         * Formatea una fecha para enviar al backend (convierte Date o string a formato yyyy-MM-dd)
+         * Formatea una fecha para enviar al backend (convierte Date, number o string a formato yyyy-MM-dd)
          */
         _formatDateForOutput: function (date) {
             if (!date) return null;
             
-            // Si ya es un string en formato correcto, devolverlo
-            if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return date;
+            console.log("🔄 _formatDateForOutput recibió:", date, "tipo:", typeof date);
+            
+            // Si es un número (timestamp)
+            if (typeof date === 'number') {
+                try {
+                    const d = new Date(date);
+                    if (d.getTime && !isNaN(d.getTime())) {
+                        const year = d.getFullYear();
+                        const month = `${d.getMonth() + 1}`.padStart(2, '0');
+                        const day = `${d.getDate()}`.padStart(2, '0');
+                        const formatted = `${year}-${month}-${day}`;
+                        console.log("✅ Número parseado y formateado:", formatted);
+                        return formatted;
+                    }
+                } catch (e) {
+                    console.error("❌ No se pudo parsear el número:", date);
+                    return null;
+                }
+            }
+            
+            // Si ya es un string
+            if (typeof date === 'string') {
+                // Si ya está en formato yyyy-MM-dd, devolverlo directamente
+                if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    console.log("✅ String ya está en formato yyyy-MM-dd:", date);
+                    return date;
+                }
+                
+                // Si es ISO string (2025-11-18T00:00:00.000Z), extraer la fecha
+                if (date.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                    const formatted = date.substring(0, 10); // Extrae "2025-11-18"
+                    console.log("✅ ISO string parseado, extrayendo fecha:", formatted);
+                    return formatted;
+                }
+                
+                // Si es otro formato, intentar parsearlo
+                try {
+                    const parsedDate = new Date(date);
+                    if (parsedDate.getTime && !isNaN(parsedDate.getTime())) {
+                        const year = parsedDate.getFullYear();
+                        const month = `${parsedDate.getMonth() + 1}`.padStart(2, '0');
+                        const day = `${parsedDate.getDate()}`.padStart(2, '0');
+                        const formatted = `${year}-${month}-${day}`;
+                        console.log("✅ String parseado y formateado:", formatted);
+                        return formatted;
+                    }
+                } catch (e) {
+                    console.error("❌ No se pudo parsear el string:", date);
+                    return null;
+                }
             }
             
             // Si es un objeto Date
-            if (date instanceof Date) {
+            if (date instanceof Date && date.getTime && !isNaN(date.getTime())) {
                 const year = date.getFullYear();
                 const month = `${date.getMonth() + 1}`.padStart(2, '0');
                 const day = `${date.getDate()}`.padStart(2, '0');
-                return `${year}-${month}-${day}`;
+                const formatted = `${year}-${month}-${day}`;
+                console.log("✅ Date object formateado:", formatted);
+                return formatted;
             }
             
+            console.error("❌ No se pudo formatear la fecha:", date);
             return null;
         },
 
@@ -977,9 +1117,8 @@ sap.ui.define([
         },
 
         formatterListaStatusText: function (bActived, bDeleted) {
-            if (bDeleted === true) return "Eliminada";
             if (bActived === true) return "Activa";
-            if (bActived === false) return "Inactiva";
+            if (bActived === false) return "Desactivada";
             return "Desconocido";
         },
 
