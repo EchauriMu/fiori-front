@@ -1,0 +1,270 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:l="sap.ui.layout"
+>
+    <Dialog
+        id="idListaWizardDialog"
+        title="Nueva Lista de Precios"
+        type="Standard"
+        class="sapUiNoContentPadding"
+        contentHeight="80vh"
+        contentWidth="80vw"
+        resizable="true"
+        draggable="true"
+    >
+        <content>
+            <Wizard 
+                id="idListaWizard"
+                complete=".onSaveNewLista"
+                finishButtonText="Guardar"
+                class="sapUiNoMargin sapUiNoPadding"
+            >
+                <!-- PASO 1: SELECCIÓN DE PRODUCTOS -->
+                <WizardStep
+                    id="paso1"
+                    title="Paso 1: Selección de Productos"
+                    validated="true"
+                >
+                    <ScrollContainer height="100%" width="100%">
+                        <l:Splitter orientation="Horizontal" height="100%">
+                            <l:contentAreas>
+                                <!-- Panel Izquierdo: Filtros -->
+                                <VBox class="sapUiTinyMargin" width="35%">
+                                    <Panel 
+                                        headerText="Filtros Avanzados"
+                                        expandable="true"
+                                        expanded="true"
+                                        width="100%"
+                                    >
+                                        <content>
+                                            <VBox class="sapUiSmallMargin">
+                                                <!-- Botón Limpiar Filtros -->
+                                                <Button
+                                                    text="Limpiar Filtros"
+                                                    type="Ghost"
+                                                    icon="sap-icon://clear-filter"
+                                                    press=".onClearFiltersWizard"
+                                                    class="sapUiSmallMarginBottom"
+                                                />
+
+                                                <!-- Marca -->
+                                                <Label text="Marcas de Productos:" class="sapUiForceBold sapUiSmallMarginTop"/>
+                                                <MultiComboBox
+                                                    id="idMarcasCombo"
+                                                    items="{detailView>/availableMarcas}"
+                                                    selectedKeys="{detailView>/wizardFilters/selectedMarcas}"
+                                                    placeholder="Selecciona marcas..."
+                                                    width="100%"
+                                                    selectionChange=".onFiltersChangedWizard"
+                                                    class="sapUiSmallMarginBottom"
+                                                >
+                                                    <core:Item key="{detailView>key}" text="{detailView>text}"/>
+                                                </MultiComboBox>
+
+                                                <!-- Categoría -->
+                                                <Label text="Categorías de Productos:" class="sapUiForceBold sapUiSmallMarginTop"/>
+                                                <MultiComboBox
+                                                    id="idCategoriasCombo"
+                                                    items="{detailView>/allCategories}"
+                                                    selectedKeys="{detailView>/wizardFilters/selectedCategories}"
+                                                    placeholder="Selecciona categorías..."
+                                                    width="100%"
+                                                    selectionChange=".onFiltersChangedWizard"
+                                                    class="sapUiSmallMarginBottom"
+                                                >
+                                                    <core:Item key="{detailView>CATID}" text="{detailView>Nombre}"/>
+                                                </MultiComboBox>
+
+                                                <!-- Rango de Precios -->
+                                                <Label text="Rango de Precios:" class="sapUiForceBold sapUiSmallMarginTop"/>
+                                                <Select
+                                                    id="idRangoPreciosStep2"
+                                                    items="{detailView>/rangosPrecios}"
+                                                    selectedKey="{detailView>/wizardFilters/selectedRango}"
+                                                    width="100%"
+                                                    change=".onRangoPreciosStep2Change"
+                                                    class="sapUiSmallMarginBottom"
+                                                >
+                                                    <core:Item key="{detailView>key}" text="{detailView>text}"/>
+                                                </Select>
+
+                                                <!-- Fecha de Ingreso (Desde) -->
+                                                <Label text="Fecha de Ingreso (Desde):" class="sapUiForceBold sapUiSmallMarginTop"/>
+                                                <DatePicker
+                                                    placeholder="Desde"
+                                                    value="{path: 'detailView>/wizardFilters/dateFrom', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
+                                                    displayFormat="dd/MM/yyyy"
+                                                    width="100%"
+                                                    change=".onFechaIngresoDesdeChange"
+                                                    class="sapUiSmallMarginBottom"
+                                                />
+
+                                                <!-- Fecha de Ingreso (Hasta) -->
+                                                <Label text="Fecha de Ingreso (Hasta):" class="sapUiForceBold sapUiSmallMarginTop"/>
+                                                <DatePicker
+                                                    placeholder="Hasta"
+                                                    value="{path: 'detailView>/wizardFilters/dateTo', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
+                                                    displayFormat="dd/MM/yyyy"
+                                                    width="100%"
+                                                    change=".onFechaIngresoHastaChange"
+                                                    class="sapUiSmallMarginBottom"
+                                                />
+
+                                                <!-- Contador de filtros -->
+                                                <HBox class="sapUiSmallMarginTop">
+                                                    <ObjectStatus
+                                                        text="{= ${detailView>/wizardFilters/activeFilterCount} + ' filtros activos'}"
+                                                        state="{= ${detailView>/wizardFilters/activeFilterCount} > 0 ? 'Information' : 'None' }"
+                                                    />
+                                                </HBox>
+                                            </VBox>
+                                        </content>
+                                    </Panel>
+                                </VBox>
+
+                                <!-- Panel Derecho: Lista de Productos -->
+                                <VBox class="sapUiTinyMargin" width="65%">
+                                    <!-- Buscador -->
+                                    <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                                        <SearchField
+                                            placeholder="Buscar por nombre, SKU, marca o categoría..."
+                                            value="{detailView>/wizardFilters/searchTerm}"
+                                            liveChange=".onFiltersChangedWizard"
+                                            width="100%"
+                                            class="sapUiSmallMarginEnd"
+                                        />
+                                    </HBox>
+
+                                    <!-- Contador -->
+                                    <HBox alignItems="Center" class="sapUiSmallMarginBottom">
+                                        <Text 
+                                            text="{= 'Seleccionar todos (' + ${detailView>/filteredProductsWizard/length} + ')'}"
+                                            class="sapUiForceBold"
+                                        />
+                                        <ToolbarSpacer/>
+                                        <Text 
+                                            text="{= ${detailView>/wizardData/selectedProducts/length} + ' producto(s) seleccionado(s)'}"
+                                            class="sapUiForceBold"
+                                        />
+                                    </HBox>
+
+                                    <!-- Lista de Productos -->
+                                    <List items="{detailView>/filteredProductsWizard}">
+                                        <CustomListItem type="Inactive">
+                                            <VBox width="100%">
+                                                <HBox alignItems="Center" class="sapUiSmallMargin">
+                                                    <CheckBox
+                                                        selected="{detailView>selected}"
+                                                        select=".onProductSelectWizard"
+                                                        class="sapUiSmallMarginEnd"
+                                                    />
+                                                    <VBox>
+                                                        <Title level="H5" text="{detailView>PRODUCTNAME}" class="sapUiTinyMarginBottom"/>
+                                                        <Text text="SKU: {detailView>SKUID} • Marca: {detailView>MARCA}" class="sapUiSmallText"/>
+                                                        <Text text="{detailView>DESSKU}" class="sapUiSmallText sapUiGreyText"/>
+                                                    </VBox>
+                                                </HBox>
+                                            </VBox>
+                                        </CustomListItem>
+                                    </List>
+
+                                    <!-- Sin resultados -->
+                                    <MessageStrip
+                                        text="No hay productos que coincidan con los filtros aplicados"
+                                        type="Information"
+                                        showCloseButton="false"
+                                        visible="{= ${detailView>/filteredProductsWizard}.length === 0 }"
+                                    />
+                                </VBox>
+                            </l:contentAreas>
+                        </l:Splitter>
+                    </ScrollContainer>
+                </WizardStep>
+
+                <!-- PASO 2: INFORMACIÓN GENERAL -->
+                <WizardStep
+                    id="paso2"
+                    title="Paso 2: Información General"
+                    validated="true"
+                >
+                    <ScrollContainer height="100%" width="100%">
+                        <VBox class="sapUiTinyMargin" width="100%">
+                            <Title level="H3" text="Configuración Básica de la Lista" class="sapUiTinyMarginBottom"/>
+                            
+                            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12" emptySpanXL="2" emptySpanL="2" emptySpanM="1" emptySpanS="0" class="sapUiNoMargin">
+                                <f:content>
+                                    <!-- Descripción de la lista -->
+                                    <Label text="Descripción" required="true"/>
+                                    <Input
+                                        value="{detailView>/wizardData/DESLISTA}"
+                                        placeholder="Ej: Lista de precios Verano 2024"
+                                        width="100%"
+                                    />
+
+                                    <!-- Instituto -->
+                                    <Label text="Instituto" required="true"/>
+                                    <Input
+                                        value="{detailView>/wizardData/IDINSTITUTOOK}"
+                                        placeholder="Ej: INSTITUTO-XYZ"
+                                        width="100%"
+                                    />
+
+                                    <!-- Tipo General de Lista -->
+                                    <Label text="Tipo General de Lista"/>
+                                    <RadioButtonGroup 
+                                        columns="3"
+                                        selectedIndex="{= ${detailView>/wizardData/IDTIPOGENERALISTAOK} === 'ESPECIFICA' ? 0 : (${detailView>/wizardData/IDTIPOGENERALISTAOK} === 'GENERAL' ? 1 : 2) }"
+                                        select=".onTipoGeneralChange"
+                                        width="100%"
+                                    >
+                                        <RadioButton text="Específica"/>
+                                        <RadioButton text="General"/>
+                                        <RadioButton text="Todos"/>
+                                    </RadioButtonGroup>
+
+                                    <!-- Tipo de Fórmula -->
+                                    <Label text="Tipo de Fórmula"/>
+                                    <RadioButtonGroup 
+                                        columns="3"
+                                        selectedIndex="{= ${detailView>/wizardData/IDTIPOFORMULAOK} === 'FIJO' ? 0 : (${detailView>/wizardData/IDTIPOFORMULAOK} === 'PORCENTAJE' ? 1 : 2) }"
+                                        select=".onTipoFormulaChange"
+                                        width="100%"
+                                    >
+                                        <RadioButton text="Fijo"/>
+                                        <RadioButton text="Porcentaje"/>
+                                        <RadioButton text="Escala"/>
+                                    </RadioButtonGroup>
+
+                                    <!-- Inicio de Vigencia -->
+                                    <Label text="Inicio de Vigencia"/>
+                                    <DatePicker
+                                        value="{path: 'detailView>/wizardData/FECHAEXPIRAINI', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
+                                        displayFormat="dd/MM/yyyy"
+                                        width="100%"
+                                    />
+
+                                    <!-- Fin de Vigencia -->
+                                    <Label text="Fin de Vigencia"/>
+                                    <DatePicker
+                                        value="{path: 'detailView>/wizardData/FECHAEXPIRAFIN', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
+                                        displayFormat="dd/MM/yyyy"
+                                        width="100%"
+                                    />
+                                </f:content>
+                            </f:SimpleForm>
+                        </VBox>
+                    </ScrollContainer>
+                </WizardStep>
+            </Wizard>
+        </content>
+
+        <endButton>
+            <Button
+                text="Cancelar"
+                press=".onCloseWizard"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

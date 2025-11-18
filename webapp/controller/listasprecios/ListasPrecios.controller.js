@@ -72,7 +72,44 @@ sap.ui.define([
                 expandedPresentaciones: {},
                 loadingProductos: false,
                 errorProductos: "",
-                searchSKU: ""
+                searchSKU: "",
+                // Propiedades del Wizard
+                wizardData: {
+                    DESLISTA: "",
+                    IDINSTITUTOOK: "",
+                    IDTIPOLISTAOK: "",
+                    IDTIPOGENERALISTAOK: "ESPECIFICA",
+                    IDTIPOFORMULAOK: "FIJO",
+                    FECHAEXPIRAINI: this._formatDateForInput(new Date()),
+                    FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
+                    RANGO_PRECIOS: "",
+                    selectedProducts: []
+                },
+                wizardFilters: {
+                    selectedMarcas: [],
+                    selectedCategories: [],
+                    priceFrom: "",
+                    priceTo: "",
+                    dateFrom: "",
+                    dateTo: "",
+                    searchTerm: "",
+                    activeFilterCount: 0
+                },
+                filteredProductsWizard: [],
+                availableMarcas: [],
+                allCategories: [],
+                allProductsWizard: [],
+                tiposLista: [
+                    { key: "GENERAL", text: "General" },
+                    { key: "ESPECIFICA", text: "Específica" }
+                ],
+                rangosPrecios: [
+                    { key: "", text: "Selecciona rango de precio..." },
+                    { key: "BAJO", text: "Bajo ($0 - $500)" },
+                    { key: "MEDIO", text: "Medio ($500 - $2,000)" },
+                    { key: "ALTO", text: "Alto ($2,000 - $10,000)" },
+                    { key: "PREMIUM", text: "Premium ($10,000+)" }
+                ]
             });
             this.getView().setModel(oDetailViewModel, "detailView");
 
@@ -254,6 +291,25 @@ sap.ui.define([
                 console.error(`Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
+        },
+
+        /**
+         * Carga un fragmento XML de forma asincrónica
+         */
+        _loadFragment: async function (sFragmentName) {
+            return new Promise((resolve, reject) => {
+                Fragment.load({
+                    id: this.getView().getId(),
+                    name: `com.invertions.sapfiorimodinv.view.listasprecios.fragments.${sFragmentName}`,
+                    controller: this
+                }).then((oDialog) => {
+                    this.getView().addDependent(oDialog);
+                    resolve(oDialog);
+                }).catch((error) => {
+                    console.error(`Error loading fragment ${sFragmentName}:`, error);
+                    reject(error);
+                });
+            });
         },
 
         // ====================================================================
@@ -560,54 +616,8 @@ sap.ui.define([
         },
 
         onOpenListaDialog: function () {
-            const oDetailModel = this.getView().getModel("detailView");
-            const oUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser");
-
-            // Crear nueva lista en modo edición
-            const oNewLista = {
-                IDLISTAOK: "",
-                SKUSIDS: [],
-                IDINSTITUTOOK: "",
-                IDLISTABK: "",
-                DESLISTA: "",
-                FECHAEXPIRAINI: this._formatDateForInput(new Date()),
-                FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
-                IDTIPOLISTAOK: "",
-                IDTIPOGENERALISTAOK: "ESPECIFICA",
-                IDTIPOFORMULAOK: "FIJO",
-                REGUSER: oUser?.USERNAME || "SYSTEM",
-                REGDATE: null,
-                MODUSER: null,
-                MODDATE: null,
-                ACTIVED: true,
-                DELETED: false
-            };
-
-            oDetailModel.setData({
-                ...oNewLista,
-                availableProducts: [],
-                editing: true,
-                saving: false,
-                editableLista: oNewLista,
-                activeTab: "config"
-            });
-
-            this._currentEditingListaID = null;
-            this._loadAvailableProducts();
-
-            if (!this._oListaDetailDialogNew) {
-                Fragment.load({
-                    id: this.getView().getId(),
-                    name: "com.invertions.sapfiorimodinv.view.listasprecios.fragments.modalListas",
-                    controller: this
-                }).then((oDialog) => {
-                    this._oListaDetailDialogNew = oDialog;
-                    this.getView().addDependent(this._oListaDetailDialogNew);
-                    this._oListaDetailDialogNew.open();
-                });
-            } else {
-                this._oListaDetailDialogNew.open();
-            }
+            // Llamar al método del wizard en lugar del diálogo antiguo
+            this.onOpenListaWizard();
         },
 
         onCloseListaDialog: function () {
@@ -937,6 +947,28 @@ sap.ui.define([
             return `${year}-${month}-${day}`;
         },
 
+        /**
+         * Formatea una fecha para enviar al backend (convierte Date o string a formato yyyy-MM-dd)
+         */
+        _formatDateForOutput: function (date) {
+            if (!date) return null;
+            
+            // Si ya es un string en formato correcto, devolverlo
+            if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return date;
+            }
+            
+            // Si es un objeto Date
+            if (date instanceof Date) {
+                const year = date.getFullYear();
+                const month = `${date.getMonth() + 1}`.padStart(2, '0');
+                const day = `${date.getDate()}`.padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
+            return null;
+        },
+
         formatterListaStatus: function (bActived, bDeleted) {
             if (bDeleted === true) return "Error";
             if (bActived === true) return "Success";
@@ -1211,7 +1243,483 @@ sap.ui.define([
             const oDetailModel = this.getView().getModel("detailView");
             MessageToast.show("Funcionalidad de guardar precios en desarrollo");
             console.log("Guardar precios llamado");
+        },
+
+        /**
+         * Abre el modal del wizard para crear una nueva lista de precios
+         */
+        onOpenListaWizard: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oViewModel = this.getView().getModel("view");
+            
+            try {
+                oViewModel.setProperty("/loading", true);
+                
+                // Resetear datos del wizard
+                oDetailModel.setProperty("/wizardData", {
+                    DESLISTA: "",
+                    IDINSTITUTOOK: "",
+                    IDTIPOLISTAOK: "",
+                    IDTIPOGENERALISTAOK: "ESPECIFICA",
+                    IDTIPOFORMULAOK: "FIJO",
+                    RANGO_PRECIOS: "",
+                    FECHAEXPIRAINI: this._formatDateForInput(new Date()),
+                    FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
+                    selectedProducts: []
+                });
+                
+                oDetailModel.setProperty("/wizardFilters", {
+                    selectedMarcas: [],
+                    selectedCategories: [],
+                    priceFrom: "",
+                    priceTo: "",
+                    selectedRango: "",
+                    dateFrom: "",
+                    dateTo: "",
+                    searchTerm: "",
+                    activeFilterCount: 0
+                });
+                
+                // Asegurar que tiposLista está disponible
+                if (!oDetailModel.getProperty("/tiposLista")) {
+                    oDetailModel.setProperty("/tiposLista", [
+                        { key: "GENERAL", text: "General" },
+                        { key: "ESPECIFICA", text: "Específica" }
+                    ]);
+                }
+                
+                // Cargar fragmento del wizard
+                if (!this.oWizardDialog) {
+                    this.oWizardDialog = await this._loadFragment("modalListasWizard");
+                }
+                
+                // Cargar productos y extraer marcas/categorías únicas
+                await this._loadAvailableMarcasCategories();
+                
+                // Cargar productos para el paso 2
+                const aProducts = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
+                    ProcessType: 'GetAll'
+                });
+                
+                // Cargar presentaciones para cada producto
+                for (const oProduct of aProducts) {
+                    if (oProduct.SKUID) {
+                        try {
+                            const aPresentaciones = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                                ProcessType: 'GetBySKUID',
+                                skuid: oProduct.SKUID
+                            });
+                            oProduct.presentaciones = aPresentaciones || [];
+                        } catch (e) {
+                            console.error(`Error loading presentaciones for ${oProduct.SKUID}:`, e);
+                            oProduct.presentaciones = [];
+                        }
+                    }
+                }
+                
+                // Guardar todos los productos (sin filtrar) para el filtrado dinámico
+                oDetailModel.setProperty("/allProductsWizard", aProducts);
+                oDetailModel.setProperty("/filteredProductsWizard", aProducts);
+                
+                this.oWizardDialog.open();
+                oViewModel.setProperty("/loading", false);
+                
+            } catch (error) {
+                console.error("Error opening wizard:", error);
+                MessageToast.show("Error al abrir el asistente");
+                oViewModel.setProperty("/loading", false);
+            }
+        },
+
+        /**
+         * Carga las marcas y categorías disponibles desde los productos
+         */
+        _loadAvailableMarcasCategories: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            
+            try {
+                // Cargar productos para extraer marcas únicas
+                const aProducts = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
+                    ProcessType: 'GetAll'
+                });
+                
+                // Extraer marcas únicas
+                const aMarcasSet = {};
+                
+                aProducts.forEach(p => {
+                    if (p.MARCA) {
+                        aMarcasSet[p.MARCA] = true;
+                    }
+                });
+                
+                const aUniqueMarcas = Object.keys(aMarcasSet).sort();
+                
+                oDetailModel.setProperty("/availableMarcas", aUniqueMarcas.map(m => ({
+                    key: m,
+                    text: m
+                })));
+                
+                // Cargar categorías desde el endpoint dedicado
+                const oCategoriesRawResponse = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
+                    ProcessType: 'GetAll'
+                });
+                
+                // Extraer las categorías de la estructura: { data: [{ dataRes: [...] }] }
+                let aCategoriesArray = [];
+                if (oCategoriesRawResponse.data && Array.isArray(oCategoriesRawResponse.data) && oCategoriesRawResponse.data.length > 0) {
+                    const oDataItem = oCategoriesRawResponse.data[0];
+                    if (oDataItem.dataRes && Array.isArray(oDataItem.dataRes)) {
+                        aCategoriesArray = oDataItem.dataRes;
+                    }
+                }
+                
+                // Guardar directamente sin transformar
+                oDetailModel.setProperty("/allCategories", aCategoriesArray);
+                
+            } catch (error) {
+                console.error("❌ Error loading marcas and categories:", error);
+                MessageToast.show("Error cargando categorías: " + error.message);
+            }
+        },
+
+        /**
+         * Maneja cambios en los filtros del wizard (Paso 1)
+         */
+        onFiltersChangedWizard: function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            const aAllProducts = oDetailModel.getProperty("/allProductsWizard") || [];
+            
+            const aFilteredProducts = this._filterProductsWizard(aAllProducts, oWizardFilters);
+            
+            // Contar filtros activos
+            let iActiveFilterCount = 0;
+            if (oWizardFilters.selectedMarcas && oWizardFilters.selectedMarcas.length > 0) iActiveFilterCount++;
+            if (oWizardFilters.selectedCategories && oWizardFilters.selectedCategories.length > 0) iActiveFilterCount++;
+            if (oWizardFilters.priceFrom) iActiveFilterCount++;
+            if (oWizardFilters.priceTo) iActiveFilterCount++;
+            if (oWizardFilters.searchTerm) iActiveFilterCount++;
+            
+            oWizardFilters.activeFilterCount = iActiveFilterCount;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            oDetailModel.setProperty("/filteredProductsWizard", aFilteredProducts);
+        },
+
+        /**
+         * Filtra productos según los filtros del wizard (Paso 1)
+         */
+        _filterProductsWizard: function (aAllProducts, oFilters) {
+            
+            let aFiltered = aAllProducts.filter(oProduct => {
+                // Filtrar por marcas seleccionadas
+                if (oFilters.selectedMarcas && oFilters.selectedMarcas.length > 0) {
+                    if (!oProduct.MARCA || !oFilters.selectedMarcas.includes(oProduct.MARCA)) {
+                        return false;
+                    }
+                }
+                
+                // Filtrar por categorías seleccionadas (usando CATID)
+                if (oFilters.selectedCategories && oFilters.selectedCategories.length > 0) {
+                    // oProduct.CATEGORIAS es un array de CATID
+                    const aProductCategories = Array.isArray(oProduct.CATEGORIAS) ? oProduct.CATEGORIAS : [];
+                    const bCategoryMatch = oFilters.selectedCategories.some(catId => 
+                        aProductCategories.includes(catId)
+                    );
+                    
+                    if (!bCategoryMatch) {
+                        return false;
+                    }
+                }
+                
+                // Filtrar por rango de precios
+                const nPrice = parseFloat(oProduct.MONTO_ACTUALIZADO) || 0;
+                const nPriceFrom = parseFloat(oFilters.priceFrom) || 0;
+                const nPriceTo = parseFloat(oFilters.priceTo) || 999999;
+                
+                if (nPrice < nPriceFrom || nPrice > nPriceTo) {
+                    return false;
+                }
+                
+                // Filtrar por búsqueda de texto
+                if (oFilters.searchTerm) {
+                    const sSearchLower = oFilters.searchTerm.toLowerCase();
+                    const bMatch = 
+                        (oProduct.SKUID && oProduct.SKUID.toLowerCase().includes(sSearchLower)) ||
+                        (oProduct.PRODUCTNAME && oProduct.PRODUCTNAME.toLowerCase().includes(sSearchLower)) ||
+                        (oProduct.MARCA && oProduct.MARCA.toLowerCase().includes(sSearchLower));
+                    
+                    if (!bMatch) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            return aFiltered;
+        },
+
+        /**
+         * Maneja la selección/deselección de productos en el wizard (Paso 2)
+         */
+        onProductSelectWizard: function (oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("detailView");
+            
+            if (!oContext) return;
+            
+            const sProductPath = oContext.getPath();
+            const bSelected = oSource.getSelected();
+            
+            const oDetailModel = this.getView().getModel("detailView");
+            oDetailModel.setProperty(sProductPath + "/selected", bSelected);
+            
+            // Actualizar array de productos seleccionados
+            const aSelectedProducts = oDetailModel.getProperty("/filteredProductsWizard")
+                .filter(p => p.selected)
+                .map(p => ({
+                    SKUID: p.SKUID,
+                    PRODUCTNAME: p.PRODUCTNAME,
+                    MARCA: p.MARCA
+                }));
+            
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            oWizardData.selectedProducts = aSelectedProducts;
+            oDetailModel.setProperty("/wizardData", oWizardData);
+            
+            MessageToast.show(`Productos seleccionados: ${aSelectedProducts.length}`);
+        },
+
+        /**
+         * Guarda la nueva lista de precios con los productos seleccionados
+         */
+        onSaveNewLista: async function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oViewModel = this.getView().getModel("view");
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            
+            // Validar que haya productos seleccionados
+            if (!oWizardData.selectedProducts || oWizardData.selectedProducts.length === 0) {
+                MessageToast.show("Debe seleccionar al menos un producto en el Paso 1");
+                return;
+            }
+            
+            // Validar campos requeridos
+            if (!oWizardData.DESLISTA || !oWizardData.DESLISTA.trim()) {
+                MessageToast.show("La descripción es requerida");
+                return;
+            }
+            
+            if (!oWizardData.IDINSTITUTOOK || !oWizardData.IDINSTITUTOOK.trim()) {
+                MessageToast.show("El instituto es requerido");
+                return;
+            }
+            
+            try {
+                oViewModel.setProperty("/saving", true);
+                
+                // Obtener usuario actual
+                const oAppViewModel = this.getOwnerComponent().getModel("appView");
+                const sLoggedUser = oAppViewModel.getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser') || "SYSTEM";
+                
+                // Generar un ID único para la lista
+                const sListaId = "LISTA_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+                
+                // Preparar datos de la nueva lista - siguiendo exactamente el patrón de actualización
+                const oNewLista = {
+                    IDLISTAOK: sListaId,
+                    SKUSIDS: JSON.stringify(oWizardData.selectedProducts.map(p => p.SKUID)),
+                    IDINSTITUTOOK: oWizardData.IDINSTITUTOOK.trim() || "",
+                    IDLISTABK: "",
+                    DESLISTA: oWizardData.DESLISTA.trim() || "",
+                    FECHAEXPIRAINI: this._formatDateForOutput(oWizardData.FECHAEXPIRAINI),
+                    FECHAEXPIRAFIN: this._formatDateForOutput(oWizardData.FECHAEXPIRAFIN),
+                    IDTIPOLISTAOK: oWizardData.IDTIPOLISTAOK || "GENERAL",
+                    IDTIPOGENERALISTAOK: oWizardData.IDTIPOGENERALISTAOK || "ESPECIFICA",
+                    IDTIPOFORMULAOK: oWizardData.IDTIPOFORMULAOK || "FIJO",
+                    REGUSER: sLoggedUser,
+                    ACTIVED: true,
+                    DELETED: false
+                };
+                
+                console.log("=== GUARDANDO NUEVA LISTA ===");
+                console.log("Productos seleccionados:", oWizardData.selectedProducts.length);
+                console.log("Datos a guardar:", JSON.stringify(oNewLista, null, 2));
+                
+                // Guardar la lista usando _callApi con ProcessType: 'AddOne'
+                const oCreatedLista = await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', oNewLista, {
+                    ProcessType: 'AddOne'
+                });
+                
+                console.log("Respuesta del servidor:", oCreatedLista);
+                
+                // Cerrar el wizard
+                this.onCloseWizard();
+                
+                // Recargar la tabla de listas
+                await this.loadListas();
+                
+                MessageToast.show(`Lista "${oWizardData.DESLISTA}" creada exitosamente`);
+                
+                oViewModel.setProperty("/saving", false);
+                
+            } catch (error) {
+                console.error("=== ERROR AL GUARDAR LISTA ===");
+                console.error("Mensaje de error:", error.message);
+                console.error("Stack trace:", error.stack);
+                MessageToast.show("Error al guardar la lista: " + error.message);
+                oViewModel.setProperty("/saving", false);
+            }
+        },
+
+        /**
+         * Maneja el cambio de Rango de Precios en el Select
+         */
+        onRangoPreciosChange: function (oEvent) {
+            const sSelectedKey = oEvent.getParameter("selectedItem").getKey();
+            const oDetailModel = this.getView().getModel("detailView");
+            
+            // Mapear el rango seleccionado a valores de precio
+            const oRangoMap = {
+                "BAJO": { min: 0, max: 500 },
+                "MEDIO": { min: 500, max: 2000 },
+                "ALTO": { min: 2000, max: 10000 },
+                "PREMIUM": { min: 10000, max: 999999 }
+            };
+            
+            const oRango = oRangoMap[sSelectedKey] || { min: 0, max: 999999 };
+            
+            // Actualizar los filtros de precio
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            oWizardFilters.priceFrom = oRango.min;
+            oWizardFilters.priceTo = oRango.max;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            // Aplicar el filtro
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Cuando cambia la Fecha de Ingreso (Desde), copia el valor a Inicio de Vigencia
+         */
+        onFechaIngresoDesdeChange: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oDatePicker = oEvent.getSource();
+            const dFechaDesde = oDatePicker.getDateValue();
+            
+            if (dFechaDesde) {
+                oDetailModel.setProperty("/wizardData/FECHAEXPIRAINI", dFechaDesde);
+            }
+        },
+
+        /**
+         * Cuando cambia la Fecha de Ingreso (Hasta), copia el valor a Fin de Vigencia
+         */
+        onFechaIngresoHastaChange: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oDatePicker = oEvent.getSource();
+            const dFechaHasta = oDatePicker.getDateValue();
+            
+            if (dFechaHasta) {
+                oDetailModel.setProperty("/wizardData/FECHAEXPIRAFIN", dFechaHasta);
+            }
+        },
+
+        /**
+         * Maneja el cambio de Rango de Precios en el Paso 2 del wizard
+         */
+        onRangoPreciosStep2Change: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const sSelectedKey = oEvent.getSource().getSelectedKey();
+            
+            // Mapeo de rangos a valores numéricos
+            const oRangoMap = {
+                "BAJO": { min: 0, max: 500 },
+                "MEDIO": { min: 500, max: 2000 },
+                "ALTO": { min: 2000, max: 10000 },
+                "PREMIUM": { min: 10000, max: 999999 }
+            };
+            
+            if (sSelectedKey && oRangoMap[sSelectedKey]) {
+                const oRango = oRangoMap[sSelectedKey];
+                oDetailModel.setProperty("/wizardFilters/priceFrom", oRango.min);
+                oDetailModel.setProperty("/wizardFilters/priceTo", oRango.max);
+                
+                // Guardar la selección del rango
+                oDetailModel.setProperty("/wizardFilters/selectedRango", sSelectedKey);
+            } else {
+                // Si no hay selección, limpiar los valores
+                oDetailModel.setProperty("/wizardFilters/priceFrom", "");
+                oDetailModel.setProperty("/wizardFilters/priceTo", "");
+                oDetailModel.setProperty("/wizardFilters/selectedRango", "");
+            }
+            
+            // Aplicar el filtro
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja el cambio de Tipo General de Lista en el RadioButtonGroup
+         */
+        onTipoGeneralChange: function (oEvent) {
+            const iSelectedIndex = oEvent.getSource().getSelectedIndex();
+            const oDetailModel = this.getView().getModel("detailView");
+            const aValores = ["ESPECIFICA", "GENERAL", "TODOS"];
+            
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            oWizardData.IDTIPOGENERALISTAOK = aValores[iSelectedIndex];
+            oDetailModel.setProperty("/wizardData", oWizardData);
+        },
+
+        /**
+         * Maneja el cambio de Tipo de Fórmula en el RadioButtonGroup
+         */
+        onTipoFormulaChange: function (oEvent) {
+            const iSelectedIndex = oEvent.getSource().getSelectedIndex();
+            const oDetailModel = this.getView().getModel("detailView");
+            const aValores = ["FIJO", "PORCENTAJE", "ESCALA"];
+            
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            oWizardData.IDTIPOFORMULAOK = aValores[iSelectedIndex];
+            oDetailModel.setProperty("/wizardData", oWizardData);
+        },
+
+        /**
+         * Limpia todos los filtros del wizard
+         */
+        onClearFiltersWizard: function () {
+            const oDetailModel = this.getView().getModel("detailView");
+            const aAllProducts = oDetailModel.getProperty("/allProductsWizard") || [];
+            
+            oDetailModel.setProperty("/wizardFilters", {
+                selectedMarcas: [],
+                selectedCategories: [],
+                priceFrom: "",
+                priceTo: "",
+                dateFrom: "",
+                dateTo: "",
+                searchTerm: "",
+                activeFilterCount: 0
+            });
+            
+            // Recargar lista de productos sin filtros
+            oDetailModel.setProperty("/filteredProductsWizard", aAllProducts);
+            
+            MessageToast.show("Filtros eliminados");
+        },
+
+        /**
+         * Cierra el modal del wizard sin guardar
+         */
+        onCloseWizard: function () {
+            if (this.oWizardDialog) {
+                this.oWizardDialog.close();
+            }
         }
     });
 });
+
+
+
 
