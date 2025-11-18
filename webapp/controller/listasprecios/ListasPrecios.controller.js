@@ -65,6 +65,7 @@ sap.ui.define([
                 activeTab: "config",
                 // Nuevas propiedades para productos con presentaciones
                 productosLista: [],
+                productosListaFiltered: [],
                 presentacionesPorSKU: {},
                 archivosPorSKU: {},
                 expandedProducts: {},
@@ -147,23 +148,26 @@ sap.ui.define([
         },
 
         onSearchProductos: function (oEvent) {
-            const sSearchTerm = oEvent.getParameter("value") || "";
+            const sQuery = oEvent.getParameter("newValue") || oEvent.getParameter("value") || "";
+            this._applyFilterProductos(sQuery);
+        },
+
+        _applyFilterProductos: function (sQuery) {
             const oDetailModel = this.getView().getModel("detailView");
-            const aProductosLista = oDetailModel.getProperty("/productosLista") || [];
-            
-            if (!sSearchTerm) {
-                oDetailModel.setProperty("/searchSKU", sSearchTerm);
-                return;
+            const aProductos = oDetailModel.getProperty("/productosLista");
+            const sLowerQuery = (sQuery || "").toLowerCase();
+
+            let aFiltered;
+            if (!sLowerQuery) {
+                aFiltered = aProductos;
+            } else {
+                aFiltered = aProductos.filter(p =>
+                    (p.SKUID && p.SKUID.toLowerCase().includes(sLowerQuery)) ||
+                    (p.PRODUCTNAME && p.PRODUCTNAME.toLowerCase().includes(sLowerQuery)) ||
+                    (p.MARCA && p.MARCA.toLowerCase().includes(sLowerQuery))
+                );
             }
-
-            const sLowerSearch = sSearchTerm.toLowerCase();
-            const aFiltered = aProductosLista.filter(oProducto => 
-                (oProducto.SKUID && oProducto.SKUID.toLowerCase().includes(sLowerSearch)) ||
-                (oProducto.PRODUCTNAME && oProducto.PRODUCTNAME.toLowerCase().includes(sLowerSearch)) ||
-                (oProducto.MARCA && oProducto.MARCA.toLowerCase().includes(sLowerSearch))
-            );
-
-            oDetailModel.setProperty("/searchSKU", sSearchTerm);
+            
             oDetailModel.setProperty("/productosListaFiltered", aFiltered);
         },
 
@@ -1094,6 +1098,7 @@ sap.ui.define([
                 }
 
                 oDetailModel.setProperty("/productosLista", aProductosConPresentaciones);
+                oDetailModel.setProperty("/productosListaFiltered", aProductosConPresentaciones);
                 
                 return aProductosConPresentaciones;
 
@@ -1101,6 +1106,7 @@ sap.ui.define([
                 console.error("Error al cargar lista de productos:", error);
                 oDetailModel.setProperty("/errorProductos", error.message);
                 oDetailModel.setProperty("/productosLista", []);
+                oDetailModel.setProperty("/productosListaFiltered", []);
                 return [];
             } finally {
                 oDetailModel.setProperty("/loadingProductos", false);

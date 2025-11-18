@@ -22,6 +22,7 @@
                     <!-- Buscador y Contador -->
                     <HBox alignItems="Center" class="sapUiSmallMarginBottom">
                         <SearchField 
+                            id="idSearchProductos"
                             placeholder="Buscar por producto o SKU..."
                             value="{detailView>/searchSKU}"
                             liveChange=".onSearchProductos"
@@ -55,7 +56,7 @@
 
                     <!-- Lista de Productos con Panels Expandibles -->
                     <VBox class="sapUiSmallMargin">
-                        <List items="{detailView>/productosLista}">
+                        <List id="idProductosList" items="{detailView>/productosListaFiltered}">
                             <CustomListItem type="Inactive">
                                 <VBox width="100%" class="sapUiSmallMarginBottom">
                                     <!-- Panel Expandible para cada Producto -->
