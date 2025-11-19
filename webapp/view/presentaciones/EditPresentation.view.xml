@@ -27,9 +27,12 @@
         </headerContent>
         <subHeader>
             <Toolbar>
-                <Title text="{parts: ['editModel>/presentationData/IdPresentaOK'], formatter: '.formatSubtitle'}" />
+                <Title
+                    level="H5"
+                    text="{= 'ID Presentación: ' + ${editModel>/presentationData/IdPresentaOK} }" />
             </Toolbar>
-        </subHeader> 
+        </subHeader>
+
         <content>
             <BusyIndicator busy="{editModel>/isLoading}" class="sapUiMediumMarginTop" />
             <VBox visible="{= !${editModel>/isLoading} }">
@@ -43,7 +46,7 @@
                     singleContainerFullSize="false">
                     <f:content>
                         <core:Title text="{i18n>editPresentationTitle}" xmlns:core="sap.ui.core" />
-                        <Label text="{i18n>editPresentationIdLabel}" />
+                        <Label text="ID Presentación" />
                         <Text text="{editModel>/presentationData/IdPresentaOK}" class="sapMObjectIdentifier" />
 
                         <Label text="{i18n>editPresentationNameLabel}" required="true" />

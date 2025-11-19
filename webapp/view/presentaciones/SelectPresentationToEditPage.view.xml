@@ -3,14 +3,14 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:l="sap.ui.layout"
-    xmlns:f="sap.f"
-    xmlns:core="sap.ui.core">
+    xmlns:f="sap.f">
 
     <Page
         id="selectPresentationPage"
         title="{i18n>selectPresentationPageTitle}"
         showNavButton="true"
         navButtonPress=".onNavBack">
+
         <headerContent>
             <Switch
                 id="multiModeSwitch"
@@ -25,8 +25,11 @@
                 press="onOpenBulkDelete"
                 visible="{= ${selectModel>/multiMode} &amp;&amp; ${selectModel>/selectedIds}.length > 0 }" />
         </headerContent>
+
         <content>
             <VBox class="sapUiSmallMargin">
+
+                <!-- Barra “Seleccionar todo” -->
                 <Toolbar visible="{= ${selectModel>/multiMode} }">
                     <CheckBox
                         text="Seleccionar Todo"
@@ -34,55 +37,76 @@
                         visible="{= ${selectModel>/presentations}.length > 0 }" />
                 </Toolbar>
 
+                <!-- Loading -->
                 <BusyIndicator busy="{selectModel>/loading}" class="sapUiMediumMarginTop" />
 
+                <!-- Sin datos -->
                 <IllustratedMessage
                     visible="{= !${selectModel>/loading} &amp;&amp; ${selectModel>/presentations}.length === 0 }"
                     illustrationType="sapIllus-EmptyList"
                     title="{i18n>selectPresentationNoDataTitle}"
                     description="{i18n>selectPresentationNoDataDesc}" />
 
-                <Text text="{selectModel>/error}" class="sapUiNegativeText sapUiSmallMargin" visible="{= !!${selectModel>/error} }" />
+                <!-- Error -->
+                <Text
+                    text="{selectModel>/error}"
+                    class="sapUiSmallMargin"
+                    visible="{= !!${selectModel>/error} }" />
 
+                <!-- GRID DE PRESENTACIONES -->
                 <f:GridContainer
                     visible="{= !${selectModel>/loading} &amp;&amp; ${selectModel>/presentations}.length > 0 }"
                     class="sapUiSmallMarginTop"
-                    defaultSpan="XL3 L4 M6 S12">
+                    defaultSpan="XL3 L4 M6 S12"
+                    items="{selectModel>/presentations}">
+
                     <f:items>
                         <f:Card
                             class="sapUiTinyMargin"
-                            width="100%"
-                            press="onCardPress"
-                            items="{path: 'selectModel>/presentations'}">
-                            <f:header>
-                                <m:HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiSmallMarginBeginEnd">
-                                    <m:VBox>
-                                        <Title text="{selectModel>NOMBREPRESENTACION}" wrapping="true" />
-                                        <Text text="{selectModel>IdPresentaOK}" />
-                                    </m:VBox>
-                                    <CheckBox
-                                        selected="{selectModel>selected}"
-                                        select="onToggleOne"
-                                        visible="{=${selectModel>/multiMode}}"
-                                        tooltip="Seleccionar" />
-                                </m:HBox>
-                            </f:header>
+                            width="100%">
+
                             <f:content>
                                 <VBox class="sapUiSmallMargin">
-                                    <Label text="Descripción" design="Bold" />
-                                    <Text text="{selectModel>Descripcion}" maxLines="3" class="sapUiTinyMarginBottom" />
 
+                                    <!-- Título + checkbox -->
+                                    <HBox
+                                        alignItems="Center"
+                                        justifyContent="SpaceBetween"
+                                        class="sapUiSmallMarginBottom">
+                                        <VBox>
+                                            <Title
+                                                text="{selectModel>NOMBREPRESENTACION}"
+                                                wrapping="true" />
+                                            <Text text="{selectModel>IdPresentaOK}" />
+                                        </VBox>
+                                        <CheckBox
+                                            selected="{selectModel>selected}"
+                                            select="onToggleOne"
+                                            visible="{= ${selectModel>/multiMode} }"
+                                            tooltip="Seleccionar" />
+                                    </HBox>
+
+                                    <!-- Descripción -->
+                                    <Label text="Descripción" design="Bold" />
+                                    <Text
+                                        text="{selectModel>Descripcion}"
+                                        maxLines="3"
+                                        class="sapUiTinyMarginBottom" />
+
+                                    <!-- Estado + botones -->
                                     <HBox alignItems="Center" justifyContent="SpaceBetween">
                                         <ObjectStatus
                                             text="{= ${selectModel>ACTIVED} ? 'Activa' : 'Inactiva' }"
                                             state="{= ${selectModel>ACTIVED} ? 'Success' : 'Warning' }" />
                                         <HBox>
+                                            <!-- Editar -->
                                             <Button
                                                 icon="sap-icon://edit"
                                                 type="Transparent"
                                                 tooltip="Editar"
                                                 press="onEditPress"
                                                 visible="{= !${selectModel>/multiMode} }" />
+                                            <!-- Eliminar individual -->
                                             <Button
                                                 icon="sap-icon://delete"
                                                 type="Transparent"
@@ -91,11 +115,14 @@
                                                 visible="{= !${selectModel>/multiMode} }" />
                                         </HBox>
                                     </HBox>
+
                                 </VBox>
                             </f:content>
+
                         </f:Card>
                     </f:items>
                 </f:GridContainer>
+
             </VBox>
         </content>
     </Page>

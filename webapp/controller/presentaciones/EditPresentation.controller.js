@@ -344,7 +344,21 @@ sap.ui.define([
 },
 
 
-        onNavBack: function () {
+                     onNavBack: function () {
+            const oModel = this.getView().getModel("editModel");
+            const sSKU = oModel && oModel.getProperty("/skuid");
+
+            // Si tenemos el SKU, siempre volvemos al grid de presentaciones
+            if (sSKU) {
+                this.getOwnerComponent().getRouter().navTo(
+                    "RouteSelectPresentationToEdit",
+                    { skuid: sSKU },
+                    true // replace en el historial
+                );
+                return;
+            }
+
+            // Fallback por si algún día no hubiera SKU
             const oHistory = History.getInstance();
             const sPreviousHash = oHistory.getPreviousHash();
 
@@ -354,7 +368,6 @@ sap.ui.define([
                 this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
             }
         },
-
         getResourceBundle: function () {
             return this.getOwnerComponent().getModel("i18n").getResourceBundle();
         },
