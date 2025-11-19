@@ -12,7 +12,10 @@ sap.ui.define([
     return Controller.extend("com.invertions.sapfiorimodinv.controller.presentaciones.SelectPresentationtoEditPage", {
 
         onInit: function () {
-            this.getOwnerComponent().getRouter().getRoute("RouteSelectPresentationToEdit").attachPatternMatched(this._onRouteMatched, this);
+            this.getOwnerComponent()
+                .getRouter()
+                .getRoute("RouteSelectPresentationToEdit")
+                .attachPatternMatched(this._onRouteMatched, this);
 
             const oSelectModel = new JSONModel({
                 skuid: null,
@@ -22,14 +25,22 @@ sap.ui.define([
                 multiMode: false,
                 selectedIds: []
             });
+
             this.getView().setModel(oSelectModel, "selectModel");
         },
 
-        _onRouteMatched: async function (oEvent) {
+        // ================= CARGA INICIAL =================
+        _onRouteMatched: function (oEvent) {
             const sSKU = oEvent.getParameter("arguments").skuid;
             const oModel = this.getView().getModel("selectModel");
-
             oModel.setProperty("/skuid", sSKU);
+
+            this._loadPresentations(sSKU);
+        },
+
+        _loadPresentations: async function (sSKU) {
+            const oModel = this.getView().getModel("selectModel");
+
             oModel.setProperty("/loading", true);
             oModel.setProperty("/error", "");
             oModel.setProperty("/presentations", []);
@@ -38,79 +49,115 @@ sap.ui.define([
 
             try {
                 const aPresentations = await this._callApi(
-                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
-                    'POST', {}, { // <-- Payload is empty
-                        ProcessType: 'GetBySKUID',
+                    "/ztproducts-presentaciones/productsPresentacionesCRUD",
+                    "POST",
+                    {},
+                    {
+                        ProcessType: "GetBySKUID",
                         skuid: sSKU
                     }
                 );
 
                 if (Array.isArray(aPresentations)) {
-                    // Añadir la propiedad 'selected' para el binding del CheckBox
-                    const aPresentationsWithSelection = aPresentations.map(p => ({ ...p, selected: false }));
-                    oModel.setProperty("/presentations", aPresentationsWithSelection);
+                    const aWithSelection = aPresentations.map(function (p) {
+                        return Object.assign({}, p, { selected: false });
+                    });
+                    oModel.setProperty("/presentations", aWithSelection);
                 } else {
                     throw new Error("La respuesta de la API no es un array.");
                 }
-
-            } catch (error) {
-                oModel.setProperty("/error", error.message || "Error al cargar las presentaciones.");
+            } catch (err) {
+                console.error(err);
+                oModel.setProperty(
+                    "/error",
+                    err.message || "Error al cargar las presentaciones."
+                );
             } finally {
                 oModel.setProperty("/loading", false);
             }
         },
 
-        onCardPress: function (oEvent) {
-            const oBindingContext = oEvent.getSource().getBindingContext("selectModel");
-            const sPresentationId = oBindingContext.getProperty("IdPresentaOK");
-            const sSKU = this.getView().getModel("selectModel").getProperty("/skuid");
+        // ================= NAVEGAR A EDITAR =================
+
+        // Click en la tarjeta (solo en modo simple)
+        onCardPress: function (oSrcControl, oEvent) {
+            // Si el control que origina el evento es un botón, no hacemos nada.
+            // Esto permite que los eventos 'press' de los botones (onEditPress, onOpenSingleDelete) se ejecuten.
+            // También ignoramos los clics en el CheckBox.
+            const sControlType = oSrcControl.getMetadata().getName();
+            if (sControlType === "sap.m.Button" || sControlType === "sap.m.CheckBox") {
+                return;
+            }
+
+            const oModel = this.getView().getModel("selectModel");
+            if (oModel.getProperty("/multiMode")) {
+                // En modo múltiple no navegamos al hacer click en la tarjeta
+                return;
+            }
+
+            // El control que origina el evento es la tarjeta (f:Card), que tiene el contexto.
+            const oCtx = oSrcControl.getBindingContext("selectModel");
+            const sId = oCtx.getProperty("IdPresentaOK");
+            const sSKU = oModel.getProperty("/skuid");
 
             this.getOwnerComponent().getRouter().navTo("RouteEditPresentation", {
                 skuid: sSKU,
-                presentationId: sPresentationId
+                presentationId: sId
             });
         },
 
+        // Click en el ícono de editar
         onEditPress: function (oEvent) {
-            // Detener la propagación para que no se active onCardPress
-            oEvent.stopPropagation();
-            const oBindingContext = oEvent.getSource().getBindingContext("selectModel");
-            const sPresentationId = oBindingContext.getProperty("IdPresentaOK");
+            const oCtx = oEvent.getSource().getBindingContext("selectModel");
+            if (!oCtx) {
+                console.error("onEditPress: sin bindingContext");
+                return;
+            }
+
+            const sId = oCtx.getProperty("IdPresentaOK");
             const sSKU = this.getView().getModel("selectModel").getProperty("/skuid");
 
             this.getOwnerComponent().getRouter().navTo("RouteEditPresentation", {
                 skuid: sSKU,
-                presentationId: sPresentationId
+                presentationId: sId
             });
         },
+
+        // ================= MODO MÚLTIPLE / CHECKBOXES =================
 
         onMultiModeChange: function (oEvent) {
             const bState = oEvent.getParameter("state");
+            const oModel = this.getView().getModel("selectModel");
+
+            oModel.setProperty("/multiMode", bState);
+
             if (!bState) {
-                // Si se desactiva el modo múltiple, deseleccionar todo
-                const oModel = this.getView().getModel("selectModel");
-                const aPresentations = oModel.getProperty("/presentations");
-                aPresentations.forEach(p => p.selected = false);
-                oModel.setProperty("/presentations", aPresentations);
+                // Se desactiva modo múltiple → limpiar selecciones
+                const aPres = oModel.getProperty("/presentations") || [];
+                aPres.forEach(function (p) { p.selected = false; });
+                oModel.setProperty("/presentations", aPres);
                 oModel.setProperty("/selectedIds", []);
             }
         },
 
         onToggleOne: function (oEvent) {
-            oEvent.stopPropagation(); // Evitar que se dispare el press de la tarjeta
+            oEvent.stopPropagation(); // que no dispare el press de la tarjeta
+
             const oCheckBox = oEvent.getSource();
-            const oContext = oCheckBox.getBindingContext("selectModel");
-            const sId = oContext.getProperty("IdPresentaOK");
+            const oCtx = oCheckBox.getBindingContext("selectModel");
+            const sId = oCtx.getProperty("IdPresentaOK");
             const bSelected = oEvent.getParameter("selected");
 
             const oModel = this.getView().getModel("selectModel");
-            oModel.setProperty(oContext.getPath() + "/selected", bSelected);
+            oModel.setProperty(oCtx.getPath() + "/selected", bSelected);
 
-            let aSelectedIds = oModel.getProperty("/selectedIds");
+            let aSelectedIds = oModel.getProperty("/selectedIds") || [];
             if (bSelected) {
-                aSelectedIds.push(sId);
+                if (!aSelectedIds.includes(sId)) {
+                    aSelectedIds.push(sId);
+                }
             } else {
-                aSelectedIds = aSelectedIds.filter(id => id !== sId);
+                aSelectedIds = aSelectedIds.filter(function (x) { return x !== sId; });
             }
             oModel.setProperty("/selectedIds", aSelectedIds);
         },
@@ -118,149 +165,185 @@ sap.ui.define([
         onSelectAll: function (oEvent) {
             const bSelected = oEvent.getParameter("selected");
             const oModel = this.getView().getModel("selectModel");
-            const aPresentations = oModel.getProperty("/presentations");
+            const aPres = oModel.getProperty("/presentations") || [];
 
-            let aSelectedIds = [];
-            aPresentations.forEach(p => {
+            const aSelectedIds = [];
+
+            aPres.forEach(function (p) {
                 p.selected = bSelected;
                 if (bSelected) {
                     aSelectedIds.push(p.IdPresentaOK);
                 }
             });
 
-            oModel.setProperty("/presentations", aPresentations);
+            oModel.setProperty("/presentations", aPres);
             oModel.setProperty("/selectedIds", aSelectedIds);
         },
 
-        onOpenSingleDelete: function (oEvent) {
-            oEvent.stopPropagation();
-            const oContext = oEvent.getSource().getBindingContext("selectModel");
-            const oPresentation = oContext.getObject();
+        // ================= ELIMINAR =================
 
-            MessageBox.confirm(`¿Seguro que deseas eliminar la presentación "${oPresentation.NOMBREPRESENTACION || oPresentation.IdPresentaOK}"?`, {
-                title: "Confirmar Eliminación",
-                onClose: (sAction) => {
-                    if (sAction === MessageBox.Action.OK) {
-                        this._deletePresentations([oPresentation.IdPresentaOK]);
+        onOpenSingleDelete: function (oEvent) {
+            const oCtx = oEvent.getSource().getBindingContext("selectModel");
+            if (!oCtx) {
+                console.error("onOpenSingleDelete: sin bindingContext");
+                return;
+            }
+
+            const oPres = oCtx.getObject();
+
+            MessageBox.confirm(
+                `¿Seguro que deseas eliminar la presentación "${oPres.NOMBREPRESENTACION || oPres.IdPresentaOK}"?`,
+                {
+                    title: "Confirmar eliminación",
+                    onClose: (sAction) => {
+                        if (sAction === MessageBox.Action.OK) {
+                            this._deletePresentations([oPres.IdPresentaOK]);
+                        }
                     }
                 }
-            });
+            );
         },
 
         onOpenBulkDelete: function () {
-            const aSelectedIds = this.getView().getModel("selectModel").getProperty("/selectedIds");
-            MessageBox.confirm(`¿Seguro que deseas eliminar ${aSelectedIds.length} presentaciones seleccionadas?`, {
-                title: "Confirmar Eliminación Múltiple",
-                onClose: (sAction) => {
-                    if (sAction === MessageBox.Action.OK) {
-                        this._deletePresentations(aSelectedIds);
+            const aIds = this.getView().getModel("selectModel").getProperty("/selectedIds") || [];
+            if (!aIds.length) {
+                return;
+            }
+
+            MessageBox.confirm(
+                `¿Seguro que deseas eliminar ${aIds.length} presentación(es) seleccionada(s)?`,
+                {
+                    title: "Confirmar eliminación múltiple",
+                    onClose: (sAction) => {
+                        if (sAction === MessageBox.Action.OK) {
+                            this._deletePresentations(aIds);
+                        }
                     }
                 }
-            });
+            );
         },
 
-        _deletePresentations: async function (aIdsToDelete) {
+        _deletePresentations: async function (aIds) {
+            if (!aIds || !aIds.length) {
+                return;
+            }
+
             const oModel = this.getView().getModel("selectModel");
             oModel.setProperty("/loading", true);
 
+            const oAppViewModel = this.getOwnerComponent().getModel("appView");
+            const sUser = oAppViewModel.getProperty("/currentUser/USERNAME") || "SYSTEM";
+
+            // Creamos un array de promesas, una por cada llamada a la API
+            const aDeletePromises = aIds.map(sId => {
+                return this._callApi(
+                    "/ztproducts-presentaciones/productsPresentacionesCRUD",
+                    "POST",
+                    null,
+                    {
+                        ProcessType: "DeleteHard",
+                        MODUSER: sUser,
+                        idpresentaok: sId // Enviamos un solo ID por llamada
+                    }
+                );
+            });
+
             try {
-                let deletePromises;
+                // Esperamos a que todas las promesas de borrado se completen
+                await Promise.all(aDeletePromises);
 
-                if (aIdsToDelete.length === 1) {
-                    // Lógica para borrado individual, como en el handleDeleteSingle de React
-                    const sIdToDelete = aIdsToDelete[0];
-                    const promise = this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
-                        ProcessType: 'DeleteHard', // Usamos el ProcessType para borrado único
-                        idpresentaok: sIdToDelete,
-                        MODUSER: this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || "SYSTEM"
-                    });
-                    deletePromises = [promise];
-                } else {
-                    // Lógica para borrado masivo (bulk)
-                    // El backend espera un payload con los IDs, no en la URL
-                    const payload = { IdPresentaOKs: aIdsToDelete };
-                    const promise = this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', payload, {
-                        ProcessType: 'DeleteMany', // Usamos el ProcessType para borrado múltiple
-                        MODUSER: this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || "SYSTEM"
-                    });
-                    deletePromises = [promise];
-                }
+                MessageToast.show(`${aIds.length} presentación(es) eliminada(s) correctamente.`);
 
-                await Promise.all(deletePromises);
+                // Recargar lista con el mismo SKU
+                const sSKU = oModel.getProperty("/skuid");
+                await this._loadPresentations(sSKU);
 
-                MessageToast.show(`${aIdsToDelete.length} presentación(es) eliminada(s) correctamente.`);
-                this._onRouteMatched({ getParameter: () => ({ arguments: { skuid: oModel.getProperty("/skuid") } }) }); // Recargar
-
-            } catch (error) {
-                MessageBox.error("Error al eliminar las presentaciones: " + error.message);
+            } catch (err) {
+                console.error(err);
+                MessageBox.error("Error al eliminar las presentaciones: " + (err.message || err));
                 oModel.setProperty("/loading", false);
             }
         },
 
+        // ================= NAVEGAR ATRÁS =================
+
         onNavBack: function () {
             const oHistory = History.getInstance();
-            const sPreviousHash = oHistory.getPreviousHash();
-            if (sPreviousHash !== undefined) {
+            const sPrev = oHistory.getPreviousHash();
+
+            if (sPrev !== undefined) {
                 window.history.go(-1);
             } else {
                 this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
             }
         },
 
-       _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
-            // 1. Añadir parámetros globales (DBServer, LoggedUser)
-            const dbServer = sessionStorage.getItem('DBServer');
-            if (dbServer === 'CosmosDB') {
-                oParams.DBServer = 'CosmosDB';
+        // ================= HELPER API =================
+
+        _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
+
+            // DBServer si aplica
+            const dbServer = sessionStorage.getItem("DBServer");
+            if (dbServer === "CosmosDB") {
+                oParams.DBServer = "CosmosDB";
             }
 
             const oAppViewModel = this.getOwnerComponent().getModel("appView");
-            const loggedUser = oAppViewModel.getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser');
-            
+            const loggedUser =
+                oAppViewModel.getProperty("/currentUser/USERNAME") ||
+                sessionStorage.getItem("LoggedUser");
+
             if (loggedUser && !oParams.LoggedUser) {
                 oParams.LoggedUser = loggedUser;
             }
 
-            // 2. Construir URL con query parameters
             const sQueryString = new URLSearchParams(oParams).toString();
             const sFullUrl = `${BASE_URL}${sRelativeUrl}?${sQueryString}`;
-            
+
+            const oFetchOptions = {
+                method: sMethod || "POST",
+                headers: { "Content-Type": "application/json" }
+            };
+
+            // Solo añadir el body si oData tiene contenido
+            if (oData && Object.keys(oData).length > 0) {
+                oFetchOptions.body = JSON.stringify(oData);
+            }
+
             try {
-                const oResponse = await fetch(sFullUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(oData || {})
-                });
+                const oResponse = await fetch(sFullUrl, oFetchOptions);
 
                 if (!oResponse.ok) {
-                    const oErrorJson = await oResponse.json();
-                    const sErrorMessage = oErrorJson.message || `Error ${oResponse.status}`;
+                    let sErrorMessage = `Error ${oResponse.status}`;
+                    try {
+                        const oErrJson = await oResponse.json();
+                        sErrorMessage = oErrJson.message || sErrorMessage;
+                    } catch (ignore) { /* nada */ }
                     throw new Error(sErrorMessage);
                 }
 
                 const oJson = await oResponse.json();
-                
-                // Lógica para desenvolver la respuesta anidada de la API
+
+                // Desenredar estructura anidada
                 if (oJson && oJson.value && Array.isArray(oJson.value) && oJson.value.length > 0) {
                     const mainResponse = oJson.value[0];
                     if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
                         const dataResponse = mainResponse.data[0];
-                        if (dataResponse.dataRes) { // No necesita ser siempre un array
+                        if (dataResponse.dataRes !== undefined) {
                             return dataResponse.dataRes;
                         }
                     }
                 }
-                // Estructura alternativa vista en otros controladores
-                if (oJson && oJson.data && Array.isArray(oJson.data) && oJson.data.length > 0 && oJson.data[0].dataRes) {
+
+                if (oJson && oJson.data && Array.isArray(oJson.data) && oJson.data.length > 0 && oJson.data[0].dataRes !== undefined) {
                     return oJson.data[0].dataRes;
                 }
-                
-                // Devolver el JSON si no tiene la estructura anidada (para otras llamadas)
-                return oJson; 
-                
-            } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
-                throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
+
+                return oJson;
+
+            } catch (err) {
+                console.error(`Error en la llamada ${sRelativeUrl}:`, err);
+                throw new Error(`Error al procesar la solicitud: ${err.message || err}`);
             }
         }
     });
