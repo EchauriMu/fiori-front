@@ -17,13 +17,23 @@ sap.ui.define([
             this._initializeModel();
             this._loadCategories();
 
+            this._initializeNavContainer();
+
             this.getOwnerComponent().getRouter().getRoute("RouteAddProduct").attachPatternMatched(this._onRouteMatched, this);
         },
 
         _onRouteMatched: function(oEvent) {
-            this.getView().byId("createProductWizard").discardProgress(this.getView().byId("ProductStep"));
+            this._initializeNavContainer();
             this._initializeModel();
             this._loadCategories();
+        },
+
+        _initializeNavContainer: function() {
+            const oNavContainer = this.getView().byId("stepNavContainer");
+            const oFirstPage = this.getView().byId("ProductStepPage");
+            if (oNavContainer && oFirstPage) {
+                oNavContainer.to(oFirstPage, "show");
+            }
         },
 
         onNavBack: function () {
@@ -59,7 +69,11 @@ sap.ui.define([
                 // --- Estado de la UI ---
                 errors: {},
                 newPresentationErrors: {},
-                showGlobalError: false
+                showGlobalError: false,
+                // --- Navegación de pasos ---
+                currentStep: 1,
+                currentStepTitle: "Paso 1: Información del Producto",
+                progressPercent: 33,
             };
 
             const oAddModel = new JSONModel(JSON.parse(JSON.stringify(oInitialData))); // Deep copy
@@ -329,13 +343,6 @@ sap.ui.define([
             return oCategory ? oCategory.Nombre : sCatId;
         },
 
-        onStepActivate: function(oEvent) {
-            const sStepId = oEvent.getSource().getId();
-            if (sStepId.includes("ReviewStep")) {
-                this.getView().getModel("addProduct").refresh();
-            }
-        },
-
         _validateStep1: function() {
             const oModel = this.getView().getModel("addProduct");
             const oData = oModel.getProperty("/");
@@ -354,10 +361,20 @@ sap.ui.define([
             return bIsValid;
         },
 
+        _validateStep2: function() {
+            const oModel = this.getView().getModel("addProduct");
+            const aPresentations = oModel.getProperty("/presentations");
+            if (!aPresentations || aPresentations.length === 0) {
+                MessageBox.warning("Debe añadir al menos una presentación para continuar.");
+                return false;
+            }
+            return true;
+        },
+
         onSaveProduct: async function () {
             if (!this._validateStep1()) {
-                this.getView().byId("createProductWizard").goToStep(this.getView().byId("ProductStep"));
-                return;
+                this.onPreviousStep(null, "ProductStepPage");
+                return; // Stop if step 1 is invalid
             }
 
             const oModel = this.getView().getModel("addProduct");
@@ -401,6 +418,80 @@ sap.ui.define([
                 }
             } catch (error) {
                 MessageBox.error("Error al guardar el producto: " + error.message);
+            }
+        },
+
+        onNextStep: function() {
+            const oModel = this.getView().getModel("addProduct");
+            const currentStep = oModel.getProperty("/currentStep");
+
+            let bIsValid = true;
+            if (currentStep === 1) {
+                bIsValid = this._validateStep1();
+            } else if (currentStep === 2) {
+                bIsValid = this._validateStep2();
+            }
+
+            if (!bIsValid) {
+                return;
+            }
+
+            const oNavContainer = this.getView().byId("stepNavContainer");
+            let nextPage;
+            let stepTitle;
+            let progressPercent;
+
+            if (currentStep === 1) {
+                nextPage = this.getView().byId("PresentationsStepPage");
+                stepTitle = "Paso 2: Presentaciones";
+                progressPercent = 66;
+            } else if (currentStep === 2) {
+                nextPage = this.getView().byId("ReviewStepPage");
+                stepTitle = "Paso 3: Revisión y Confirmación";
+                progressPercent = 100;
+                oModel.refresh(true); // Refresh for review step
+            }
+
+            if (nextPage && oNavContainer) {
+                oNavContainer.to(nextPage);
+                oModel.setProperty("/currentStep", currentStep + 1);
+                oModel.setProperty("/currentStepTitle", stepTitle);
+                oModel.setProperty("/progressPercent", progressPercent);
+            }
+        },
+
+        onPreviousStep: function(oEvent, sTargetPageId) {
+            const oModel = this.getView().getModel("addProduct");
+            const currentStep = oModel.getProperty("/currentStep");
+
+            if (currentStep <= 1 && !sTargetPageId) return;
+
+            const oNavContainer = this.getView().byId("stepNavContainer");
+            let prevPage;
+            let stepTitle;
+            let progressPercent;
+
+            if (sTargetPageId) { // Direct navigation
+                prevPage = this.getView().byId(sTargetPageId);
+                if (sTargetPageId === "ProductStepPage") {
+                    oModel.setProperty("/currentStep", 1);
+                    oModel.setProperty("/currentStepTitle", "Paso 1: Información del Producto");
+                    oModel.setProperty("/progressPercent", 33);
+                }
+            } else if (currentStep === 2) {
+                prevPage = this.getView().byId("ProductStepPage");
+                oModel.setProperty("/currentStep", 1);
+                oModel.setProperty("/currentStepTitle", "Paso 1: Información del Producto");
+                oModel.setProperty("/progressPercent", 33);
+            } else if (currentStep === 3) {
+                prevPage = this.getView().byId("PresentationsStepPage");
+                oModel.setProperty("/currentStep", 2);
+                oModel.setProperty("/currentStepTitle", "Paso 2: Presentaciones");
+                oModel.setProperty("/progressPercent", 66);
+            }
+
+            if (prevPage && oNavContainer) {
+                oNavContainer.backToPage(prevPage.getId());
             }
         }
     });

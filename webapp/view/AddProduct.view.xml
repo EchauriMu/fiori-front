@@ -7,15 +7,27 @@
     xmlns:u="sap.ui.unified"
     xmlns:core="sap.ui.core"
 >
-    <Page id="addProductPage" title="Crear Nuevo Producto" showNavButton="true" navButtonPress=".onNavBack">
+    <Page id="addProductPage" title="Crear Nuevo Producto - {addProduct>/currentStepTitle}" showNavButton="true" navButtonPress=".onNavBack">
         <content>
-            <Wizard id="createProductWizard" class="sapUiResponsivePadding--header sapUiResponsivePadding--content" finishButtonText="Guardar Producto" complete=".onSaveProduct">
+            <ProgressIndicator
+                percentValue="{addProduct>/progressPercent}"
+                displayValue="Paso {addProduct>/currentStep} de 3"
+                showValue="true"
+                state="Information"
+                class="sapUiSmallMarginBottom"
+            />
+
+            <NavContainer 
+                id="stepNavContainer"
+                autoFocus="false"
+                height="100%"
+            >
                 <!-- PASO 1: INFORMACIÓN DEL PRODUCTO PADRE -->
-                <WizardStep
-                    id="ProductStep"
-                    title="Paso 1: Información del Producto"
-                    validated="true"
-                    activate=".onStepActivate"
+                <Page
+                    id="ProductStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Complete la información principal del producto. El SKU y el código de barras se generarán automáticamente."
@@ -90,13 +102,13 @@
                             </MultiComboBox>
                         </f:content>
                     </f:SimpleForm>
-                </WizardStep>
+                </Page>
 
                 <!-- PASO 2: PRESENTACIONES -->
-                <WizardStep
-                    id="PresentationsStep"
-                    title="Paso 2: Presentaciones"
-                    activate=".onStepActivate"
+                <Page
+                    id="PresentationsStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
                 >
                     <MessageStrip
                         text="Añada una o más variantes o presentaciones para el producto. Cada presentación puede tener sus propias propiedades y archivos."
@@ -207,13 +219,14 @@
                             </VBox>
                         </l:contentAreas>
                     </l:Splitter>
-                </WizardStep>
+                </Page>
 
                 <!-- PASO 3: REVISIÓN Y CONFIRMACIÓN -->
-                <WizardStep
-                    id="ReviewStep"
-                    title="Paso 3: Revisión y Confirmación"
-                    activate=".onStepActivate"
+                <Page
+                    id="ReviewStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Verifique toda la información antes de guardar el producto. Una vez guardado, no podrá modificar el SKU ID."
@@ -270,14 +283,37 @@
                             </VBox>
                         </CustomListItem>
                     </List>
-                </WizardStep>
-            </Wizard>
+                </Page>
+            </NavContainer>
         </content>
         <footer>
             <Toolbar>
+                <Button 
+                    id="btnAnterior"
+                    text="Anterior" 
+                    icon="sap-icon://navigation-left-arrow"
+                    press=".onPreviousStep"
+                    visible="{= ${addProduct>/currentStep} > 1 }"
+                />
                 <ToolbarSpacer />
-                <!-- Los botones de navegación del Wizard se manejan automáticamente -->
                 <Button text="Cancelar" press=".onNavBack" />
+                <Button 
+                    id="btnSiguiente"
+                    text="Siguiente" 
+                    icon="sap-icon://navigation-right-arrow"
+                    iconFirst="false"
+                    type="Emphasized"
+                    press=".onNextStep"
+                    visible="{= ${addProduct>/currentStep} &lt; 3 }"
+                />
+                <Button 
+                    id="btnGuardar"
+                    text="Guardar Producto" 
+                    type="Accept"
+                    icon="sap-icon://save"
+                    press=".onSaveProduct"
+                    visible="{= ${addProduct>/currentStep} === 3 }"
+                />
             </Toolbar>
         </footer>
     </Page>

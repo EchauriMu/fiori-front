@@ -33,7 +33,11 @@ sap.ui.define([
                 selectedSKUIDs: [], 
                 selectedProduct: null,
                 activeCount: 0,
-                totalCount: 0
+                totalCount: 0,
+                // --- INICIO DE LA CORRECCIÓN: Propiedades para estado de botones ---
+                canActivate: false,
+                canDeactivate: false,
+                isMixedState: false
             });
             this.getView().setModel(oViewModel, "view");
 
@@ -309,17 +313,22 @@ sap.ui.define([
                  return;
              }
 
-             MessageBox.confirm(
-                 `¿Confirma realizar la acción '${sAction}' sobre ${iSelectedCount} producto(s)?`,
-                 {
-                     actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                     onClose: async (sResult) => {
-                         if (sResult === MessageBox.Action.YES) {
-                             await this._executeAction(sAction, aSelectedSKUIDs);
-                         }
-                     }
-                 }
-             );
+            let sConfirmText;
+            if (sAction === "DELETE") {
+                sConfirmText = `¿Estás seguro de que deseas eliminar permanentemente ${iSelectedCount} producto(s)? Esta acción no se puede deshacer.`;
+            } else if (sAction === "TOGGLE_ACTIVE") {
+                const sToggleAction = oViewModel.getProperty("/canActivate") ? "activar" : "desactivar";
+                sConfirmText = `¿Estás seguro de que deseas ${sToggleAction} ${iSelectedCount} producto(s)?`;
+            }
+
+            MessageBox.confirm(sConfirmText, {
+                actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+                onClose: async (sResult) => {
+                    if (sResult === MessageBox.Action.OK) {
+                        await this._executeAction(sAction, aSelectedSKUIDs);
+                    }
+                }
+            });
         },
 
         _executeAction: async function(sAction, aSKUIDs) {
@@ -329,14 +338,20 @@ sap.ui.define([
             
             try {
                 for (const sSKUID of aSKUIDs) {
-                    if (sAction === "DELETE") {
-                        await this._callApi('/ztproducts/crudProducts', 'DELETE', null, { ProcessType: 'DeleteLogic', skuid: sSKUID });
-                    } else if (sAction === "ACTIVATE") {
-                        await this._callApi('/ztproducts/crudProducts', 'PUT', null, { ProcessType: 'ActivateOne', skuid: sSKUID });
+                    if (sAction === "DELETE") { // Borrado físico
+                        await this._callApi('/ztproducts/crudProducts', 'POST', null, { ProcessType: 'DeleteHard', skuid: sSKUID });
+                    } else if (sAction === "TOGGLE_ACTIVE") {
+                        const bCanActivate = oViewModel.getProperty("/canActivate");
+                        if (bCanActivate) { // Activar
+                            await this._callApi('/ztproducts/crudProducts', 'POST', null, { ProcessType: 'ActivateOne', skuid: sSKUID });
+                        } else { // Desactivar (borrado lógico)
+                            await this._callApi('/ztproducts/crudProducts', 'POST', null, { ProcessType: 'DeleteLogic', skuid: sSKUID });
+                        }
                     }
                 }
                 
-                MessageToast.show(`${aSKUIDs.length} productos procesados exitosamente.`);
+                const sSuccessMessage = sAction === "DELETE" ? "eliminado(s)" : "procesado(s)";
+                MessageToast.show(`${aSKUIDs.length} producto(s) ${sSuccessMessage} exitosamente.`);
                 
             } catch (oError) {
                 oViewModel.setProperty("/error", `Error al ejecutar la acción '${sAction}'. Detalle: ${oError.message}`);
@@ -346,44 +361,73 @@ sap.ui.define([
             }
         },
 
-        onSelectAll: function (oEvent) {
-            const bSelectAll = oEvent.getParameter("selected");
+        onSelectionChange: function (oEvent) {
+            const oTable = oEvent.getSource();
+            const aSelectedItems = oTable.getSelectedItems();
             const oViewModel = this.getView().getModel("view");
-            const aFilteredProducts = oViewModel.getProperty("/filteredProducts");
-            
-            let aSelectedSKUIDs = bSelectAll 
-                ? aFilteredProducts.map(p => p.SKUID).filter(id => id)
-                : [];
-            
+
+            // Obtenemos los SKUIDs de los items seleccionados
+            const aSelectedSKUIDs = aSelectedItems.map(oItem => {
+                const oContext = oItem.getBindingContext("view");
+                return oContext ? oContext.getProperty("SKUID") : null;
+            }).filter(sSKUID => sSKUID !== null);
+
             oViewModel.setProperty("/selectedSKUIDs", aSelectedSKUIDs);
+            this._updateButtonStates();
         },
 
-        onRowSelectChange: function (oEvent) {
-            const oViewModel = this.getView().getModel("view");
-            const bIsSelected = oEvent.getParameter("selected");
-            const oContext = oEvent.getSource().getBindingContext("view");
-            
-            if (!oContext) return;
-            
-            const sSKUID = oContext.getProperty("SKUID");
-            let aSelectedSKUIDs = oViewModel.getProperty("/selectedSKUIDs").slice(); 
 
-            if (bIsSelected) {
-                if (!aSelectedSKUIDs.includes(sSKUID)) {
-                    aSelectedSKUIDs.push(sSKUID);
-                }
-            } else {
-                aSelectedSKUIDs = aSelectedSKUIDs.filter(id => id !== sSKUID);
+        // --- INICIO DE LA CORRECCIÓN: Nueva función para actualizar estado de botones ---
+        _updateButtonStates: function() {
+            const oViewModel = this.getView().getModel("view");
+            const aSelectedSKUIDs = oViewModel.getProperty("/selectedSKUIDs");
+            const aAllProducts = oViewModel.getProperty("/products");
+
+            if (aSelectedSKUIDs.length === 0) {
+                oViewModel.setProperty("/canActivate", false);
+                oViewModel.setProperty("/canDeactivate", false);
+                oViewModel.setProperty("/isMixedState", false);
+                return;
             }
+
+            const aSelectedProducts = aAllProducts.filter(p => aSelectedSKUIDs.includes(p.SKUID));
             
-            oViewModel.setProperty("/selectedSKUIDs", aSelectedSKUIDs);
+            // 1. Filtrar solo los productos que NO están DELETED (eliminados lógicamente o físicamente)
+            const aEligibleProducts = aSelectedProducts.filter(p => p.DELETED !== true); 
+
+            // 2. Contar sobre los productos elegibles (que no están marcados como eliminados)
+            const iActiveCount = aEligibleProducts.filter(p => p.ACTIVED === true).length;
+            const iInactiveCount = aEligibleProducts.filter(p => p.ACTIVED === false).length;
+
+            // 3. Determinar el estado de los botones
+            // Puede activar si todos los elegibles son inactivos.
+            const bCanActivate = iInactiveCount > 0 && iActiveCount === 0;
+            // Puede desactivar si todos los elegibles son activos.
+            const bCanDeactivate = iActiveCount > 0 && iInactiveCount === 0;
+            // Es estado mixto si hay mezcla de activos e inactivos.
+            const bIsMixedState = iActiveCount > 0 && iInactiveCount > 0; 
+            
+            // Si solo se seleccionaron productos eliminados (aEligibleProducts.length === 0),
+            // bCanActivate y bCanDeactivate serán false, lo cual es correcto.
+
+            oViewModel.setProperty("/canActivate", bCanActivate);
+            oViewModel.setProperty("/canDeactivate", bCanDeactivate);
+            oViewModel.setProperty("/isMixedState", bIsMixedState);
         },
         
         onRowClick: async function (oEvent) {
             const oProductContext = oEvent.getSource().getBindingContext("view");
-            if (oProductContext) {
-                const oProduct = oProductContext.getObject();
-                const oDetailModel = this.getView().getModel("detailView");
+            if (!oProductContext) return;
+            // La única responsabilidad de onRowClick es abrir el modal.
+            this._openDetailModal(oProductContext);
+        },
+
+        // Función auxiliar para mantener onRowClick más limpio
+        _openDetailModal: async function(oProductContext) {
+            const oProduct = oProductContext.getObject();
+            const oDetailModel = this.getView().getModel("detailView");
+
+            if (oProduct) {
 
             // --- INICIO DE LA CORRECCIÓN: No usar setData para no borrar 'allCategories' ---
             // 1. Limpiar y establecer datos del producto principal usando setProperty
