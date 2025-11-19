@@ -3,7 +3,10 @@
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
     xmlns:f="sap.ui.layout.form"
-    xmlns:l="sap.ui.layout">
+    xmlns:l="sap.ui.layout"
+    xmlns:u="sap.ui.unified"
+    xmlns:core="sap.ui.core">
+
 
     <Page
         id="editPresentationPage"
@@ -88,39 +91,58 @@
                             </CustomListItem>
                         </List>
 
-                        <core:Title text="{i18n>editPresentationFilesTitle}" xmlns:core="sap.ui.core" />
+                        <core:Title text="{i18n>editPresentationFilesTitle}" />
                         <Label text="Archivos" />
-                        <UploadCollection
-                            id="UploadCollection"
+
+                        <u:FileUploader
+                            id="editFileUploader"
+                            name="fileUploader"
                             multiple="true"
+                            fileType="jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,mp4"
                             change=".onFileChange"
-                            fileDeleted=".onFileDeleted"
-                            beforeUploadStarts=".onBeforeUploadStarts"
-                            uploadComplete=".onUploadComplete"
-                            uploadUrl="/api/upload"
-                            noDataText="{i18n>editPresentationNoFilesText}"
-                            uploadButtonVisible="true"
-                            uploadEnabled="true"
-                            items="{
-                                path: 'editModel>/files',
-                                templateShareable: true
-                            }">
-                            <toolbar>
-                                <OverflowToolbar>
-                                    <ToolbarSpacer/>
-                                    <Button text="{i18n>editPresentationUploadButton}" press=".onStartUpload" type="Emphasized" enabled="{= ${editModel>/newFilesCount} > 0 }" />
-                                </OverflowToolbar>
-                            </toolbar>
-                            <items>
-                                <UploadCollectionItem
-                                    documentId="{editModel>FILEID}"
-                                    fileName="{editModel>originalname}"
-                                    mimeType="{editModel>mimetype}"
-                                    url="{editModel>FILE}" 
-                                    thumbnailUrl="{= ${editModel>FILETYPE} === 'IMG' ? ${editModel>FILE} : '' }" 
-                                    enableEdit="false" />
-                            </items>
-                        </UploadCollection>
+                            buttonText="Subir Archivos"
+                            buttonOnly="true"
+                            icon="sap-icon://upload" />
+
+                        <List
+                            class="sapUiSmallMarginTop"
+                            items="{editModel>/files}"
+                            noDataText="{i18n>editPresentationNoFilesText}">
+                            <CustomListItem>
+                                <HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiTinyMargin">
+                                    <HBox alignItems="Center">
+                                        <!-- Si es imagen, muestra miniatura -->
+                                        <Image
+                                            src="{editModel>FILE}"
+                                            width="48px"
+                                            height="48px"
+                                            class="sapUiTinyMarginEnd"
+                                            visible="{= ${editModel>FILETYPE} === 'IMG' }" />
+                                        <!-- Si NO es imagen, muestra icono genérico -->
+                                        <core:Icon
+                                            src="{= ${editModel>FILETYPE} === 'IMG'
+                                                ? 'sap-icon://picture'
+                                                : (${editModel>FILETYPE} === 'PDF'
+                                                    ? 'sap-icon://pdf-attachment'
+                                                    : 'sap-icon://document') }"
+                                            class="sapUiTinyMarginEnd"
+                                            visible="{= ${editModel>FILETYPE} !== 'IMG' }" />
+                                        <Text text="{editModel>originalname}" />
+                                        <Label
+                                            text="(Principal)"
+                                            visible="{editModel>PRINCIPAL}"
+                                            class="sapUiTinyMarginBegin"
+                                            design="Bold" />
+                                    </HBox>
+
+                                    <Button
+                                        icon="sap-icon://delete"
+                                        type="Transparent"
+                                        press=".onRemoveFile" />
+                                </HBox>
+                            </CustomListItem>
+                        </List>
+
                     </f:content>
                 </f:SimpleForm>
             </VBox>

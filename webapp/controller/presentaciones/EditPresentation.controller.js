@@ -32,79 +32,87 @@ sap.ui.define([
         },
 
         _onRouteMatched: async function (oEvent) {
-            const sSKU = oEvent.getParameter("arguments").skuid;
-            const sPresentationId = oEvent.getParameter("arguments").presentationId;
-            const oModel = this.getView().getModel("editModel");
+    const sSKU = oEvent.getParameter("arguments").skuid;
+    const sPresentationId = oEvent.getParameter("arguments").presentationId;
+    const oModel = this.getView().getModel("editModel");
 
-            oModel.setProperty("/isLoading", true);
-            oModel.setProperty("/skuid", sSKU);
-            oModel.setProperty("/presentationId", sPresentationId);
-            oModel.setProperty("/newFilesCount", 0); // Reset counter on route match
+    oModel.setProperty("/isLoading", true);
+    oModel.setProperty("/skuid", sSKU);
+    oModel.setProperty("/presentationId", sPresentationId);
+    oModel.setProperty("/newFilesCount", 0);
 
-            try {
-                // CORRECTION: The backend expects all identifiers and process types
-                // in the URL parameters, even for POST requests. The payload for a
-                // read operation ('GetById') should be empty.
-                const oPresentationData = await this._callApi(
-                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
-                    'POST', {}, { // <-- Payload is empty
-                        ProcessType: 'GetOne',
-                        idpresentaok: sPresentationId
-                    }
-                );
-
-                // La API con 'GetOne' devuelve un único objeto, no un array.
-                // La comprobación debe ser si el objeto existe, no si el array tiene elementos.
-                if (oPresentationData && typeof oPresentationData === 'object' && !Array.isArray(oPresentationData)) {
-                    const presentation = oPresentationData; // Usamos el objeto directamente
-                    oModel.setProperty("/presentationData", presentation);
-
-                    // Parsear PropiedadesExtras
-                    let props = [];
-                    if (typeof presentation.PropiedadesExtras === 'string') {
-                        try {
-                            const propsObj = JSON.parse(presentation.PropiedadesExtras);
-                            props = Object.entries(propsObj).map(([key, value]) => ({ key, value }));
-                        } catch (e) {
-                            console.warn("PropiedadesExtras no es un JSON válido:", presentation.PropiedadesExtras);
-                        }
-                    }
-                    oModel.setProperty("/propiedadesExtras", props);
-
-                    // Cargar archivos por separado para evitar problemas de binding
-                    this._loadFilesForPresentation(sPresentationId);
-                } else {
-                    throw new Error("No se encontró la presentación o la respuesta de la API no es válida.");
-                }
-
-            } catch (error) {
-                MessageBox.error(this.getResourceBundle().getText("editPresentationLoadError"), {
-                    details: error.message
-                });
-            } finally {
-                oModel.setProperty("/isLoading", false);
+    try {
+        const oPresentationData = await this._callApi(
+            '/ztproducts-presentaciones/productsPresentacionesCRUD',
+            'POST',
+            {},
+            {
+                ProcessType: 'GetOne',
+                idpresentaok: sPresentationId
             }
-        },
+        );
 
-        _loadFilesForPresentation: async function (sPresentationId) {
-            const oModel = this.getView().getModel("editModel");
-            try {
-                const aFiles = await this._callApi(
-                    '/ztpresentaciones-archivos/presentacionesArchivosCRUD',
-                    'POST', {}, {
-                        ProcessType: 'GetByIdPresentaOK',
-                        idpresentaok: sPresentationId
-                    }
-                );
+        if (oPresentationData && typeof oPresentationData === "object" && !Array.isArray(oPresentationData)) {
+            const presentation = oPresentationData;
 
-                if (Array.isArray(aFiles)) {
-                    oModel.setProperty("/files", aFiles);
+            // Datos base de la presentación
+            oModel.setProperty("/presentationData", presentation);
+
+            // ---- Propiedades Extras: string JSON -> array {key,value} ----
+            let aProps = [];
+            if (typeof presentation.PropiedadesExtras === "string" && presentation.PropiedadesExtras.trim()) {
+                try {
+                    const oPropsObj = JSON.parse(presentation.PropiedadesExtras);
+                    aProps = Object.entries(oPropsObj).map(([key, value]) => ({ key, value }));
+                } catch (e) {
+                    console.warn("PropiedadesExtras no es un JSON válido:", presentation.PropiedadesExtras);
                 }
-            } catch (error) {
-                // No mostrar un error bloqueante, solo en consola, para no interrumpir la edición.
-                console.error("Error al cargar archivos de la presentación:", error);
             }
-        },
+            oModel.setProperty("/propiedadesExtras", aProps);
+
+            // ---- Archivos: usar lo que ya devuelve el backend en Files (como React) ----
+            const aFiles = Array.isArray(presentation.Files) ? presentation.Files : [];
+            oModel.setProperty("/files", aFiles);
+
+            // (Opcional) si quieres seguir refrescando tras subir, _loadFilesForPresentation
+            // se usará sólo después de upload, no en el load inicial.
+        } else {
+            throw new Error("No se encontró la presentación o la respuesta de la API no es válida.");
+        }
+
+    } catch (error) {
+        MessageBox.error(this.getResourceBundle().getText("editPresentationLoadError"), {
+            details: error.message
+        });
+    } finally {
+        oModel.setProperty("/isLoading", false);
+    }
+},
+
+
+              _loadFilesForPresentation: async function (sPresentationId) {
+    const oModel = this.getView().getModel("editModel");
+    try {
+        const aFiles = await this._callApi(
+            '/ztproducts-files/productsFilesCRUD',
+            'POST',
+            {},
+            {
+                ProcessType: 'GetByIdPresentaOK',
+                idPresentaOK: sPresentationId
+            }
+        );
+
+        if (Array.isArray(aFiles)) {
+            oModel.setProperty("/files", aFiles);
+        }
+    } catch (error) {
+        console.error("Error al cargar archivos:", error);
+        // No bloqueamos la edición si falla esto
+    }
+},
+
+
 
         onAddProperty: function () {
             const oModel = this.getView().getModel("editModel");
@@ -129,28 +137,86 @@ sap.ui.define([
             oModel.setProperty("/propiedadesExtras", aProps);
         },
 
-        onFileChange: function (oEvent) {
+                onFileChange: function (oEvent) {
             const oModel = this.getView().getModel("editModel");
-            const oUploadCollection = this.byId("UploadCollection");
-            const aCustomerFiles = oEvent.getParameter("files");
+            const oFileUploader = oEvent.getSource();
+            const aFiles = Array.from(oEvent.getParameter("files") || []);
 
-            // Añadir cabeceras necesarias para la subida
-            const dbServer = sessionStorage.getItem('DBServer');
-            const loggedUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser');
+            aFiles.forEach(function (file) {
+                const oReader = new FileReader();
 
-            oUploadCollection.addHeaderParameter(new sap.ui.core.Item({
-                key: "x-file-info", // El backend debe leer esta cabecera
-                text: JSON.stringify({
-                    idpresentaok: oModel.getProperty("/presentationId"),
-                    MODUSER: loggedUser,
-                    DBServer: dbServer
-                })
-            }));
+                oReader.onload = function (e) {
+                    const sFullBase64String = e.target.result;
+                    const aCurrentFiles = oModel.getProperty("/files") || [];
 
-            // Actualizar el contador de archivos nuevos
-            const iNewFileCount = oModel.getProperty("/newFilesCount") + aCustomerFiles.length;
-            oModel.setProperty("/newFilesCount", iNewFileCount);
+                    const bHasPrincipal = aCurrentFiles.some(function (f) {
+                        return f.PRINCIPAL;
+                    });
+
+                    let sFileType;
+                    if (file.type && file.type.startsWith("image/")) {
+                        sFileType = "IMG";
+                    } else if (file.type === "application/pdf") {
+                        sFileType = "PDF";
+                    } else if (file.type && file.type.startsWith("video/")) {
+                        sFileType = "VID";
+                    } else {
+                        sFileType = "OTHER";
+                    }
+
+                    const oNewFile = {
+                        fileBase64: sFullBase64String,
+                        FILETYPE: sFileType,
+                        originalname: file.name,
+                        mimetype: file.type,
+                        // si todavía no hay principal, el primer archivo se marca principal
+                        PRINCIPAL: !bHasPrincipal && aCurrentFiles.length === 0,
+                        INFOAD: "Archivo " + file.name
+                    };
+
+                    aCurrentFiles.push(oNewFile);
+                    oModel.setProperty("/files", aCurrentFiles);
+                };
+
+                oReader.readAsDataURL(file);
+            });
+
+            // limpiar el FileUploader para poder seleccionar el mismo archivo de nuevo
+            if (oFileUploader && oFileUploader.clear) {
+                oFileUploader.clear();
+            }
         },
+
+                onRemoveFile: function (oEvent) {
+            const oContext = oEvent.getSource().getBindingContext("editModel");
+            if (!oContext) {
+                return;
+            }
+
+            const sPath = oContext.getPath(); // p.ej. "/files/0"
+            const iIndex = parseInt(sPath.split("/").pop(), 10);
+
+            const oModel = this.getView().getModel("editModel");
+            const aFiles = oModel.getProperty("/files") || [];
+
+            if (iIndex < 0 || iIndex >= aFiles.length) {
+                return;
+            }
+
+            const bWasPrincipal = !!aFiles[iIndex].PRINCIPAL;
+
+            // Quitamos el archivo del arreglo (igual que en React: ya no se envía en el payload)
+            aFiles.splice(iIndex, 1);
+
+            // Si borramos el principal y quedan archivos, el primero pasa a ser principal
+            if (bWasPrincipal && aFiles.length > 0) {
+                aFiles[0].PRINCIPAL = true;
+            }
+
+            oModel.setProperty("/files", aFiles);
+        },
+
+
 
         onStartUpload: function () {
             const oUploadCollection = this.byId("UploadCollection");
@@ -198,51 +264,85 @@ sap.ui.define([
         },
 
         onSave: async function () {
-            const oModel = this.getView().getModel("editModel");
-            const oData = oModel.getProperty("/presentationData");
-            const sPresentationId = oModel.getProperty("/presentationId");
+    const oModel = this.getView().getModel("editModel");
+    const oData = oModel.getProperty("/presentationData");
+    const sPresentationId = oModel.getProperty("/presentationId");
 
-            if (!oData.NOMBREPRESENTACION) {
-                MessageBox.error("El nombre de la presentación es obligatorio.");
-                return;
+    if (!oData.NOMBREPRESENTACION) {
+        MessageBox.error("El nombre de la presentación es obligatorio.");
+        return;
+    }
+
+    oModel.setProperty("/isSubmitting", true);
+
+    // ---- 1. Propiedades Extras: array -> objeto -> string JSON (como React) ----
+    const aProps = oModel.getProperty("/propiedadesExtras") || [];
+    const oProps = aProps.reduce((acc, prop) => {
+        if (prop.key) {
+            acc[prop.key] = prop.value;
+        }
+        return acc;
+    }, {});
+
+    // ---- 2. Archivos: normalizar estructura (similar al front en React) ----
+    const aFilesFromModel = oModel.getProperty("/files") || [];
+
+    const aFilesPayload = aFilesFromModel.map(function (f) {
+        // Copia limpia sólo con los campos relevantes
+        const filePayload = {
+            FILEID: f.FILEID,
+            FILETYPE: f.FILETYPE,
+            originalname: f.originalname,
+            mimetype: f.mimetype,
+            PRINCIPAL: f.PRINCIPAL,
+            INFOAD: f.INFOAD,
+            FILE: f.FILE
+        };
+
+        // Si por alguna razón hay archivos nuevos con base64 y sin FILEID, los mandamos
+        if (f.fileBase64 && !f.FILEID) {
+            filePayload.fileBase64 = f.fileBase64;
+        }
+
+        return filePayload;
+    });
+
+    // ---- 3. Payload final, igual que updatedData en React ----
+    const payload = {
+        NOMBREPRESENTACION: oData.NOMBREPRESENTACION,
+        Descripcion: oData.Descripcion,
+        ACTIVED: !!oData.ACTIVED,
+        PropiedadesExtras: JSON.stringify(oProps),
+        files: aFilesPayload,
+        MODUSER: this.getOwnerComponent()
+                    .getModel("appView")
+                    .getProperty("/currentUser/USERNAME") || "SYSTEM"
+    };
+
+    console.log("Payload UpdateOne que se envía:", payload);
+
+    try {
+        await this._callApi(
+            '/ztproducts-presentaciones/productsPresentacionesCRUD',
+            'POST',
+            payload,
+            {
+                ProcessType: 'UpdateOne',
+                idpresentaok: sPresentationId
             }
+        );
 
-            oModel.setProperty("/isSubmitting", true);
+        MessageToast.show(this.getResourceBundle().getText("editPresentationSaveSuccess"));
+        this.onNavBack();
 
-            // Convertir array de propiedades a objeto
-            const aProps = oModel.getProperty("/propiedadesExtras");
-            const oProps = aProps.reduce((acc, prop) => {
-                acc[prop.key] = prop.value;
-                return acc;
-            }, {});
+    } catch (error) {
+        // Aquí verás el mensaje que viene del backend si trae "message"
+        MessageBox.error(this.getResourceBundle().getText("editPresentationSaveError", [error.message]));
+    } finally {
+        oModel.setProperty("/isSubmitting", false);
+    }
+},
 
-            // Se crea un payload limpio solo con los campos que se pueden modificar,
-            // igual que en la implementación de React. No se debe esparcir 'oData'
-            // porque contiene campos inmutables (IdPresentaOK, SKUID, etc.).
-            const payload = {
-                NOMBREPRESENTACION: oData.NOMBREPRESENTACION,
-                Descripcion: oData.Descripcion,
-                ACTIVED: oData.ACTIVED,
-                PropiedadesExtras: JSON.stringify(oProps),
-                files: oModel.getProperty("/files"),
-                MODUSER: this.getOwnerComponent().getModel("appView").getProperty("/currentUser/USERNAME") || "SYSTEM"
-            };
-
-            try {
-                await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', payload, {
-                    ProcessType: 'UpdateOne',
-                    idpresentaok: sPresentationId
-                });
-
-                MessageToast.show(this.getResourceBundle().getText("editPresentationSaveSuccess"));
-                this.onNavBack();
-
-            } catch (error) {
-                MessageBox.error(this.getResourceBundle().getText("editPresentationSaveError", [error.message]));
-            } finally {
-                oModel.setProperty("/isSubmitting", false);
-            }
-        },
 
         onNavBack: function () {
             const oHistory = History.getInstance();
