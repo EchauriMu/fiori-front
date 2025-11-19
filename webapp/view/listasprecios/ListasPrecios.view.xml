@@ -76,14 +76,15 @@
             </m:VBox>
 
             <!-- Tabla de Listas de Precios -->
-            <m:Table
-                id="idListasTable"
-                items="{path: 'view>/filteredListas'}"
-                visible="{= !${view>/loading} &amp;&amp; ${view>/filteredListas}.length > 0 }"
-                noDataText="No hay listas de precios para mostrar"
-                class="listasTableStyle sapUiResponsiveMargin"
-                width="100%"
-            >
+            <m:ScrollContainer height="calc(100vh - 180px)" width="100%" horizontal="true" vertical="true" class="sapUiSmallMarginBottom">
+                <m:Table
+                    id="idListasTable"
+                    items="{path: 'view>/filteredListas'}"
+                    visible="{= !${view>/loading} &amp;&amp; ${view>/filteredListas}.length > 0 }"
+                    noDataText="No hay listas de precios para mostrar"
+                    class="listasTableStyle sapUiResponsiveMargin"
+                    width="100%"
+                >
                 <m:columns>
                     <m:Column width="40px" minScreenWidth="Tablet" hAlign="Center">
                         <m:CheckBox select="onSelectAll" 
@@ -150,7 +151,7 @@
                             <m:HBox alignItems="Center">
                                 <m:Button
                                     text="{= 'SKUs (' + ${view>SKUSIDS}.length + ')'}"
-                                    type="Transparent"
+                                    type="Default"
                                     tooltip="{path: 'view>SKUSIDS', formatter: '.formatterAllSKUs'}"
                                     class="skuPopoverButton"
                                 />
@@ -192,6 +193,7 @@
                     </m:ColumnListItem>
                 </m:items>
             </m:Table>
+            </m:ScrollContainer>
         </m:VBox>
 
         <m:footer>

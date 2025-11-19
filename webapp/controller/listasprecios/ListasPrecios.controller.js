@@ -104,11 +104,11 @@ sap.ui.define([
                     { key: "ESPECIFICA", text: "Específica" }
                 ],
                 rangosPrecios: [
-                    { key: "", text: "Selecciona rango de precio..." },
-                    { key: "BAJO", text: "Bajo ($0 - $500)" },
-                    { key: "MEDIO", text: "Medio ($500 - $2,000)" },
-                    { key: "ALTO", text: "Alto ($2,000 - $10,000)" },
-                    { key: "PREMIUM", text: "Premium ($10,000+)" }
+                    { key: "", text: "Selecciona rango de precio...", min: 0, max: 999999 },
+                    { key: "BAJO", text: "Bajo ($0 - $500)", min: 0, max: 500 },
+                    { key: "MEDIO", text: "Medio ($500 - $2,000)", min: 500, max: 2000 },
+                    { key: "ALTO", text: "Alto ($2,000 - $10,000)", min: 2000, max: 10000 },
+                    { key: "PREMIUM", text: "Premium ($10,000+)", min: 10000, max: 999999 }
                 ]
             });
             this.getView().setModel(oDetailViewModel, "detailView");
@@ -1494,25 +1494,29 @@ sap.ui.define([
             const oDetailModel = this.getView().getModel("detailView");
             
             try {
-                // Cargar productos para extraer marcas únicas
+                // Cargar productos para extraer marcas únicas con contadores
                 const aProducts = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
                     ProcessType: 'GetAll'
                 });
                 
-                // Extraer marcas únicas
-                const aMarcasSet = {};
+                // Extraer marcas únicas con conteo de productos
+                const aMarcasMap = {};
                 
                 aProducts.forEach(p => {
                     if (p.MARCA) {
-                        aMarcasSet[p.MARCA] = true;
+                        if (!aMarcasMap[p.MARCA]) {
+                            aMarcasMap[p.MARCA] = 0;
+                        }
+                        aMarcasMap[p.MARCA]++;
                     }
                 });
                 
-                const aUniqueMarcas = Object.keys(aMarcasSet).sort();
+                const aUniqueMarcas = Object.keys(aMarcasMap).sort();
                 
                 oDetailModel.setProperty("/availableMarcas", aUniqueMarcas.map(m => ({
                     key: m,
-                    text: m
+                    text: m,
+                    count: aMarcasMap[m]
                 })));
                 
                 // Cargar categorías desde el endpoint dedicado
@@ -1539,27 +1543,103 @@ sap.ui.define([
         },
 
         /**
+         * Maneja cambios en MARCAS del MultiComboBox
+         */
+        onMarcasSelectionChange: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oMultiCombo = oEvent.getSource();
+            const aSelectedItems = oMultiCombo.getSelectedItems();
+            const aSelectedMarcas = aSelectedItems.map(item => item.getKey());
+            
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            oWizardFilters.selectedMarcas = aSelectedMarcas;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            console.log("Marcas seleccionadas:", aSelectedMarcas);
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja cambios en CATEGORÍAS del MultiComboBox
+         */
+        onCategoriasSelectionChange: function (oEvent) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oMultiCombo = oEvent.getSource();
+            const aSelectedItems = oMultiCombo.getSelectedItems();
+            const aSelectedCategorias = aSelectedItems.map(item => item.getKey());
+            
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            oWizardFilters.selectedCategories = aSelectedCategorias;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            console.log("Categorías seleccionadas:", aSelectedCategorias);
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja cambios en el campo de búsqueda
+         */
+        onSearchTermChange: function (oEvent) {
+            const sSearchTerm = oEvent.getParameter("newValue");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            
+            oWizardFilters.searchTerm = sSearchTerm;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            this.onFiltersChangedWizard();
+        },
+
+        /**
          * Maneja cambios en los filtros del wizard (Paso 1)
+         * Se llama cada vez que un usuario cambia un filtro
          */
         onFiltersChangedWizard: function () {
             const oDetailModel = this.getView().getModel("detailView");
             const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
             const aAllProducts = oDetailModel.getProperty("/allProductsWizard") || [];
             
+            if (!oWizardFilters || !aAllProducts || aAllProducts.length === 0) {
+                console.log("⚠️ Filtros o productos no disponibles");
+                return;
+            }
+            
+            console.log("=== APLICANDO FILTROS ===");
+            console.log("Filtros actuales:", JSON.stringify(oWizardFilters));
+            console.log("Total productos:", aAllProducts.length);
+            
+            // Aplicar filtros usando la lógica de React
             const aFilteredProducts = this._filterProductsWizard(aAllProducts, oWizardFilters);
             
             // Contar filtros activos
             let iActiveFilterCount = 0;
             if (oWizardFilters.selectedMarcas && oWizardFilters.selectedMarcas.length > 0) iActiveFilterCount++;
             if (oWizardFilters.selectedCategories && oWizardFilters.selectedCategories.length > 0) iActiveFilterCount++;
-            if (oWizardFilters.priceFrom) iActiveFilterCount++;
-            if (oWizardFilters.priceTo) iActiveFilterCount++;
+            if (oWizardFilters.priceFrom || oWizardFilters.priceTo) iActiveFilterCount++;
+            if (oWizardFilters.dateFrom || oWizardFilters.dateTo) iActiveFilterCount++;
             if (oWizardFilters.searchTerm) iActiveFilterCount++;
             
             oWizardFilters.activeFilterCount = iActiveFilterCount;
             oDetailModel.setProperty("/wizardFilters", oWizardFilters);
             
+            // Actualizar productos filtrados
             oDetailModel.setProperty("/filteredProductsWizard", aFilteredProducts);
+            
+            console.log(`✅ Filtrado: ${aFilteredProducts.length} productos encontrados de ${aAllProducts.length} disponibles`);
+        },
+
+        /**
+         * Actualiza un filtro específico y re-aplica los filtros
+         */
+        _updateWizardFilter: function (sFilterKey, vValue) {
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters") || {};
+            
+            oWizardFilters[sFilterKey] = vValue;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            // Re-aplicar filtros automáticamente
+            this.onFiltersChangedWizard();
         },
 
         /**
@@ -1568,47 +1648,56 @@ sap.ui.define([
         _filterProductsWizard: function (aAllProducts, oFilters) {
             
             let aFiltered = aAllProducts.filter(oProduct => {
-                // Filtrar por marcas seleccionadas
-                if (oFilters.selectedMarcas && oFilters.selectedMarcas.length > 0) {
-                    if (!oProduct.MARCA || !oFilters.selectedMarcas.includes(oProduct.MARCA)) {
-                        return false;
-                    }
-                }
-                
-                // Filtrar por categorías seleccionadas (usando CATID)
-                if (oFilters.selectedCategories && oFilters.selectedCategories.length > 0) {
-                    // oProduct.CATEGORIAS es un array de CATID
-                    const aProductCategories = Array.isArray(oProduct.CATEGORIAS) ? oProduct.CATEGORIAS : [];
-                    const bCategoryMatch = oFilters.selectedCategories.some(catId => 
-                        aProductCategories.includes(catId)
-                    );
-                    
-                    if (!bCategoryMatch) {
-                        return false;
-                    }
-                }
-                
-                // Filtrar por rango de precios
-                const nPrice = parseFloat(oProduct.MONTO_ACTUALIZADO) || 0;
-                const nPriceFrom = parseFloat(oFilters.priceFrom) || 0;
-                const nPriceTo = parseFloat(oFilters.priceTo) || 999999;
-                
-                if (nPrice < nPriceFrom || nPrice > nPriceTo) {
-                    return false;
-                }
-                
-                // Filtrar por búsqueda de texto
-                if (oFilters.searchTerm) {
+                // 1. FILTRO DE BÚSQUEDA DE TEXTO
+                if (oFilters.searchTerm && oFilters.searchTerm.trim() !== "") {
                     const sSearchLower = oFilters.searchTerm.toLowerCase();
                     const bMatch = 
-                        (oProduct.SKUID && oProduct.SKUID.toLowerCase().includes(sSearchLower)) ||
                         (oProduct.PRODUCTNAME && oProduct.PRODUCTNAME.toLowerCase().includes(sSearchLower)) ||
+                        (oProduct.SKUID && oProduct.SKUID.toLowerCase().includes(sSearchLower)) ||
                         (oProduct.MARCA && oProduct.MARCA.toLowerCase().includes(sSearchLower));
                     
-                    if (!bMatch) {
+                    if (!bMatch) return false;
+                }
+                
+                // 2. FILTRO POR MARCA
+                if (oFilters.selectedMarcas && oFilters.selectedMarcas.length > 0) {
+                    const sMarcaTrimmed = oProduct.MARCA ? oProduct.MARCA.trim() : "";
+                    if (!oFilters.selectedMarcas.includes(sMarcaTrimmed)) {
                         return false;
                     }
                 }
+                
+                // 4. FILTRO POR PRECIO
+                if (oFilters.priceFrom) {
+                    const nPrice = parseFloat(oProduct.PRECIO) || 0;
+                    const nPriceFrom = parseFloat(oFilters.priceFrom) || 0;
+                    if (nPrice < nPriceFrom) return false;
+                }
+                
+                if (oFilters.priceTo) {
+                    const nPrice = parseFloat(oProduct.PRECIO) || 0;
+                    const nPriceTo = parseFloat(oFilters.priceTo) || 999999;
+                    if (nPrice > nPriceTo) return false;
+                }
+                
+                // 5. FILTRO POR FECHA (DESHABILITADO TEMPORALMENTE)
+                // if (oFilters.dateFrom && oProduct.REGDATE) {
+                //     const dDateFrom = new Date(oFilters.dateFrom);
+                //     dDateFrom.setHours(0, 0, 0, 0);
+                //     const dProductDate = new Date(oProduct.REGDATE);
+                //     dProductDate.setHours(0, 0, 0, 0);
+                //     
+                //     if (!isNaN(dProductDate.getTime()) && dProductDate < dDateFrom) return false;
+                // }
+                // 
+                // if (oFilters.dateTo && oProduct.REGDATE) {
+                //     const dDateTo = new Date(oFilters.dateTo);
+                //     dDateTo.setHours(23, 59, 59, 999);
+                //     const dProductDate = new Date(oProduct.REGDATE);
+                //     dProductDate.setHours(0, 0, 0, 0);
+                //     
+                //     if (!isNaN(dProductDate.getTime()) && dProductDate > dDateTo) return false;
+                // }
                 
                 return true;
             });
@@ -1662,6 +1751,11 @@ sap.ui.define([
             }
             
             // Validar campos requeridos
+            if (!oWizardData.IDLISTAOK || !oWizardData.IDLISTAOK.trim()) {
+                MessageToast.show("El ID de la lista es requerido");
+                return;
+            }
+            
             if (!oWizardData.DESLISTA || !oWizardData.DESLISTA.trim()) {
                 MessageToast.show("La descripción es requerida");
                 return;
@@ -1679,8 +1773,8 @@ sap.ui.define([
                 const oAppViewModel = this.getOwnerComponent().getModel("appView");
                 const sLoggedUser = oAppViewModel.getProperty("/currentUser/USERNAME") || sessionStorage.getItem('LoggedUser') || "SYSTEM";
                 
-                // Generar un ID único para la lista
-                const sListaId = "LISTA_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+                // Usar el ID que el usuario ingresó
+                const sListaId = oWizardData.IDLISTAOK.trim();
                 
                 // Preparar datos de la nueva lista - siguiendo exactamente el patrón de actualización
                 const oNewLista = {
@@ -1700,6 +1794,7 @@ sap.ui.define([
                 };
                 
                 console.log("=== GUARDANDO NUEVA LISTA ===");
+                console.log("ID de la lista:", sListaId);
                 console.log("Productos seleccionados:", oWizardData.selectedProducts.length);
                 console.log("Datos a guardar:", JSON.stringify(oNewLista, null, 2));
                 
@@ -1853,16 +1948,90 @@ sap.ui.define([
                 selectedCategories: [],
                 priceFrom: "",
                 priceTo: "",
+                selectedRango: "",
                 dateFrom: "",
                 dateTo: "",
                 searchTerm: "",
                 activeFilterCount: 0
             });
             
-            // Recargar lista de productos sin filtros
             oDetailModel.setProperty("/filteredProductsWizard", aAllProducts);
+            console.log(`✅ Filtros limpiados. Mostrando ${aAllProducts.length} productos`);
+        },
+
+        /**
+         * Maneja cambio en rango de precios
+         */
+        onRangoPreciosStep2Change: function (oEvent) {
+            const sSelectedRango = oEvent.getParameter("selectedItem").getKey();
+            const oDetailModel = this.getView().getModel("detailView");
             
-            MessageToast.show("Filtros eliminados");
+            // Los rangos predefinidos del modelo detailView
+            const aRangos = oDetailModel.getProperty("/rangosPrecios") || [];
+            const oRangoSeleccionado = aRangos.find(r => r.key === sSelectedRango);
+            
+            if (oRangoSeleccionado) {
+                const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+                oWizardFilters.priceFrom = oRangoSeleccionado.min.toString();
+                oWizardFilters.priceTo = oRangoSeleccionado.max.toString();
+                oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            }
+            
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja cambio en fecha de ingreso (desde)
+         */
+        onFechaIngresoDesdeChange: function (oEvent) {
+            const dSelectedDate = oEvent.getParameter("value");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            
+            oWizardFilters.dateFrom = dSelectedDate;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja cambio en fecha de ingreso (hasta)
+         */
+        onFechaIngresoHastaChange: function (oEvent) {
+            const dSelectedDate = oEvent.getParameter("value");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardFilters = oDetailModel.getProperty("/wizardFilters");
+            
+            oWizardFilters.dateTo = dSelectedDate;
+            oDetailModel.setProperty("/wizardFilters", oWizardFilters);
+            
+            this.onFiltersChangedWizard();
+        },
+
+        /**
+         * Maneja cambio en tipo general
+         */
+        onTipoGeneralChange: function (oEvent) {
+            const iSelectedIndex = oEvent.getParameter("selectedIndex");
+            const aValues = ["ESPECIFICA", "GENERAL"];
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            
+            oWizardData.IDTIPOGENERALISTAOK = aValues[iSelectedIndex] || "ESPECIFICA";
+            oDetailModel.setProperty("/wizardData", oWizardData);
+        },
+
+        /**
+         * Maneja cambio en tipo de fórmula
+         */
+        onTipoFormulaChange: function (oEvent) {
+            const iSelectedIndex = oEvent.getParameter("selectedIndex");
+            const aValues = ["FIJO", "PORCENTAJE", "ESCALA"];
+            const oDetailModel = this.getView().getModel("detailView");
+            const oWizardData = oDetailModel.getProperty("/wizardData");
+            
+            oWizardData.IDTIPOFORMULAOK = aValues[iSelectedIndex] || "FIJO";
+            oDetailModel.setProperty("/wizardData", oWizardData);
         },
 
         /**

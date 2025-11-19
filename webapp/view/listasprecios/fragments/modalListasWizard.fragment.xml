@@ -54,13 +54,12 @@
                                                 <MultiComboBox
                                                     id="idMarcasCombo"
                                                     items="{detailView>/availableMarcas}"
-                                                    selectedKeys="{detailView>/wizardFilters/selectedMarcas}"
                                                     placeholder="Selecciona marcas..."
                                                     width="100%"
-                                                    selectionChange=".onFiltersChangedWizard"
+                                                    selectionChange=".onMarcasSelectionChange"
                                                     class="sapUiSmallMarginBottom"
                                                 >
-                                                    <core:Item key="{detailView>key}" text="{detailView>text}"/>
+                                                    <core:Item key="{detailView>key}" text="{detailView>text} ({detailView>count})"/>
                                                 </MultiComboBox>
 
                                                 <!-- Categoría -->
@@ -68,10 +67,9 @@
                                                 <MultiComboBox
                                                     id="idCategoriasCombo"
                                                     items="{detailView>/allCategories}"
-                                                    selectedKeys="{detailView>/wizardFilters/selectedCategories}"
                                                     placeholder="Selecciona categorías..."
                                                     width="100%"
-                                                    selectionChange=".onFiltersChangedWizard"
+                                                    selectionChange=".onCategoriasSelectionChange"
                                                     class="sapUiSmallMarginBottom"
                                                 >
                                                     <core:Item key="{detailView>CATID}" text="{detailView>Nombre}"/>
@@ -130,8 +128,7 @@
                                     <HBox alignItems="Center" class="sapUiSmallMarginBottom">
                                         <SearchField
                                             placeholder="Buscar por nombre, SKU, marca o categoría..."
-                                            value="{detailView>/wizardFilters/searchTerm}"
-                                            liveChange=".onFiltersChangedWizard"
+                                            liveChange=".onSearchTermChange"
                                             width="100%"
                                             class="sapUiSmallMarginEnd"
                                         />
@@ -195,6 +192,14 @@
                             
                             <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12" emptySpanXL="2" emptySpanL="2" emptySpanM="1" emptySpanS="0" class="sapUiNoMargin">
                                 <f:content>
+                                    <!-- ID de la Lista -->
+                                    <Label text="ID de la Lista" required="true"/>
+                                    <Input
+                                        value="{detailView>/wizardData/IDLISTAOK}"
+                                        placeholder="Ej: LISTA-MAYOREO-2025"
+                                        width="100%"
+                                    />
+
                                     <!-- Descripción de la lista -->
                                     <Label text="Descripción" required="true"/>
                                     <Input
@@ -210,6 +215,24 @@
                                         placeholder="Ej: INSTITUTO-XYZ"
                                         width="100%"
                                     />
+
+                                    <!-- Tipo de Lista -->
+                                    <Label text="Tipo de Lista" required="true"/>
+                                    <Select
+                                        selectedKey="{detailView>/wizardData/IDTIPOLISTAOK}"
+                                        width="100%"
+                                    >
+                                        <core:Item key="LISTA_BASE" text="Lista Base"/>
+                                        <core:Item key="LISTA_MAYORISTA" text="Lista Mayorista"/>
+                                        <core:Item key="LISTA_MINORISTA" text="Lista Minorista"/>
+                                        <core:Item key="LISTA_PROMOCIONAL" text="Lista Promocional"/>
+                                        <core:Item key="LISTA_VIP" text="Lista VIP"/>
+                                        <core:Item key="LISTA_ESTACIONAL" text="Lista Estacional"/>
+                                        <core:Item key="LISTA_REGION" text="Lista por Región"/>
+                                        <core:Item key="LISTA_CANAL" text="Lista por Canal"/>
+                                        <core:Item key="LISTA_COSTO" text="Lista de Costo"/>
+                                        <core:Item key="LISTA_ESPECIAL" text="Lista Especial"/>
+                                    </Select>
 
                                     <!-- Tipo General de Lista -->
                                     <Label text="Tipo General de Lista"/>
