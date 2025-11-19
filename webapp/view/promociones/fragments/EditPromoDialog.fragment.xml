@@ -26,35 +26,30 @@
                     class="sapUiSmallMarginBottom"
                 />
 
-                <!-- Header con información -->
-                <Panel headerText="Información de la Promoción" class="sapUiSmallMarginBottom">
-                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                        <VBox>
-                            <Title text="{editPromoModel>/IdPromoOK}" level="H4" />
-                            <Text text="Creada por: {editPromoModel>/REGUSER}" class="sapUiTinyMarginTop" />
-                            <Text text="Fecha: {path: 'editPromoModel>/REGDATE', formatter: '.formatDate'}" />
-                        </VBox>
-                        <VBox alignItems="End">
-                            <ObjectStatus 
-                                text="{path: 'editPromoModel>/', formatter: '.getPromotionStatus'}"
-                                state="{path: 'editPromoModel>/', formatter: '.getPromotionStatusState'}"
-                            />
-                            <HBox alignItems="Center" class="sapUiTinyMarginTop">
-                                <Label text="Activa:" class="sapUiTinyMarginEnd" />
-                                <Switch
-                                    state="{editPromoModel>/ACTIVED}"
-                                    change="onEditActivedChange"
-                                />
-                            </HBox>
-                        </VBox>
+                <!-- Header compacto con información -->
+                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom sapUiSmallPadding">
+                    <VBox>
+                        <Title text="{editPromoModel>/IdPromoOK}" level="H5" />
+                        <Text text="Creada por: {editPromoModel>/REGUSER} | Fecha: {path: 'editPromoModel>/REGDATE', formatter: '.formatDate'}" class="sapUiTinyText" />
+                    </VBox>
+                    <HBox alignItems="Center">
+                        <ObjectStatus 
+                            text="{path: 'editPromoModel>/', formatter: '.getPromotionStatus'}"
+                            state="{path: 'editPromoModel>/', formatter: '.getPromotionStatusState'}"
+                            class="sapUiMediumMarginEnd"
+                        />
+                        <Label text="Activa:" class="sapUiTinyMarginEnd" />
+                        <Switch
+                            state="{editPromoModel>/ACTIVED}"
+                            change="onEditActivedChange"
+                        />
                     </HBox>
-                </Panel>
+                </HBox>
 
                 <!-- Tabs de contenido -->
                 <IconTabBar
                     id="editPromoTabs"
                     select="onEditTabSelect"
-                    class="sapUiResponsiveContentPadding"
                 >
                     <!-- Tab Detalles -->
                     <items>
@@ -62,24 +57,24 @@
                             <VBox class="sapUiSmallMargin">
                                 
                                 <!-- Información Básica -->
-                                <Panel headerText="Información Básica" class="sapUiSmallMarginBottom">
-                                    <f:SimpleForm
-                                        editable="true"
-                                        layout="ResponsiveGridLayout"
-                                        labelSpanXL="3"
-                                        labelSpanL="3"
-                                        labelSpanM="3"
-                                        labelSpanS="12"
-                                        adjustLabelSpan="false"
-                                        emptySpanXL="4"
-                                        emptySpanL="4"
-                                        emptySpanM="4"
-                                        emptySpanS="0"
-                                        columnsXL="1"
-                                        columnsL="1"
-                                        columnsM="1"
-                                        singleContainerFullSize="false"
-                                    >
+                                <f:SimpleForm
+                                    editable="true"
+                                    layout="ResponsiveGridLayout"
+                                    labelSpanXL="3"
+                                    labelSpanL="3"
+                                    labelSpanM="3"
+                                    labelSpanS="12"
+                                    adjustLabelSpan="false"
+                                    emptySpanXL="4"
+                                    emptySpanL="4"
+                                    emptySpanM="4"
+                                    emptySpanS="0"
+                                    columnsXL="1"
+                                    columnsL="1"
+                                    columnsM="1"
+                                    singleContainerFullSize="false"
+                                    class="sapUiSmallMarginBottom"
+                                >
                                         <f:content>
                                             <Label text="Título" required="true" />
                                             <Input
@@ -112,13 +107,11 @@
                                             />
                                         </f:content>
                                     </f:SimpleForm>
-                                </Panel>
 
                                 <!-- Descuento -->
-                                <Panel headerText="Configuración de Descuento" class="sapUiSmallMarginBottom">
-                                    <f:SimpleForm
-                                        editable="true"
-                                        layout="ResponsiveGridLayout"
+                                <f:SimpleForm
+                                    editable="true"
+                                    layout="ResponsiveGridLayout"
                                         labelSpanXL="3"
                                         labelSpanL="3"
                                         labelSpanM="3"
@@ -168,7 +161,6 @@
                                             />
                                         </f:content>
                                     </f:SimpleForm>
-                                </Panel>
 
                             </VBox>
                         </IconTabFilter>
@@ -210,72 +202,124 @@
                                     class="sapUiSmallMarginTop"
                                 />
 
+                                <!-- Controles de paginación -->
+                                <Toolbar class="sapUiSmallMarginTop">
+                                    <ToolbarSpacer />
+                                    <Label text="Productos por página:" class="sapUiTinyMarginEnd" />
+                                    <Select
+                                        selectedKey="{editPromoModel>/itemsPerPage}"
+                                        change="onEditItemsPerPageChange"
+                                        width="80px"
+                                    >
+                                        <items>
+                                            <core:Item key="5" text="5" />
+                                            <core:Item key="10" text="10" />
+                                            <core:Item key="20" text="20" />
+                                            <core:Item key="50" text="50" />
+                                        </items>
+                                    </Select>
+                                    <ToolbarSpacer />
+                                    <Button
+                                        icon="sap-icon://navigation-left-arrow"
+                                        press="onEditPreviousPage"
+                                        enabled="{= ${editPromoModel>/currentPage} > 1 }"
+                                        type="Transparent"
+                                    />
+                                    <Text text="Página {editPromoModel>/currentPage} de {editPromoModel>/totalPages}" class="sapUiTinyMarginBegin sapUiTinyMarginEnd" />
+                                    <Button
+                                        icon="sap-icon://navigation-right-arrow"
+                                        press="onEditNextPage"
+                                        enabled="{= ${editPromoModel>/currentPage} &lt; ${editPromoModel>/totalPages} }"
+                                        type="Transparent"
+                                    />
+                                    <ToolbarSpacer />
+                                </Toolbar>
+
                                 <!-- Lista de productos agrupados -->
                                 <List
                                     id="editProductsList"
-                                    items="{path: 'editPromoModel>/groupedProducts'}"
-                                    mode="MultiSelect"
-                                    includeItemInSelection="true"
-                                    selectionChange="onEditProductsSelectionChange"
+                                    items="{path: 'editPromoModel>/paginatedGroupedProducts'}"
+                                    mode="None"
                                     noDataText="No hay productos en esta promoción. Usa 'Agregar Productos' para incluirlos."
-                                    growing="true"
-                                    growingThreshold="20"
                                     class="sapUiSmallMarginTop"
                                 >
-                                    <CustomListItem type="Active" press="onEditToggleProductExpansion">
-                                        <VBox width="100%">
-                                            <!-- Producto principal -->
-                                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
-                                                <HBox alignItems="Center">
-                                                    <core:Icon 
-                                                        src="{= ${editPromoModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }" 
-                                                        class="sapUiTinyMarginEnd"
-                                                        color="#0854A0"
-                                                    />
-                                                    <Avatar 
-                                                        initials="{= ${editPromoModel>PRODUCTNAME}.substring(0,1) }"
-                                                        displaySize="XS"
-                                                        class="sapUiTinyMarginEnd"
-                                                    />
-                                                    <VBox>
-                                                        <Text text="{editPromoModel>PRODUCTNAME}" class="sapUiTextBold" />
-                                                        <Text 
-                                                            text="SKU: {editPromoModel>SKUID} • {editPromoModel>presentaciones/length} presentación(es)"
-                                                            class="sapUiTinyText"
-                                                        />
-                                                    </VBox>
-                                                </HBox>
-                                                <ObjectNumber
-                                                    number="{editPromoModel>presentaciones/length}"
-                                                    state="Information"
-                                                />
-                                            </HBox>
-
-                                            <!-- Presentaciones expandidas -->
-                                            <VBox 
-                                                visible="{editPromoModel>expanded}"
-                                                class="sapUiSmallMarginStart sapUiSmallMarginTop"
-                                            >
-                                                <List
-                                                    items="{editPromoModel>presentaciones}"
-                                                    noDataText="Sin presentaciones"
+                                    <items>
+                                        <CustomListItem>
+                                            <VBox width="100%" class="sapUiSmallMarginBottom">
+                                                <!-- Producto principal - Header clickeable -->
+                                                <HBox 
+                                                    justifyContent="SpaceBetween" 
+                                                    alignItems="Center" 
+                                                    class="productHeader sapUiSmallPadding"
                                                 >
-                                                    <CustomListItem>
-                                                        <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%">
-                                                            <VBox>
-                                                                <Text text="{editPromoModel>NOMBREPRESENTACION}" />
-                                                                <Text text="ID: {editPromoModel>IdPresentaOK}" class="sapUiTinyText" />
-                                                            </VBox>
-                                                            <ObjectStatus
-                                                                text="${editPromoModel>Precio}"
-                                                                state="Information"
+                                                    <HBox alignItems="Center" width="40%">
+                                                        <CheckBox
+                                                            selected="{editPromoModel>allSelected}"
+                                                            select="onEditProductCheckBoxSelect"
+                                                            class="sapUiTinyMarginEnd"
+                                                        />
+                                                        <VBox width="100%">
+                                                            <Text text="{editPromoModel>PRODUCTNAME}" class="sapUiTextBold" />
+                                                            <Text 
+                                                                text="SKU: {editPromoModel>SKUID}"
+                                                                class="sapUiTinyText"
                                                             />
-                                                        </HBox>
-                                                    </CustomListItem>
-                                                </List>
+                                                        </VBox>
+                                                    </HBox>
+                                                    <HBox alignItems="Center" width="60%" justifyContent="End">
+                                                        <Text 
+                                                            text="{= ${editPromoModel>presentaciones}.length } presentación(es)" 
+                                                            class="sapUiTinyMarginEnd"
+                                                        />
+                                                        <Button
+                                                            type="Transparent"
+                                                            press="onEditToggleProductExpansion"
+                                                            icon="{= ${editPromoModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                                        />
+                                                    </HBox>
+                                                </HBox>
+
+                                                <!-- Presentaciones expandidas -->
+                                                <VBox 
+                                                    visible="{editPromoModel>expanded}"
+                                                    class="presentacionesContainer"
+                                                >
+                                                    <List
+                                                        items="{path: 'editPromoModel>presentaciones'}"
+                                                        noDataText="Sin presentaciones"
+                                                        showSeparators="Inner"
+                                                    >
+                                                        <items>
+                                                            <CustomListItem>
+                                                                <HBox 
+                                                                    justifyContent="SpaceBetween" 
+                                                                    alignItems="Center" 
+                                                                    width="100%"
+                                                                    class="sapUiSmallPadding"
+                                                                >
+                                                                    <HBox alignItems="Center" width="60%" class="sapUiMediumMarginBegin">
+                                                                        <CheckBox
+                                                                            selected="{editPromoModel>selected}"
+                                                                            select="onEditPresentacionSelect"
+                                                                            class="sapUiTinyMarginEnd"
+                                                                        />
+                                                                        <VBox width="100%">
+                                                                            <Text text="{editPromoModel>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                                            <Text text="ID: {editPromoModel>IdPresentaOK}" class="sapUiTinyText" />
+                                                                        </VBox>
+                                                                    </HBox>
+                                                                    <ObjectStatus
+                                                                        text="$ {editPromoModel>Precio}"
+                                                                        state="Success"
+                                                                    />
+                                                                </HBox>
+                                                            </CustomListItem>
+                                                        </items>
+                                                    </List>
+                                                </VBox>
                                             </VBox>
-                                        </VBox>
-                                    </CustomListItem>
+                                        </CustomListItem>
+                                    </items>
                                 </List>
 
                             </VBox>
@@ -288,6 +332,12 @@
 
         <buttons>
             <Button
+                text="Eliminar Permanentemente"
+                type="Reject"
+                press="onEditDeleteHard"
+                enabled="{= !${editPromoModel>/saving} }"
+            />
+            <Button
                 text="Guardar Cambios"
                 type="Emphasized"
                 press="onEditSavePromotion"
@@ -296,18 +346,6 @@
             <Button
                 text="Cancelar"
                 press="onEditCloseDialog"
-                enabled="{= !${editPromoModel>/saving} }"
-            />
-            <Button
-                text="Eliminar Permanentemente"
-                type="Reject"
-                press="onEditDeleteHard"
-                enabled="{= !${editPromoModel>/saving} }"
-            />
-            <Button
-                text="{= ${editPromoModel>/ACTIVED} ? 'Desactivar' : 'Activar' }"
-                type="Transparent"
-                press="onEditToggleActive"
                 enabled="{= !${editPromoModel>/saving} }"
             />
         </buttons>

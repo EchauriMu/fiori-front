@@ -669,9 +669,17 @@ sap.ui.define([
             
             // Agrupar productos
             editData.groupedProducts = this._groupProductsBySkuid(editData.ProductosAplicables);
+            editData.paginatedGroupedProducts = [];
+            editData.currentPage = 1;
+            editData.itemsPerPage = 5;
+            editData.totalPages = Math.ceil(editData.groupedProducts.length / 5);
+            console.log("📦 Datos del modelo de edición:", editData);
             
             const oEditModel = this.getView().getModel("editPromoModel");
             oEditModel.setData(editData);
+            
+            // Actualizar productos paginados
+            this._updateEditPaginatedProducts();
             
             this._editDialog.open();
         },
@@ -690,10 +698,11 @@ sap.ui.define([
         },
 
         _extractPresentacionesFromPromotion: function(oPromotion) {
+            console.log("🔍 _extractPresentacionesFromPromotion - Input promotion:", oPromotion);
             if (!oPromotion) return [];
             
             if (Array.isArray(oPromotion.ProductosAplicables)) {
-                return oPromotion.ProductosAplicables.filter(function(p) {
+                const result = oPromotion.ProductosAplicables.filter(function(p) {
                     return p && p.IdPresentaOK;
                 }).map(function(p) {
                     return {
@@ -705,11 +714,14 @@ sap.ui.define([
                         selected: false
                     };
                 });
+                console.log("✅ _extractPresentacionesFromPromotion - Output:", result);
+                return result;
             }
             return [];
         },
 
         _groupProductsBySkuid: function(aPresentaciones) {
+            console.log("🔍 _groupProductsBySkuid - Input:", aPresentaciones);
             const productMap = new Map();
             
             aPresentaciones.forEach(function(presentacion) {
@@ -720,13 +732,87 @@ sap.ui.define([
                         PRODUCTNAME: presentacion.NombreProducto || 'Sin nombre',
                         presentaciones: [],
                         expanded: false,
-                        selected: false
+                        selected: false,
+                        allSelected: false
                     });
                 }
                 productMap.get(skuid).presentaciones.push(presentacion);
             });
             
-            return Array.from(productMap.values());
+            const result = Array.from(productMap.values());
+            
+            // Actualizar allSelected para cada producto
+            result.forEach(function(product) {
+                const totalPresentaciones = product.presentaciones.length;
+                const selectedPresentaciones = product.presentaciones.filter(p => p.selected).length;
+                product.allSelected = totalPresentaciones > 0 && selectedPresentaciones === totalPresentaciones;
+            });
+            
+            console.log("✅ _groupProductsBySkuid - Output:", result);
+            return result;
+        },
+
+        onEditProductCheckBoxSelect: function(oEvent) {
+            const bSelected = oEvent.getParameter("selected");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("editPromoModel");
+            const sPath = oContext.getPath();
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const aPresentaciones = oEditModel.getProperty(sPath + "/presentaciones");
+            
+            // Seleccionar/deseleccionar todas las presentaciones del producto
+            aPresentaciones.forEach(function(pres, index) {
+                oEditModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
+            });
+            
+            oEditModel.setProperty(sPath + "/allSelected", bSelected);
+            
+            // Actualizar contador global
+            this._updateSelectedProductsCount();
+        },
+
+        onEditPresentacionSelect: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("editPromoModel");
+            const sPath = oContext.getPath();
+            
+            // Extraer el índice del producto desde el path
+            // Ejemplo: "/paginatedGroupedProducts/0/presentaciones/1" o "/groupedProducts/0/presentaciones/1"
+            const aPathParts = sPath.split("/");
+            const isPaginated = aPathParts[1] === "paginatedGroupedProducts";
+            const productIndex = parseInt(aPathParts[2]);
+            
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const basePath = isPaginated ? "/paginatedGroupedProducts/" : "/groupedProducts/";
+            const oProduct = oEditModel.getProperty(basePath + productIndex);
+            
+            // Verificar si todas las presentaciones están seleccionadas
+            const totalPresentaciones = oProduct.presentaciones.length;
+            const selectedPresentaciones = oProduct.presentaciones.filter(p => p.selected).length;
+            const bAllSelected = selectedPresentaciones === totalPresentaciones;
+            
+            oEditModel.setProperty(basePath + productIndex + "/allSelected", bAllSelected);
+            
+            // Actualizar contador global
+            this._updateSelectedProductsCount();
+        },
+        
+        _updateSelectedProductsCount: function() {
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const aAllGroupedProducts = oEditModel.getProperty("/groupedProducts") || [];
+            
+            let totalSelected = 0;
+            aAllGroupedProducts.forEach(function(product) {
+                if (product.presentaciones && Array.isArray(product.presentaciones)) {
+                    product.presentaciones.forEach(function(pres) {
+                        if (pres.selected === true) {
+                            totalSelected++;
+                        }
+                    });
+                }
+            });
+            
+            oEditModel.setProperty("/selectedProductsCount", totalSelected);
         },
 
         onEditTabSelect: function(oEvent) {
@@ -754,15 +840,18 @@ sap.ui.define([
             
             const bSelectAll = currentCount < totalPresentaciones;
             
-            aGrouped.forEach(function(product) {
-                product.selected = bSelectAll;
-                product.presentaciones.forEach(function(pres) {
+            aGrouped.forEach(function(product, productIndex) {
+                product.allSelected = bSelectAll;
+                product.presentaciones.forEach(function(pres, presIndex) {
                     pres.selected = bSelectAll;
+                    oEditModel.setProperty("/groupedProducts/" + productIndex + "/presentaciones/" + presIndex + "/selected", bSelectAll);
                 });
+                oEditModel.setProperty("/groupedProducts/" + productIndex + "/allSelected", bSelectAll);
             });
             
             oEditModel.setProperty("/groupedProducts", aGrouped);
-            oEditModel.setProperty("/selectedProductsCount", bSelectAll ? totalPresentaciones : 0);
+            this._updateEditPaginatedProducts();
+            this._updateSelectedProductsCount();
         },
 
         onEditProductsSelectionChange: function(oEvent) {
@@ -782,38 +871,45 @@ sap.ui.define([
 
         onEditRemoveSelectedProducts: function() {
             const oEditModel = this.getView().getModel("editPromoModel");
-            const oList = this.byId("editProductsList");
-            const aSelectedItems = oList.getSelectedItems();
+            const aGroupedProducts = oEditModel.getProperty("/paginatedGroupedProducts") || [];
+            const aAllGroupedProducts = oEditModel.getProperty("/groupedProducts") || [];
             
-            if (aSelectedItems.length === 0) {
+            // Recolectar presentaciones seleccionadas de TODOS los productos (no solo los paginados)
+            const selectedPresentaciones = [];
+            aAllGroupedProducts.forEach(function(product) {
+                if (product.presentaciones && Array.isArray(product.presentaciones)) {
+                    product.presentaciones.forEach(function(pres) {
+                        if (pres.selected === true) {
+                            selectedPresentaciones.push(pres.IdPresentaOK);
+                        }
+                    });
+                }
+            });
+            
+            if (selectedPresentaciones.length === 0) {
                 MessageBox.warning("No hay productos seleccionados para eliminar.");
                 return;
             }
             
             const that = this;
             MessageBox.confirm(
-                `¿Estás seguro de eliminar ${aSelectedItems.length} producto(s) de la promoción?`,
+                `¿Estás seguro de eliminar ${selectedPresentaciones.length} presentación(es) de la promoción?`,
                 {
                     onClose: function(oAction) {
                         if (oAction === MessageBox.Action.OK) {
-                            const skuidsToRemove = new Set();
-                            aSelectedItems.forEach(function(oItem) {
-                                const oContext = oItem.getBindingContext("editPromoModel");
-                                const oProduct = oContext.getObject();
-                                skuidsToRemove.add(oProduct.SKUID);
-                            });
-                            
+                            // Filtrar ProductosAplicables para remover las presentaciones seleccionadas
                             const aProductos = oEditModel.getProperty("/ProductosAplicables");
                             const aFiltered = aProductos.filter(function(p) {
-                                return !skuidsToRemove.has(p.SKUID);
+                                return !selectedPresentaciones.includes(p.IdPresentaOK);
                             });
                             
                             oEditModel.setProperty("/ProductosAplicables", aFiltered);
                             oEditModel.setProperty("/groupedProducts", that._groupProductsBySkuid(aFiltered));
                             oEditModel.setProperty("/selectedProductsCount", 0);
+                            oEditModel.setProperty("/currentPage", 1);
+                            that._updateEditPaginatedProducts();
                             
-                            oList.removeSelections();
-                            MessageToast.show(`${aSelectedItems.length} producto(s) eliminado(s)`);
+                            MessageToast.show(`${selectedPresentaciones.length} presentación(es) eliminada(s)`);
                         }
                     }
                 }
@@ -838,6 +934,49 @@ sap.ui.define([
             });
             
             oEditModel.setProperty("/groupedProducts", this._groupProductsBySkuid(aFiltered));
+            oEditModel.setProperty("/currentPage", 1);
+            this._updateEditPaginatedProducts();
+        },
+
+        _updateEditPaginatedProducts: function() {
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const aAllProducts = oEditModel.getProperty("/groupedProducts") || [];
+            const currentPage = oEditModel.getProperty("/currentPage") || 1;
+            const itemsPerPage = oEditModel.getProperty("/itemsPerPage") || 5;
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const aPaginated = aAllProducts.slice(startIndex, endIndex);
+            
+            oEditModel.setProperty("/paginatedGroupedProducts", aPaginated);
+            oEditModel.setProperty("/totalPages", Math.ceil(aAllProducts.length / itemsPerPage));
+        },
+
+        onEditPreviousPage: function() {
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const currentPage = oEditModel.getProperty("/currentPage");
+            if (currentPage > 1) {
+                oEditModel.setProperty("/currentPage", currentPage - 1);
+                this._updateEditPaginatedProducts();
+            }
+        },
+
+        onEditNextPage: function() {
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const currentPage = oEditModel.getProperty("/currentPage");
+            const totalPages = oEditModel.getProperty("/totalPages");
+            if (currentPage < totalPages) {
+                oEditModel.setProperty("/currentPage", currentPage + 1);
+                this._updateEditPaginatedProducts();
+            }
+        },
+
+        onEditItemsPerPageChange: function(oEvent) {
+            const oEditModel = this.getView().getModel("editPromoModel");
+            const sKey = oEvent.getParameter("selectedItem").getKey();
+            oEditModel.setProperty("/itemsPerPage", parseInt(sKey));
+            oEditModel.setProperty("/currentPage", 1);
+            this._updateEditPaginatedProducts();
         },
 
         onEditToggleProductExpansion: function(oEvent) {
@@ -873,6 +1012,15 @@ sap.ui.define([
             oFilterModel.setProperty("/selectedPresentacionesCount", 0);
             oFilterModel.setProperty("/errorMessage", "");
             
+            // Inicializar paginación
+            oFilterModel.setProperty("/pagination", {
+                currentPage: 1,
+                itemsPerPage: 5,
+                totalPages: 1,
+                totalItems: 0
+            });
+            oFilterModel.setProperty("/paginatedProducts", []);
+            
             // Cargar datos de productos y categorías
             await this._loadFilterData();
             
@@ -883,82 +1031,57 @@ sap.ui.define([
             const oFilterModel = this.getView().getModel("filterModel");
             oFilterModel.setProperty("/loading", true);
             oFilterModel.setProperty("/errorMessage", "");
-            
+
             try {
-                console.log("🔄 Cargando datos de filtros...");
-                
                 // Cargar productos
-                const oProductsResponse = await this._callApi('/ztproductos/crudProductos', 'POST', {}, {
-                    ProcessType: 'GetAll',
-                    DBServer: 'MongoDB'
+                const oProductsResponse = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
+                    ProcessType: 'GetAll'
                 });
-                
-                console.log("📦 Respuesta de productos:", oProductsResponse);
-                
+
                 let aProducts = [];
-                // Intentar múltiples estructuras de respuesta
                 if (oProductsResponse?.data?.[0]?.dataRes) {
                     aProducts = oProductsResponse.data[0].dataRes;
-                }
-                else if (oProductsResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                } else if (oProductsResponse?.value?.[0]?.data?.[0]?.dataRes) {
                     aProducts = oProductsResponse.value[0].data[0].dataRes;
-                }
-                else if (Array.isArray(oProductsResponse?.data)) {
+                } else if (Array.isArray(oProductsResponse?.data)) {
                     aProducts = oProductsResponse.data;
-                }
-                else if (Array.isArray(oProductsResponse)) {
+                } else if (Array.isArray(oProductsResponse)) {
                     aProducts = oProductsResponse;
                 }
-                
-                console.log("✅ Productos extraídos:", aProducts.length);
-                
-                // Filtrar solo productos activos
+
                 const aActiveProducts = aProducts.filter(function(p) {
                     return p.ACTIVED === true && p.DELETED !== true;
                 });
-                
-                console.log("✅ Productos activos:", aActiveProducts.length);
-                
-                // Cargar categorías
+
+                // Categorías
                 const oCategoriesResponse = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
                     ProcessType: 'GetAll',
                     DBServer: 'MongoDB'
                 });
-                
-                console.log("📂 Respuesta de categorías:", oCategoriesResponse);
-                
+
                 let aCategories = [];
-                // Intentar múltiples estructuras de respuesta
                 if (oCategoriesResponse?.data?.[0]?.dataRes) {
                     aCategories = oCategoriesResponse.data[0].dataRes;
-                }
-                else if (oCategoriesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                } else if (oCategoriesResponse?.value?.[0]?.data?.[0]?.dataRes) {
                     aCategories = oCategoriesResponse.value[0].data[0].dataRes;
-                }
-                else if (Array.isArray(oCategoriesResponse?.data)) {
+                } else if (Array.isArray(oCategoriesResponse?.data)) {
                     aCategories = oCategoriesResponse.data;
-                }
-                else if (Array.isArray(oCategoriesResponse)) {
+                } else if (Array.isArray(oCategoriesResponse)) {
                     aCategories = oCategoriesResponse;
                 }
-                
-                console.log("✅ Categorías extraídas:", aCategories.length);
-                
-                // Filtrar solo categorías activas
+
                 const aActiveCategories = aCategories.filter(function(c) {
                     return c.ACTIVED === true && c.DELETED !== true;
                 });
-                
-                console.log("✅ Categorías activas:", aActiveCategories.length);
-                
-                // Extraer marcas únicas
+
+                // Marcas únicas
                 const brandsSet = new Set();
                 aActiveProducts.forEach(function(p) {
                     if (p.MARCA && p.MARCA.trim() !== '') {
                         brandsSet.add(p.MARCA.trim());
                     }
                 });
-                
+
                 const aBrands = Array.from(brandsSet).map(function(marca) {
                     const count = aActiveProducts.filter(function(p) { return p.MARCA === marca; }).length;
                     return {
@@ -966,27 +1089,17 @@ sap.ui.define([
                         name: marca,
                         productos: count
                     };
-                }).sort(function(a, b) {
-                    return a.name.localeCompare(b.name);
-                });
-                
-                console.log("✅ Marcas extraídas:", aBrands.length, aBrands);
-                
+                }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+
                 oFilterModel.setProperty("/allProducts", aActiveProducts);
                 oFilterModel.setProperty("/allCategories", aActiveCategories);
                 oFilterModel.setProperty("/allBrands", aBrands);
-                
-                console.log("📊 Datos cargados en modelo:", {
-                    productos: aActiveProducts.length,
-                    categorias: aActiveCategories.length,
-                    marcas: aBrands.length
-                });
-                
+
                 // Aplicar filtros iniciales
                 this._applyProductFilters();
-                
+
             } catch (error) {
-                console.error("❌ Error cargando datos de filtros:", error);
+                console.error("Error cargando datos de filtros:", error);
                 oFilterModel.setProperty("/errorMessage", "Error al cargar productos: " + error.message);
             } finally {
                 oFilterModel.setProperty("/loading", false);
@@ -995,72 +1108,64 @@ sap.ui.define([
 
         _applyProductFilters: function() {
             const oFilterModel = this.getView().getModel("filterModel");
-            const aAllProducts = oFilterModel.getProperty("/allProducts");
-            const oFilters = oFilterModel.getProperty("/filters");
-            const sSearchTerm = oFilterModel.getProperty("/searchTerm");
-            
-            console.log("🔍 Aplicando filtros...", {
+            const aAllProducts = oFilterModel.getProperty("/allProducts") || [];
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            const sSearchTerm = oFilterModel.getProperty("/searchTerm") || '';
+
+            console.log("🔍 Aplicando filtros:", {
                 totalProductos: aAllProducts.length,
                 filtros: oFilters,
-                busqueda: sSearchTerm
+                busqueda: sSearchTerm,
+                primerProducto: aAllProducts[0]
             });
-            
+
             let aFiltered = aAllProducts.filter(function(product) {
-                // Filtro de búsqueda
+                // Búsqueda
                 if (sSearchTerm && sSearchTerm.trim() !== '') {
                     const searchLower = sSearchTerm.toLowerCase();
                     const matchesSearch =
                         (product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(searchLower)) ||
                         (product.SKUID && product.SKUID.toLowerCase().includes(searchLower)) ||
                         (product.MARCA && product.MARCA.toLowerCase().includes(searchLower));
-                    
-                    if (!matchesSearch) return false;
+                    if (!matchesSearch) { return false; }
                 }
-                
-                // Filtro de marcas
+
+                // Marcas
                 if (oFilters.marcas && oFilters.marcas.length > 0) {
                     if (!product.MARCA || !oFilters.marcas.includes(product.MARCA)) {
                         return false;
                     }
                 }
-                
-                // Filtro de categorías
+
+                // Categorías (suponiendo array CATEGORIAS)
                 if (oFilters.categorias && oFilters.categorias.length > 0) {
+                    console.log("📂 Filtrando por categorías:", oFilters.categorias, "Producto:", product.SKUID, "CATEGORIAS:", product.CATEGORIAS);
                     if (!product.CATEGORIAS || !Array.isArray(product.CATEGORIAS)) {
+                        console.log("❌ Producto sin CATEGORIAS o no es array");
                         return false;
                     }
                     const hasCategory = product.CATEGORIAS.some(function(cat) {
                         return oFilters.categorias.includes(cat);
                     });
-                    if (!hasCategory) return false;
+                    if (!hasCategory) { 
+                        console.log("❌ Producto no tiene categoría seleccionada");
+                        return false; 
+                    }
                 }
-                
-                // Filtro de precio
+
+                // Precio
                 if (oFilters.precioMin && product.PRECIO < parseFloat(oFilters.precioMin)) {
                     return false;
                 }
                 if (oFilters.precioMax && product.PRECIO > parseFloat(oFilters.precioMax)) {
                     return false;
                 }
-                
-                // Filtro de fecha
-                if (oFilters.fechaIngresoDesde) {
-                    const dateFrom = new Date(oFilters.fechaIngresoDesde);
-                    const productDate = new Date(product.REGDATE);
-                    if (productDate < dateFrom) return false;
-                }
-                if (oFilters.fechaIngresoHasta) {
-                    const dateTo = new Date(oFilters.fechaIngresoHasta);
-                    const productDate = new Date(product.REGDATE);
-                    if (productDate > dateTo) return false;
-                }
-                
+
                 return true;
             });
-            
+
             console.log("✅ Productos filtrados:", aFiltered.length);
-            
-            // Agregar información de presentaciones
+
             aFiltered = aFiltered.map(function(product) {
                 return {
                     SKUID: product.SKUID,
@@ -1070,20 +1175,162 @@ sap.ui.define([
                     CATEGORIAS: product.CATEGORIAS,
                     REGDATE: product.REGDATE,
                     ACTIVED: product.ACTIVED,
-                    expanded: false,
+                    expanded: false, // CONTRAÍDOS por defecto
                     presentaciones: [],
                     presentacionesCount: 0,
-                    loadingPresentaciones: false
+                    loadingPresentaciones: false,
+                    presentacionesLoaded: false,
+                    allSelected: false
                 };
             });
-            
+
             oFilterModel.setProperty("/filteredProducts", aFiltered);
             oFilterModel.setProperty("/filteredProductsCount", aFiltered.length);
             
-            console.log("📊 Resultados actualizados:", aFiltered.length, "productos");
-            
+            // Cargar presentaciones en paralelo para todos los productos (en background)
+            this._loadAllPresentacionesParallel(aFiltered);
+
             // Actualizar contador de filtros activos
             this._updateActiveFiltersCount();
+            
+            // Actualizar paginación
+            this._updateFilterPagination();
+        },
+
+        _loadAllPresentacionesParallel: async function(aProducts) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const lockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
+            
+            console.log(`🚀 Cargando presentaciones para ${aProducts.length} productos en paralelo...`);
+            
+            try {
+                // Cargar todas las presentaciones en paralelo usando Promise.all
+                await Promise.all(aProducts.map(async (product, index) => {
+                    try {
+                        const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                            ProcessType: 'GetBySKUID',
+                            skuid: product.SKUID
+                        });
+                        
+                        let aPresentaciones = [];
+                        if (oPresentacionesResponse?.data?.[0]?.dataRes) {
+                            aPresentaciones = oPresentacionesResponse.data[0].dataRes;
+                        } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                            aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
+                        } else if (Array.isArray(oPresentacionesResponse?.data)) {
+                            aPresentaciones = oPresentacionesResponse.data;
+                        } else if (Array.isArray(oPresentacionesResponse)) {
+                            aPresentaciones = oPresentacionesResponse;
+                        }
+                        
+                        const aPresentacionesActivas = aPresentaciones
+                            .filter(function(p) { return p.ACTIVED === true && p.DELETED !== true; })
+                            .map(function(p) {
+                                const isLocked = lockedIds.includes(p.IdPresentaOK);
+                                return {
+                                    ...p,
+                                    selected: isLocked,
+                                    locked: isLocked,
+                                    PRECIO: p.PRECIO || 0
+                                };
+                            });
+                        
+                        oFilterModel.setProperty(`/filteredProducts/${index}/presentaciones`, aPresentacionesActivas);
+                        oFilterModel.setProperty(`/filteredProducts/${index}/presentacionesCount`, aPresentacionesActivas.length);
+                        oFilterModel.setProperty(`/filteredProducts/${index}/presentacionesLoaded`, true);
+                        oFilterModel.setProperty(`/filteredProducts/${index}/loadingPresentaciones`, false);
+                        
+                    } catch (error) {
+                        console.error(`Error cargando presentaciones para ${product.SKUID}:`, error);
+                        oFilterModel.setProperty(`/filteredProducts/${index}/loadingPresentaciones`, false);
+                    }
+                }));
+                
+                console.log("✅ Todas las presentaciones cargadas");
+                this._updateSelectedPresentacionesCount();
+                
+            } catch (error) {
+                console.error("Error en carga paralela de presentaciones:", error);
+            }
+        },
+
+        _loadAllPresentaciones: async function(aProducts) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const lockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
+            
+            console.log("🚀 Iniciando carga de presentaciones para", aProducts.length, "productos");
+            
+            for (let i = 0; i < aProducts.length; i++) {
+                const product = aProducts[i];
+                
+                try {
+                    const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                        ProcessType: 'GetBySKUID',
+                        skuid: product.SKUID,
+                        DBServer: 'MongoDB'
+                    });
+                    
+                    console.log(`📦 Respuesta presentaciones para ${product.SKUID}:`, oPresentacionesResponse);
+                    
+                    let aPresentaciones = [];
+                    if (oPresentacionesResponse?.data?.[0]?.dataRes) {
+                        aPresentaciones = oPresentacionesResponse.data[0].dataRes;
+                    } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                        aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
+                    }
+                    
+                    console.log(`✅ Presentaciones encontradas para ${product.SKUID}:`, aPresentaciones.length);
+                    
+                    // Filtrar activas y agregar información adicional
+                    const aPresentacionesActivas = aPresentaciones
+                        .filter(function(p) { return p.ACTIVED === true && p.DELETED !== true; })
+                        .map(function(p) {
+                            const isLocked = lockedIds.includes(p.IdPresentaOK);
+                            return {
+                                ...p,
+                                selected: isLocked, // Si está bloqueada, también debe estar seleccionada
+                                locked: isLocked,
+                                precio: 0,
+                                listaPrecios: ''
+                            };
+                        });
+                    
+                    // Cargar precios para cada presentación
+                    for (const pres of aPresentacionesActivas) {
+                        try {
+                            const oPreciosResponse = await this._callApi('/ztprecios-items/preciosItemsCRUD', 'POST', {}, {
+                                ProcessType: 'GetByIdPresentaOK',
+                                idPresentaOK: pres.IdPresentaOK,
+                                DBServer: 'MongoDB'
+                            });
+                            
+                            let aPrecios = [];
+                            if (oPreciosResponse?.data?.[0]?.dataRes) {
+                                aPrecios = oPreciosResponse.data[0].dataRes;
+                            } else if (oPreciosResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                                aPrecios = oPreciosResponse.value[0].data[0].dataRes;
+                            }
+                            
+                            if (aPrecios.length > 0) {
+                                pres.precio = aPrecios[0].PRECIO || 0;
+                                pres.listaPrecios = aPrecios[0].IdListaPreciosOK || '';
+                            }
+                        } catch (error) {
+                            console.error("Error cargando precios:", error);
+                        }
+                    }
+                    
+                    oFilterModel.setProperty(`/filteredProducts/${i}/presentaciones`, aPresentacionesActivas);
+                    oFilterModel.setProperty(`/filteredProducts/${i}/presentacionesCount`, aPresentacionesActivas.length);
+                    
+                    console.log(`💾 Guardadas ${aPresentacionesActivas.length} presentaciones para producto ${i}`);
+                    
+                } catch (error) {
+                    console.error(`Error cargando presentaciones para ${product.SKUID}:`, error);
+                }
+            }
+            
+            console.log("✅ Carga de presentaciones completada");
         },
 
         _updateActiveFiltersCount: function() {
@@ -1101,6 +1348,56 @@ sap.ui.define([
             oFilterModel.setProperty("/activeFiltersCount", count);
         },
 
+        _updateFilterPagination: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const aAllProducts = oFilterModel.getProperty("/filteredProducts") || [];
+            const oPagination = oFilterModel.getProperty("/pagination") || {};
+            
+            const currentPage = oPagination.currentPage || 1;
+            const itemsPerPage = oPagination.itemsPerPage || 10;
+            const totalItems = aAllProducts.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+            const aPaginatedProducts = aAllProducts.slice(startIndex, endIndex);
+            
+            oFilterModel.setProperty("/paginatedProducts", aPaginatedProducts);
+            oFilterModel.setProperty("/pagination/totalPages", totalPages);
+            oFilterModel.setProperty("/pagination/totalItems", totalItems);
+            
+            // Asegurar que currentPage no sea mayor que totalPages
+            if (currentPage > totalPages && totalPages > 0) {
+                oFilterModel.setProperty("/pagination/currentPage", totalPages);
+                this._updateFilterPagination();
+            }
+        },
+
+        onFilterPageSizeChange: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/pagination/currentPage", 1);
+            this._updateFilterPagination();
+        },
+
+        onFilterPreviousPage: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const currentPage = oFilterModel.getProperty("/pagination/currentPage");
+            if (currentPage > 1) {
+                oFilterModel.setProperty("/pagination/currentPage", currentPage - 1);
+                this._updateFilterPagination();
+            }
+        },
+
+        onFilterNextPage: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const currentPage = oFilterModel.getProperty("/pagination/currentPage");
+            const totalPages = oFilterModel.getProperty("/pagination/totalPages");
+            if (currentPage < totalPages) {
+                oFilterModel.setProperty("/pagination/currentPage", currentPage + 1);
+                this._updateFilterPagination();
+            }
+        },
+
         onFilterSearch: function(oEvent) {
             const sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
             const oFilterModel = this.getView().getModel("filterModel");
@@ -1109,26 +1406,20 @@ sap.ui.define([
         },
 
         onFilterCategoryChange: function(oEvent) {
-            console.log("🔄 Evento de cambio de categoría", oEvent);
-            const aSelectedItems = oEvent.getParameter("selectedItems");
-            console.log("📊 Items seleccionados:", aSelectedItems);
-            const aKeys = aSelectedItems.map(function(item) {
-                return item.getKey();
-            });
-            console.log("🔑 Keys extraídos:", aKeys);
+            const oMultiComboBox = oEvent.getSource();
+            const aSelectedKeys = oMultiComboBox.getSelectedKeys();
             const oFilterModel = this.getView().getModel("filterModel");
-            oFilterModel.setProperty("/filters/categorias", aKeys);
-            console.log("✅ Categorías actualizadas en modelo:", oFilterModel.getProperty("/filters/categorias"));
+            console.log("📂 Categorías seleccionadas:", aSelectedKeys);
+            oFilterModel.setProperty("/filters/categorias", aSelectedKeys);
             this._applyProductFilters();
         },
 
         onFilterBrandChange: function(oEvent) {
-            const aSelectedItems = oEvent.getParameter("selectedItems");
-            const aKeys = aSelectedItems.map(function(item) {
-                return item.getKey();
-            });
+            const oMultiComboBox = oEvent.getSource();
+            const aSelectedKeys = oMultiComboBox.getSelectedKeys();
             const oFilterModel = this.getView().getModel("filterModel");
-            oFilterModel.setProperty("/filters/marcas", aKeys);
+            console.log("🏷️ Marcas seleccionadas:", aSelectedKeys);
+            oFilterModel.setProperty("/filters/marcas", aSelectedKeys);
             this._applyProductFilters();
         },
 
@@ -1151,6 +1442,19 @@ sap.ui.define([
                 fechaIngresoDesde: '',
                 fechaIngresoHasta: ''
             });
+            
+            // Limpiar también los controles de UI
+            const oView = this.getView();
+            const oCategoriesFilter = oView.byId("categoriesFilter");
+            const oBrandsFilter = oView.byId("brandsFilter");
+            
+            if (oCategoriesFilter) {
+                oCategoriesFilter.setSelectedKeys([]);
+            }
+            if (oBrandsFilter) {
+                oBrandsFilter.setSelectedKeys([]);
+            }
+            
             this._applyProductFilters();
         },
 
@@ -1165,72 +1469,45 @@ sap.ui.define([
             oFilterModel.setProperty(sPath + "/expanded", !bExpanded);
             
             // Si se está expandiendo y no se han cargado las presentaciones
-            if (!bExpanded && oProduct.presentaciones.length === 0) {
+            if (!bExpanded && !oProduct.presentacionesLoaded) {
                 oFilterModel.setProperty(sPath + "/loadingPresentaciones", true);
                 
                 try {
-                    const oPresentacionesResponse = await this._callApi('/ztproductospresentaciones/crudProductosPresentaciones', 'POST', {}, {
-                        ProcessType: 'GetAll',
-                        SKUID: oProduct.SKUID,
-                        DBServer: 'MongoDB'
+                    const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                        ProcessType: 'GetBySKUID',
+                        skuid: oProduct.SKUID
                     });
                     
                     let aPresentaciones = [];
-                    if (oPresentacionesResponse && oPresentacionesResponse.value && Array.isArray(oPresentacionesResponse.value) && oPresentacionesResponse.value.length > 0) {
-                        const mainResponse = oPresentacionesResponse.value[0];
-                        if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
-                            const dataResponse = mainResponse.data[0];
-                            if (dataResponse.dataRes && Array.isArray(dataResponse.dataRes)) {
-                                aPresentaciones = dataResponse.dataRes;
-                            }
-                        }
+                    if (oPresentacionesResponse?.data?.[0]?.dataRes) {
+                        aPresentaciones = oPresentacionesResponse.data[0].dataRes;
+                    } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                        aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
+                    } else if (Array.isArray(oPresentacionesResponse?.data)) {
+                        aPresentaciones = oPresentacionesResponse.data;
+                    } else if (Array.isArray(oPresentacionesResponse)) {
+                        aPresentaciones = oPresentacionesResponse;
                     }
                     
                     // Filtrar activas y agregar información adicional
-                    const lockedIds = oFilterModel.getProperty("/lockedPresentaciones");
+                    const lockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
                     const aPresentacionesActivas = aPresentaciones
                         .filter(function(p) { return p.ACTIVED === true && p.DELETED !== true; })
                         .map(function(p) {
+                            const isLocked = lockedIds.includes(p.IdPresentaOK);
                             return {
                                 ...p,
-                                selected: false,
-                                locked: lockedIds.includes(p.IdPresentaOK),
-                                precio: 0,
-                                listaPrecios: ''
+                                selected: isLocked,
+                                locked: isLocked,
+                                PRECIO: p.PRECIO || 0 // Usar precio del producto si existe
                             };
                         });
                     
-                    // Cargar precios para cada presentación
-                    for (const pres of aPresentacionesActivas) {
-                        try {
-                            const oPreciosResponse = await this._callApi('/ztpreciositems/crudPreciosItems', 'POST', {}, {
-                                ProcessType: 'GetAll',
-                                IdPresentaOK: pres.IdPresentaOK,
-                                DBServer: 'MongoDB'
-                            });
-                            
-                            let aPrecios = [];
-                            if (oPreciosResponse && oPreciosResponse.value && Array.isArray(oPreciosResponse.value) && oPreciosResponse.value.length > 0) {
-                                const mainResponse = oPreciosResponse.value[0];
-                                if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
-                                    const dataResponse = mainResponse.data[0];
-                                    if (dataResponse.dataRes && Array.isArray(dataResponse.dataRes)) {
-                                        aPrecios = dataResponse.dataRes;
-                                    }
-                                }
-                            }
-                            
-                            if (aPrecios.length > 0) {
-                                pres.precio = aPrecios[0].Precio || 0;
-                                pres.listaPrecios = aPrecios[0].IdListaPreciosOK || '';
-                            }
-                        } catch (error) {
-                            console.error("Error cargando precios:", error);
-                        }
-                    }
-                    
                     oFilterModel.setProperty(sPath + "/presentaciones", aPresentacionesActivas);
                     oFilterModel.setProperty(sPath + "/presentacionesCount", aPresentacionesActivas.length);
+                    oFilterModel.setProperty(sPath + "/presentacionesLoaded", true);
+                    
+                    this._updateSelectedPresentacionesCount();
                     
                 } catch (error) {
                     console.error("Error cargando presentaciones:", error);
@@ -1249,7 +1526,50 @@ sap.ui.define([
             const oFilterModel = this.getView().getModel("filterModel");
             
             oFilterModel.setProperty(sPath + "/selected", bSelected);
+            
+            // Actualizar checkbox del producto
+            const aPathParts = sPath.split("/");
+            const productIndex = parseInt(aPathParts[2]);
+            this._updateFilterProductCheckBox(productIndex);
+            
             this._updateSelectedPresentacionesCount();
+        },
+
+        onFilterProductCheckBoxSelect: function(oEvent) {
+            const bSelected = oEvent.getParameter("selected");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("filterModel");
+            const sPath = oContext.getPath();
+            const oFilterModel = this.getView().getModel("filterModel");
+            const aPresentaciones = oFilterModel.getProperty(sPath + "/presentaciones");
+            
+            console.log("🔍 Checkbox producto - Seleccionado:", bSelected);
+            console.log("📦 Presentaciones del producto:", aPresentaciones);
+            
+            // Seleccionar/deseleccionar todas las presentaciones no bloqueadas del producto
+            if (aPresentaciones && aPresentaciones.length > 0) {
+                aPresentaciones.forEach(function(pres, index) {
+                    if (!pres.locked) {
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
+                    }
+                });
+            }
+            
+            oFilterModel.setProperty(sPath + "/allSelected", bSelected);
+            this._updateSelectedPresentacionesCount();
+        },
+
+        _updateFilterProductCheckBox: function(productIndex) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oProduct = oFilterModel.getProperty("/filteredProducts/" + productIndex);
+            
+            if (!oProduct || !oProduct.presentaciones) return;
+            
+            const totalPresentaciones = oProduct.presentaciones.filter(p => !p.locked).length;
+            const selectedPresentaciones = oProduct.presentaciones.filter(p => p.selected && !p.locked).length;
+            const bAllSelected = totalPresentaciones > 0 && selectedPresentaciones === totalPresentaciones;
+            
+            oFilterModel.setProperty("/filteredProducts/" + productIndex + "/allSelected", bAllSelected);
         },
 
         onFilterTogglePresentacion: function(oEvent) {
@@ -1345,6 +1665,8 @@ sap.ui.define([
             
             oEditModel.setProperty("/ProductosAplicables", aCombined);
             oEditModel.setProperty("/groupedProducts", this._groupProductsBySkuid(aCombined));
+            oEditModel.setProperty("/currentPage", 1);
+            this._updateEditPaginatedProducts();
             
             MessageToast.show(`${aNewPresentaciones.length} presentación(es) agregada(s) a la promoción`);
             this._addProductsDialog.close();
@@ -1368,10 +1690,110 @@ sap.ui.define([
             this._applyProductFilters();
         },
 
-        onSelectAllProducts: function(oEvent) {
+        onSelectAllProducts: async function(oEvent) {
             const bSelected = oEvent.getParameter("selected");
             const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts");
+            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
+            
+            if (!bSelected) {
+                // Si es deseleccionar, hacerlo directamente
+                this.onClearSelection();
+                return;
+            }
+            
+            if (aProducts.length === 0) {
+                MessageToast.show("No hay productos para seleccionar");
+                return;
+            }
+            
+            // Mostrar busy indicator
+            oFilterModel.setProperty("/loading", true);
+            
+            try {
+                // Identificar productos que necesitan cargar presentaciones
+                const productsToLoad = aProducts
+                    .map((p, index) => ({ product: p, index: index }))
+                    .filter(item => !item.product.presentacionesLoaded);
+                
+                if (productsToLoad.length > 0) {
+                    console.log(`🚀 Cargando presentaciones para ${productsToLoad.length} productos en paralelo...`);
+                    
+                    // Cargar todas las presentaciones en paralelo
+                    const lockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
+                    
+                    await Promise.all(productsToLoad.map(async (item) => {
+                        try {
+                            const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
+                                ProcessType: 'GetBySKUID',
+                                skuid: item.product.SKUID
+                            });
+                            
+                            let aPresentaciones = [];
+                            if (oPresentacionesResponse?.data?.[0]?.dataRes) {
+                                aPresentaciones = oPresentacionesResponse.data[0].dataRes;
+                            } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                                aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
+                            } else if (Array.isArray(oPresentacionesResponse?.data)) {
+                                aPresentaciones = oPresentacionesResponse.data;
+                            } else if (Array.isArray(oPresentacionesResponse)) {
+                                aPresentaciones = oPresentacionesResponse;
+                            }
+                            
+                            const aPresentacionesActivas = aPresentaciones
+                                .filter(function(p) { return p.ACTIVED === true && p.DELETED !== true; })
+                                .map(function(p) {
+                                    const isLocked = lockedIds.includes(p.IdPresentaOK);
+                                    return {
+                                        ...p,
+                                        selected: true, // Seleccionar todas
+                                        locked: isLocked,
+                                        PRECIO: p.PRECIO || 0
+                                    };
+                                });
+                            
+                            oFilterModel.setProperty(`/filteredProducts/${item.index}/presentaciones`, aPresentacionesActivas);
+                            oFilterModel.setProperty(`/filteredProducts/${item.index}/presentacionesCount`, aPresentacionesActivas.length);
+                            oFilterModel.setProperty(`/filteredProducts/${item.index}/presentacionesLoaded`, true);
+                            oFilterModel.setProperty(`/filteredProducts/${item.index}/expanded`, true);
+                            oFilterModel.setProperty(`/filteredProducts/${item.index}/allSelected`, true);
+                            
+                        } catch (error) {
+                            console.error(`Error cargando presentaciones para ${item.product.SKUID}:`, error);
+                        }
+                    }));
+                }
+                
+                // Seleccionar todas las presentaciones ya cargadas
+                aProducts.forEach(function(product, productIndex) {
+                    if (product.presentaciones && Array.isArray(product.presentaciones) && product.presentaciones.length > 0) {
+                        product.presentaciones.forEach(function(pres, presIndex) {
+                            if (!pres.locked) {
+                                oFilterModel.setProperty(
+                                    `/filteredProducts/${productIndex}/presentaciones/${presIndex}/selected`,
+                                    true
+                                );
+                            }
+                        });
+                        oFilterModel.setProperty(`/filteredProducts/${productIndex}/allSelected`, true);
+                        oFilterModel.setProperty(`/filteredProducts/${productIndex}/expanded`, true);
+                    }
+                });
+                
+                this._updateSelectedPresentacionesCount();
+                this._updateFilterPagination(); // Actualizar paginación
+                MessageToast.show(`${aProducts.length} productos seleccionados con todas sus presentaciones`);
+                
+            } catch (error) {
+                console.error("Error en seleccionar todos:", error);
+                MessageToast.show("Error al seleccionar productos");
+            } finally {
+                oFilterModel.setProperty("/loading", false);
+            }
+        },
+
+        onClearSelection: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
             
             aProducts.forEach(function(product, productIndex) {
                 if (product.presentaciones && Array.isArray(product.presentaciones)) {
@@ -1379,32 +1801,16 @@ sap.ui.define([
                         if (!pres.locked) {
                             oFilterModel.setProperty(
                                 `/filteredProducts/${productIndex}/presentaciones/${presIndex}/selected`,
-                                bSelected
+                                false
                             );
                         }
                     });
+                    oFilterModel.setProperty(`/filteredProducts/${productIndex}/allSelected`, false);
                 }
             });
             
             this._updateSelectedPresentacionesCount();
-        },
-
-        onClearSelection: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts");
-            
-            aProducts.forEach(function(product, productIndex) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(function(pres, presIndex) {
-                        oFilterModel.setProperty(
-                            `/filteredProducts/${productIndex}/presentaciones/${presIndex}/selected`,
-                            false
-                        );
-                    });
-                }
-            });
-            
-            this._updateSelectedPresentacionesCount();
+            this._updateFilterPagination();
         },
 
         onPresentacionPress: function(oEvent) {

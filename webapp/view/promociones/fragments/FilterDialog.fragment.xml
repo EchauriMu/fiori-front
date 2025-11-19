@@ -40,16 +40,17 @@
                             <MultiComboBox
                                 placeholder="Seleccionar categorías..."
                                 items="{filterModel>/allCategories}"
+                                selectedKeys="{filterModel>/filters/categorias}"
                                 selectionChange=".onFilterCategoryChange"
                             >
-                                <!-- Ajusta IdCategoriaOK/Descripcion a los campos reales de categoría -->
-                                <core:Item key="{filterModel>IdCategoriaOK}" text="{filterModel>Descripcion}" />
+                                <core:Item key="{filterModel>CATID}" text="{filterModel>Nombre}" />
                             </MultiComboBox>
 
                             <Label text="Marca" />
                             <MultiComboBox
                                 placeholder="Seleccionar marcas..."
                                 items="{filterModel>/allBrands}"
+                                selectedKeys="{filterModel>/filters/marcas}"
                                 selectionChange=".onFilterBrandChange"
                             >
                                 <core:Item key="{filterModel>id}" text="{filterModel>name}" />
@@ -77,7 +78,6 @@
                     </f:SimpleForm>
                     <Toolbar>
                         <ToolbarSpacer />
-                        <Button text="Aplicar Filtros" type="Emphasized" press=".onFilterSearch" />
                         <Button text="Limpiar" press=".onClearFilters" />
                     </Toolbar>
                 </Panel>
@@ -88,7 +88,7 @@
                     class="sapUiSmallMarginTop"
                 >
                     <Toolbar>
-                        <Title text="Seleccionados: {filterModel>/selectedCount}" level="H5" />
+                        <Title text="Seleccionados: {filterModel>/selectedPresentacionesCount}" level="H5" />
                         <ToolbarSpacer />
                         <Button 
                             text="Seleccionar Todos" 
@@ -96,7 +96,7 @@
                         />
                         <Button 
                             text="Deseleccionar Todos" 
-                            press=".onDeselectAllProducts"
+                            press=".onClearSelection"
                         />
                     </Toolbar>
 
@@ -108,35 +108,60 @@
                         growingThreshold="20"
                     >
                         <CustomListItem>
-                            <VBox class="sapUiSmallMargin">
-                                <HBox justifyContent="SpaceBetween">
-                                    <VBox>
-                                        <Title level="H6" text="{filterModel>PRODUCTNAME}" />
-                                        <Text text="SKU: {filterModel>SKUID} | Marca: {filterModel>MARCA}" />
-                                    </VBox>
-                                    <Button
-                                        icon="sap-icon://navigation-down-arrow"
-                                        type="Transparent"
-                                        press=".onFilterToggleProduct"
-                                    />
+                            <VBox class="sapUiSmallMargin" width="95%">
+                                <!-- PRODUCTO CON CHECKBOX -->
+                                <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="productHeader sapUiSmallPadding">
+                                    <HBox alignItems="Center" width="40%">
+                                        <CheckBox
+                                            selected="{filterModel>allSelected}"
+                                            select=".onFilterProductCheckBoxSelect"
+                                            class="sapUiTinyMarginEnd"
+                                        />
+                                        <VBox width="100%">
+                                            <Title level="H6" text="{filterModel>PRODUCTNAME}" />
+                                            <Text text="SKU: {filterModel>SKUID} | Marca: {filterModel>MARCA}" />
+                                        </VBox>
+                                    </HBox>
+                                    <HBox alignItems="Center" width="60%" justifyContent="End">
+                                        <Text text="{= ${filterModel>presentaciones}.length || 0 } presentación(es)" class="sapUiTinyMarginEnd"/>
+                                        <Button
+                                            type="Transparent"
+                                            press=".onFilterToggleProduct"
+                                            icon="{= ${filterModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                        />
+                                    </HBox>
                                 </HBox>
 
-                                <!-- Presentaciones (mostrar cuando se expanda) -->
-                                <VBox visible="{filterModel>expanded}" class="sapUiSmallMarginTop">
-                                    <Title level="H6" text="Presentaciones" />
+                                <!-- PRESENTACIONES CON INDENTACIÓN -->
+                                <VBox visible="{= ${filterModel>expanded} === true }" class="presentacionesContainer">
                                     <List
                                         items="{filterModel>presentaciones}"
                                         mode="None"
+                                        showSeparators="Inner"
                                     >
-                                        <StandardListItem
-                                            title="{filterModel>NOMBREPRESENTACION}"
-                                            description="{filterModel>Descripcion}"
-                                            info="$ {filterModel>precio}"
-                                            infoState="Success"
-                                            selected="{filterModel>selected}"
-                                            type="Active"
-                                            press=".onPresentacionPress"
-                                        />
+                                        <CustomListItem>
+                                            <HBox alignItems="Center" width="100%" class="sapUiSmallPadding sapUiMediumMarginBegin">
+                                                <CheckBox 
+                                                    selected="{filterModel>selected}"
+                                                    enabled="{= !${filterModel>locked} }"
+                                                    select=".onFilterPresentacionSelect"
+                                                    class="sapUiTinyMarginEnd"
+                                                />
+                                                <VBox width="70%">
+                                                    <Text text="{filterModel>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                    <Text text="ID: {filterModel>IdPresentaOK}" class="sapUiTinyText"/>
+                                                </VBox>
+                                                <HBox alignItems="Center">
+                                                    <ObjectStatus text="$ {filterModel>precio}" state="Success"/>
+                                                    <core:Icon 
+                                                        src="sap-icon://locked" 
+                                                        visible="{filterModel>locked}"
+                                                        color="#999"
+                                                        class="sapUiTinyMarginStart"
+                                                    />
+                                                </HBox>
+                                            </HBox>
+                                        </CustomListItem>
                                     </List>
                                 </VBox>
                             </VBox>

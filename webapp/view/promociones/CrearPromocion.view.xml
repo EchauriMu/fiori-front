@@ -8,23 +8,32 @@
 >
     <Page 
         id="crearPromocionPage" 
-        title="Crear Nueva Promoción" 
+        title="Crear Nueva Promoción - {createPromo>/currentStepTitle}" 
         showNavButton="true" 
         navButtonPress=".onNavBack"
     >
         <content>
-            <Wizard 
-                id="createPromoWizard" 
-                class="sapUiResponsivePadding--header sapUiResponsivePadding--content" 
-                finishButtonText="Crear Promoción" 
-                complete=".onSavePromotion"
+            <!-- Indicador de progreso -->
+            <ProgressIndicator
+                percentValue="{createPromo>/progressPercent}"
+                displayValue="Paso {createPromo>/currentStep} de 4"
+                showValue="true"
+                state="Information"
+                class="sapUiSmallMarginBottom"
+            />
+            
+            <!-- Contenedor de navegación para los pasos -->
+            <NavContainer 
+                id="stepNavContainer"
+                autoFocus="false"
+                height="100%"
             >
                 <!-- PASO 1: INFORMACIÓN GENERAL -->
-                <WizardStep
-                    id="InfoStep"
-                    title="Paso 1: Información General"
-                    validated="true"
-                    activate=".onStepActivate"
+                <Page
+                    id="InfoStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Complete la información básica de la promoción. El ID se generará automáticamente."
@@ -101,13 +110,14 @@
                             />
                         </f:content>
                     </f:SimpleForm>
-                </WizardStep>
+                </Page>
 
                 <!-- PASO 2: CONFIGURACIÓN DE DESCUENTO -->
-                <WizardStep
-                    id="DiscountStep"
-                    title="Paso 2: Descuento y Reglas"
-                    activate=".onStepActivate"
+                <Page
+                    id="DiscountStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Configure el descuento y las reglas de aplicación de la promoción."
@@ -185,13 +195,14 @@
                             />
                         </f:content>
                     </f:SimpleForm>
-                </WizardStep>
+                </Page>
 
                 <!-- PASO 3: SELECCIÓN DE PRODUCTOS/PRESENTACIONES -->
-                <WizardStep
-                    id="ProductsStep"
-                    title="Paso 3: Productos y Presentaciones"
-                    activate=".onStepActivate"
+                <Page
+                    id="ProductsStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Seleccione los productos y presentaciones a los que se aplicará la promoción. Puede usar filtros para facilitar la selección."
@@ -201,42 +212,299 @@
                     />
                     
                     <VBox>
+                        <!-- Filtros integrados directamente -->
+                        <Panel 
+                            headerText="Filtros de Búsqueda" 
+                            expandable="true" 
+                            expanded="true"
+                            class="sapUiSmallMarginBottom"
+                            width="100%"
+                        >
+                            <content>
+                                <VBox width="100%">
+                                    <f:SimpleForm
+                                        editable="true"
+                                        layout="ResponsiveGridLayout"
+                                        columnsL="3"
+                                        columnsM="2"
+                                        columnsS="1"
+                                        width="100%"
+                                    >
+                                        <f:content>
+                                            <Label text="Buscar Producto" />
+                                            <SearchField
+                                                placeholder="Nombre, SKU, marca..."
+                                                value="{filterModel>/searchTerm}"
+                                                search=".onFilterSearch"
+                                                width="100%"
+                                            />
+
+                                            <Label text="Categoría" />
+                                            <MultiComboBox
+                                                placeholder="Seleccionar categorías..."
+                                                items="{filterModel>/allCategories}"
+                                                selectedKeys="{filterModel>/filters/categorias}"
+                                                selectionChange=".onFilterCategoryChange"
+                                                width="100%"
+                                            >
+                                                <core:Item key="{filterModel>CATID}" text="{filterModel>Nombre}" />
+                                            </MultiComboBox>
+
+                                            <Label text="Marca" />
+                                            <MultiComboBox
+                                                placeholder="Seleccionar marcas..."
+                                                items="{filterModel>/allBrands}"
+                                                selectedKeys="{filterModel>/filters/marcas}"
+                                                selectionChange=".onFilterBrandChange"
+                                                width="100%"
+                                            >
+                                                <core:Item key="{filterModel>id}" text="{filterModel>name}" />
+                                            </MultiComboBox>
+                                        </f:content>
+                                    </f:SimpleForm>
+                                    <Toolbar width="100%">
+                                        <ToolbarSpacer />
+                                        <Button 
+                                            text="Limpiar Filtros" 
+                                            press=".onClearFilters"
+                                            icon="sap-icon://clear-filter"
+                                        />
+                                    </Toolbar>
+                                </VBox>
+                            </content>
+                        </Panel>
+
+                        <!-- Productos disponibles para selección -->
+                        <Panel 
+                            headerText="Productos Disponibles ({filterModel>/filteredProductsCount})" 
+                            class="sapUiSmallMarginBottom"
+                        >
+                            <headerToolbar>
+                                <OverflowToolbar>
+                                    <Title text="Productos Disponibles ({filterModel>/filteredProductsCount})" level="H5" />
+                                    <ToolbarSpacer />
+                                    <Button 
+                                        text="Seleccionar Todos" 
+                                        press=".onSelectAllProducts"
+                                        type="Transparent"
+                                    />
+                                    <Button 
+                                        text="Deseleccionar Todos" 
+                                        press=".onClearSelection"
+                                        type="Transparent"
+                                    />
+                                </OverflowToolbar>
+                            </headerToolbar>
+                            <content>
+                                <List
+                                    items="{
+                                        path: 'filterModel>/paginatedProducts',
+                                        templateShareable: false
+                                    }"
+                                    mode="None"
+                                    noDataText="No se encontraron productos con los filtros aplicados."
+                                >
+                                    <CustomListItem>
+                                        <VBox class="sapUiSmallMargin" width="100%">
+                                            <!-- PRODUCTO CON CHECKBOX -->
+                                            <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="productHeader sapUiSmallPadding">
+                                                <HBox alignItems="Center" width="50%">
+                                                    <CheckBox
+                                                        selected="{filterModel>allSelected}"
+                                                        select=".onFilterProductCheckBoxSelect"
+                                                        class="sapUiTinyMarginEnd"
+                                                    />
+                                                    <VBox width="100%">
+                                                        <Title level="H6" text="{filterModel>PRODUCTNAME}" />
+                                                        <Text text="SKU: {filterModel>SKUID} | Marca: {filterModel>MARCA}" />
+                                                    </VBox>
+                                                </HBox>
+                                                <HBox alignItems="Center" width="50%" justifyContent="End">
+                                                    <Text text="{= ${filterModel>presentaciones}.length || 0 } presentación(es)" class="sapUiTinyMarginEnd"/>
+                                                    <Button
+                                                        type="Transparent"
+                                                        press=".onFilterToggleProduct"
+                                                        icon="{= ${filterModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                                    />
+                                                </HBox>
+                                            </HBox>
+
+                                            <!-- PRESENTACIONES CON INDENTACIÓN -->
+                                            <VBox visible="{= ${filterModel>expanded} === true }" class="presentacionesContainer">
+                                                <List
+                                                    items="{filterModel>presentaciones}"
+                                                    mode="None"
+                                                    showSeparators="Inner"
+                                                >
+                                                    <CustomListItem>
+                                                        <HBox alignItems="Center" width="100%" class="sapUiSmallPadding sapUiMediumMarginBegin">
+                                                            <CheckBox 
+                                                                selected="{filterModel>selected}"
+                                                                enabled="{= !${filterModel>locked} }"
+                                                                select=".onFilterPresentacionSelect"
+                                                                class="sapUiTinyMarginEnd"
+                                                            />
+                                                            <VBox width="70%">
+                                                                <Text text="{filterModel>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                                <Text text="ID: {filterModel>IdPresentaOK}" class="sapUiTinyText"/>
+                                                            </VBox>
+                                                            <HBox alignItems="Center">
+                                                                <ObjectStatus text="$ {filterModel>precio}" state="Success"/>
+                                                                <core:Icon 
+                                                                    src="sap-icon://locked" 
+                                                                    visible="{filterModel>locked}"
+                                                                    color="#999"
+                                                                    class="sapUiTinyMarginStart"
+                                                                />
+                                                            </HBox>
+                                                        </HBox>
+                                                    </CustomListItem>
+                                                </List>
+                                            </VBox>
+                                        </VBox>
+                                    </CustomListItem>
+                                </List>
+                                
+                                <!-- Paginación -->
+                                <Toolbar class="sapUiSmallMarginTop">
+                                    <ToolbarSpacer />
+                                    <Button 
+                                        icon="sap-icon://navigation-left-arrow"
+                                        type="Transparent"
+                                        press=".onPreviousPage"
+                                        enabled="{= ${filterModel>/pagination/currentPage} > 1 }"
+                                    />
+                                    <Text 
+                                        text="Página {filterModel>/pagination/currentPage} de {filterModel>/pagination/totalPages}"
+                                        class="sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                                    />
+                                    <Button 
+                                        icon="sap-icon://navigation-right-arrow"
+                                        type="Transparent"
+                                        press=".onNextPage"
+                                        enabled="{= ${filterModel>/pagination/currentPage} &lt; ${filterModel>/pagination/totalPages} }"
+                                    />
+                                    <ToolbarSpacer />
+                                    <Label text="Items por página:" class="sapUiTinyMarginEnd"/>
+                                    <Select
+                                        selectedKey="{filterModel>/pagination/itemsPerPage}"
+                                        change=".onItemsPerPageChange"
+                                        width="80px"
+                                    >
+                                        <core:Item key="5" text="5" />
+                                        <core:Item key="10" text="10" />
+                                        <core:Item key="20" text="20" />
+                                        <core:Item key="50" text="50" />
+                                    </Select>
+                                </Toolbar>
+                            </content>
+                        </Panel>
+
+                        <!-- Resumen de presentaciones seleccionadas -->
                         <Toolbar>
-                            <Title text="Presentaciones Seleccionadas: {= ${createPromo>/selectedPresentaciones}.length }" level="H4" />
+                            <Title text="Presentaciones Seleccionadas: {= ${filterModel>/selectedPresentacionesCount} || 0 }" level="H4" />
                             <ToolbarSpacer />
-                            <Button 
-                                text="Aplicar Filtros" 
-                                icon="sap-icon://filter"
-                                press=".onOpenFilterDialog"
-                                type="Emphasized"
-                            />
                         </Toolbar>
 
-                        <!-- Lista de presentaciones seleccionadas -->
+                        <!-- Lista de presentaciones seleccionadas agrupadas por producto -->
                         <Panel headerText="Presentaciones Incluidas en la Promoción">
                             <List
-                                items="{createPromo>/selectedPresentaciones}"
-                                noDataText="No hay presentaciones seleccionadas. Use el botón 'Aplicar Filtros' para seleccionar productos."
-                                mode="Delete"
-                                delete=".onRemovePresentacion"
+                                items="{
+                                    path: 'createPromo>/paginatedGroupedProducts',
+                                    templateShareable: false
+                                }"
+                                noDataText="No hay presentaciones seleccionadas. Seleccione productos desde la lista de arriba."
+                                mode="None"
                             >
-                                <StandardListItem
-                                    title="{createPromo>NOMBREPRESENTACION}"
-                                    description="SKU: {createPromo>producto/SKUID} | Producto: {createPromo>producto/PRODUCTNAME}"
-                                    info="${createPromo>Precio}"
-                                    infoState="Success"
-                                    icon="sap-icon://product"
-                                />
+                                <CustomListItem>
+                                    <VBox width="100%" class="sapUiTinyMarginBottom">
+                                        <!-- Producto -->
+                                        <HBox 
+                                            justifyContent="SpaceBetween" 
+                                            alignItems="Center" 
+                                            class="productHeader sapUiTinyPadding"
+                                        >
+                                            <HBox alignItems="Center" width="70%">
+                                                <VBox width="100%">
+                                                    <Text text="{createPromo>PRODUCTNAME}" class="sapUiTextBold"/>
+                                                    <Text text="SKU: {createPromo>SKUID}" class="sapUiTinyText"/>
+                                                </VBox>
+                                            </HBox>
+                                            <HBox alignItems="Center" width="30%" justifyContent="End">
+                                                <Text text="{= ${createPromo>presentaciones}.length }" class="sapUiTinyMarginEnd"/>
+                                                <Button
+                                                    type="Transparent"
+                                                    press=".onToggleGroupedProduct"
+                                                    icon="{= ${createPromo>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                                />
+                                            </HBox>
+                                        </HBox>
+                                        
+                                        <!-- Presentaciones -->
+                                        <VBox visible="{= ${createPromo>expanded} === true }" class="presentacionesContainer">
+                                            <List
+                                                items="{createPromo>presentaciones}"
+                                                mode="Delete"
+                                                delete=".onRemovePresentacion"
+                                                showSeparators="None"
+                                            >
+                                                <CustomListItem>
+                                                    <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="sapUiTinyPadding sapUiMediumMarginBegin">
+                                                        <VBox width="70%">
+                                                            <Text text="{createPromo>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                            <Text text="ID: {createPromo>IdPresentaOK}" class="sapUiTinyText"/>
+                                                        </VBox>
+                                                        <Text text="$ {createPromo>Precio}" class="sapUiTextSuccess"/>
+                                                    </HBox>
+                                                </CustomListItem>
+                                            </List>
+                                        </VBox>
+                                    </VBox>
+                                </CustomListItem>
                             </List>
+                            
+                            <!-- Paginación -->
+                            <Toolbar class="sapUiSmallMarginTop" visible="{= ${createPromo>/groupedPagination/totalPages} > 1 }">
+                                <ToolbarSpacer />
+                                <Button 
+                                    icon="sap-icon://navigation-left-arrow"
+                                    type="Transparent"
+                                    press=".onPreviousGroupedPage"
+                                    enabled="{= ${createPromo>/groupedPagination/currentPage} > 1 }"
+                                />
+                                <Text 
+                                    text="Página {createPromo>/groupedPagination/currentPage} de {createPromo>/groupedPagination/totalPages}"
+                                    class="sapUiTinyMarginBegin sapUiTinyMarginEnd"
+                                />
+                                <Button 
+                                    icon="sap-icon://navigation-right-arrow"
+                                    type="Transparent"
+                                    press=".onNextGroupedPage"
+                                    enabled="{= ${createPromo>/groupedPagination/currentPage} &lt; ${createPromo>/groupedPagination/totalPages} }"
+                                />
+                                <ToolbarSpacer />
+                                <Label text="Items por página:" class="sapUiTinyMarginEnd"/>
+                                <Select
+                                    selectedKey="{createPromo>/groupedPagination/itemsPerPage}"
+                                    change=".onGroupedItemsPerPageChange"
+                                    width="80px"
+                                >
+                                    <core:Item key="5" text="5" />
+                                    <core:Item key="10" text="10" />
+                                    <core:Item key="20" text="20" />
+                                    <core:Item key="50" text="50" />
+                                </Select>
+                            </Toolbar>
                         </Panel>
                     </VBox>
-                </WizardStep>
+                </Page>
 
                 <!-- PASO 4: REVISIÓN -->
-                <WizardStep
-                    id="ReviewStep"
-                    title="Paso 4: Revisión y Confirmación"
-                    activate=".onStepActivate"
+                <Page
+                    id="ReviewStepPage"
+                    showHeader="false"
+                    enableScrolling="true"
+                    class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
                         text="Revise toda la información antes de crear la promoción."
@@ -279,27 +547,122 @@
                             </f:content>
                         </f:SimpleForm>
 
-                        <Title level="H4" text="Presentaciones ({= ${createPromo>/selectedPresentaciones}.length })" class="sapUiMediumMarginTop sapUiSmallMarginBottom"/>
+                        <Title level="H4" text="Presentaciones ({= ${createPromo>/selectedPresentaciones}.length })" class="sapUiMediumMarginTop sapUiTinyMarginBottom"/>
+                        
+                        <!-- Controles de paginación -->
+                        <Toolbar>
+                            <ToolbarSpacer />
+                            <Label text="Productos por página:" class="sapUiTinyMarginEnd" />
+                            <Select
+                                selectedKey="{createPromo>/paginationSelected/itemsPerPage}"
+                                change=".onSelectedItemsPerPageChange"
+                                width="80px"
+                            >
+                                <items>
+                                    <core:Item key="5" text="5" />
+                                    <core:Item key="10" text="10" />
+                                    <core:Item key="20" text="20" />
+                                    <core:Item key="50" text="50" />
+                                </items>
+                            </Select>
+                            <ToolbarSpacer />
+                            <Button
+                                icon="sap-icon://navigation-left-arrow"
+                                press=".onSelectedPreviousPage"
+                                enabled="{= ${createPromo>/paginationSelected/currentPage} > 1 }"
+                                type="Transparent"
+                            />
+                            <Text text="Página {createPromo>/paginationSelected/currentPage} de {createPromo>/paginationSelected/totalPages}" class="sapUiTinyMarginBegin sapUiTinyMarginEnd" />
+                            <Button
+                                icon="sap-icon://navigation-right-arrow"
+                                press=".onSelectedNextPage"
+                                enabled="{= ${createPromo>/paginationSelected/currentPage} &lt; ${createPromo>/paginationSelected/totalPages} }"
+                                type="Transparent"
+                            />
+                            <ToolbarSpacer />
+                        </Toolbar>
+                        
                         <List 
-                            items="{createPromo>/selectedPresentaciones}" 
+                            items="{createPromo>/paginatedSelectedProducts}" 
                             noDataText="No se agregaron presentaciones."
                         >
-                            <StandardListItem
-                                title="{createPromo>NOMBREPRESENTACION}"
-                                description="Producto: {createPromo>producto/PRODUCTNAME} | SKU: {createPromo>producto/SKUID}"
-                                info="${createPromo>Precio}"
-                                icon="sap-icon://product"
-                            />
+                            <CustomListItem>
+                                <VBox width="100%" class="sapUiTinyMarginBottom">
+                                    <!-- Producto -->
+                                    <HBox 
+                                        justifyContent="SpaceBetween" 
+                                        alignItems="Center" 
+                                        class="productHeader sapUiTinyPadding"
+                                    >
+                                        <HBox alignItems="Center" width="70%">
+                                            <VBox width="100%">
+                                                <Text text="{createPromo>PRODUCTNAME}" class="sapUiTextBold"/>
+                                                <Text text="SKU: {createPromo>SKUID}" class="sapUiTinyText"/>
+                                            </VBox>
+                                        </HBox>
+                                        <HBox alignItems="Center" width="30%" justifyContent="End">
+                                            <Text text="{= ${createPromo>presentaciones}.length }" class="sapUiTinyMarginEnd"/>
+                                            <Button
+                                                type="Transparent"
+                                                press=".onToggleGroupedProduct"
+                                                icon="{= ${createPromo>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                            />
+                                        </HBox>
+                                    </HBox>
+                                    
+                                    <!-- Presentaciones -->
+                                    <VBox visible="{= ${createPromo>expanded} === true }" class="presentacionesContainer">
+                                        <List
+                                            items="{createPromo>presentaciones}"
+                                            showSeparators="None"
+                                        >
+                                            <CustomListItem>
+                                                <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="sapUiTinyPadding sapUiMediumMarginBegin">
+                                                    <VBox width="70%">
+                                                        <Text text="{createPromo>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                        <Text text="ID: {createPromo>IdPresentaOK}" class="sapUiTinyText"/>
+                                                    </VBox>
+                                                    <Text text="$ {createPromo>Precio}" class="sapUiTextSuccess"/>
+                                                </HBox>
+                                            </CustomListItem>
+                                        </List>
+                                    </VBox>
+                                </VBox>
+                            </CustomListItem>
                         </List>
                     </VBox>
-                </WizardStep>
-            </Wizard>
+                </Page>
+            </NavContainer>
         </content>
         
         <footer>
             <Toolbar>
+                <Button 
+                    id="btnAnterior"
+                    text="Anterior" 
+                    icon="sap-icon://navigation-left-arrow"
+                    press=".onPreviousStep"
+                    visible="{= ${createPromo>/currentStep} !== 1 }"
+                />
                 <ToolbarSpacer />
                 <Button text="Cancelar" press=".onNavBack" />
+                <Button 
+                    id="btnSiguiente"
+                    text="Siguiente" 
+                    icon="sap-icon://navigation-right-arrow"
+                    iconFirst="false"
+                    type="Emphasized"
+                    press=".onNextStep"
+                    visible="{= ${createPromo>/currentStep} !== 4 }"
+                />
+                <Button 
+                    id="btnCrear"
+                    text="Crear Promoción" 
+                    type="Accept"
+                    icon="sap-icon://save"
+                    press=".onSavePromotion"
+                    visible="{= ${createPromo>/currentStep} === 4 }"
+                />
             </Toolbar>
         </footer>
     </Page>
