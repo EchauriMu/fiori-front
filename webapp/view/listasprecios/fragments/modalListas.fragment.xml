@@ -296,6 +296,44 @@
                                                         </f:content>
                                                     </f:SimpleForm>
 
+                                                    <!-- Panel de Imágenes -->
+                                                    <Panel 
+                                                        headerText="Imágenes del Producto"
+                                                        expandable="true"
+                                                        expanded="false"
+                                                        width="100%"
+                                                        class="sapUiSmallMarginTop"
+                                                        visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length > 0}"
+                                                    >
+                                                        <content>
+                                                            <VBox alignItems="Center" justifyContent="Center" class="sapUiSmallMargin">
+                                                                <!-- Carousel de imágenes si hay múltiples -->
+                                                                <VBox visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length > 1}" width="100%">
+                                                                    <Carousel 
+                                                                        pages="{imageFiles}"
+                                                                        pageIndicatorPlacement="Bottom"
+                                                                        width="100%"
+                                                                    >
+                                                                        <Image 
+                                                                            src="{FILEURL}"
+                                                                            width="300px"
+                                                                            height="300px"
+                                                                            densityAware="false"/>
+                                                                    </Carousel>
+                                                                </VBox>
+
+                                                                <!-- Imagen simple si solo hay una -->
+                                                                <VBox visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length === 1}" alignItems="Center" justifyContent="Center">
+                                                                    <Image 
+                                                                        src="{imageFiles/0/FILEURL}"
+                                                                        width="300px"
+                                                                        height="300px"
+                                                                        densityAware="false"/>
+                                                                </VBox>
+                                                            </VBox>
+                                                        </content>
+                                                    </Panel>
+
                                                     <!-- Presentaciones -->
                                                     <Panel 
                                                         headerText="Presentaciones"

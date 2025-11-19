@@ -1259,9 +1259,26 @@ sap.ui.define([
                         aPresentaciones = [];
                     }
 
+                    // Cargar imágenes del producto
+                    let aImageFiles = [];
+                    try {
+                        const aFiles = await this._callApi('/ztproducts-files/productsFilesCRUD', 'POST', {}, {
+                            ProcessType: 'GetBySKUID',
+                            skuid: sSKUID
+                        });
+                        
+                        if (Array.isArray(aFiles)) {
+                            aImageFiles = aFiles.filter(f => f.FILETYPE === 'IMG' || f.FILETYPE === 'IMAGE');
+                        }
+                    } catch (error) {
+                        console.error(`Error cargando imágenes para ${sSKUID}:`, error.message);
+                        aImageFiles = [];
+                    }
+
                     const oProductoCompleto = {
                         ...oProducto,
                         presentaciones: aPresentaciones,
+                        imageFiles: aImageFiles,
                         expanded: false
                     };
                     
