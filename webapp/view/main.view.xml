@@ -39,12 +39,12 @@
                     </m:Button>
                     <!-- CORRECCIÓN: Botón dinámico para Activar/Desactivar -->
                     <m:Button 
-                        icon="{= ${view>/canActivate} ? 'sap-icon://activate' : 'sap-icon://decline'}" 
-                        text="{= ${view>/canActivate} ? 'Activar' : 'Desactivar'}" 
-                        type="{= ${view>/canActivate} ? 'Accept' : 'Attention'}" 
+                        icon="{= ${view>/canActivate} ? 'sap-icon://activate' : (${view>/isMixedState} ? 'sap-icon://multi-select' : 'sap-icon://decline')}"
+                        text="{view>/statusButtonText}"
+                        type="{= ${view>/canActivate} ? 'Accept' : (${view>/isMixedState} ? 'Default' : 'Attention')}"
                         press="onTableAction" 
-                        enabled="{= ${view>/selectedSKUIDs}.length > 0 &amp;&amp; !${view>/isMixedState} }" 
-                        tooltip="{= ${view>/canActivate} ? 'Activar productos seleccionados' : 'Desactivar productos seleccionados'}">
+                        enabled="{= ${view>/selectedSKUIDs}.length > 0 }"
+                        tooltip="{view>/statusButtonText}">
                         <m:customData><core:CustomData key="action" value="TOGGLE_ACTIVE"/></m:customData>
                     </m:Button>
                 </m:contentRight>

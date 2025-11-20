@@ -37,7 +37,8 @@ sap.ui.define([
                 // --- INICIO DE LA CORRECCIÓN: Propiedades para estado de botones ---
                 canActivate: false,
                 canDeactivate: false,
-                isMixedState: false
+                isMixedState: false,
+                statusButtonText: "Desactivar" // Texto dinámico para el botón activar/desactivar
             });
             this.getView().setModel(oViewModel, "view");
 
@@ -291,33 +292,40 @@ sap.ui.define([
         // ====================================================================
         
         onTableAction: async function (oEvent) {
-             const sAction = oEvent.getSource().data("action");
-             const oViewModel = this.getView().getModel("view");
-             const aSelectedSKUIDs = oViewModel.getProperty("/selectedSKUIDs");
-             const iSelectedCount = aSelectedSKUIDs.length;
-             const sI18nKey = this.getOwnerComponent().getModel("i18n").getResourceBundle();
-             
-             if (sAction === "CREATE") {
-                 this.getOwnerComponent().getRouter().navTo("RouteAddProduct"); // <-- NAVEGAR A LA NUEVA VISTA
-                 return; // Salimos de la función aquí
-             }
-             
-             if ((sAction === "DELETE" || sAction === "ACTIVATE") && iSelectedCount === 0) {
-                 MessageBox.information(sI18nKey.getText("msgSelectOneProduct"));
-                 return;
-             }
-             
-             if (sAction === "EDIT") {
-                 if (iSelectedCount !== 1) return;
-                 MessageToast.show(`Simulando editar el producto: ${aSelectedSKUIDs[0]}`);
-                 return;
-             }
+            const sAction = oEvent.getSource().data("action");
+            const oViewModel = this.getView().getModel("view");
+            const aSelectedSKUIDs = oViewModel.getProperty("/selectedSKUIDs");
+            const iSelectedCount = aSelectedSKUIDs.length;
+            const sI18nKey = this.getOwnerComponent().getModel("i18n").getResourceBundle();
+
+            if (sAction === "CREATE") {
+                this.getOwnerComponent().getRouter().navTo("RouteAddProduct");
+                return;
+            }
+
+            if ((sAction === "DELETE" || sAction === "ACTIVATE") && iSelectedCount === 0) {
+                MessageBox.information(sI18nKey.getText("msgSelectOneProduct"));
+                return;
+            }
+
+            if (sAction === "EDIT") {
+                if (iSelectedCount !== 1) return;
+                MessageToast.show(`Simulando editar el producto: ${aSelectedSKUIDs[0]}`);
+                return;
+            }
 
             let sConfirmText;
             if (sAction === "DELETE") {
                 sConfirmText = `¿Estás seguro de que deseas eliminar permanentemente ${iSelectedCount} producto(s)? Esta acción no se puede deshacer.`;
             } else if (sAction === "TOGGLE_ACTIVE") {
-                const sToggleAction = oViewModel.getProperty("/canActivate") ? "activar" : "desactivar";
+                // Usar el texto dinámico del botón para mostrar la acción correcta
+                const sButtonText = oViewModel.getProperty("/statusButtonText");
+                let sToggleAction = "activar/desactivar";
+                if (sButtonText === "Activar") {
+                    sToggleAction = "activar";
+                } else if (sButtonText === "Desactivar") {
+                    sToggleAction = "desactivar";
+                }
                 sConfirmText = `¿Estás seguro de que deseas ${sToggleAction} ${iSelectedCount} producto(s)?`;
             }
 
@@ -387,32 +395,67 @@ sap.ui.define([
                 oViewModel.setProperty("/canActivate", false);
                 oViewModel.setProperty("/canDeactivate", false);
                 oViewModel.setProperty("/isMixedState", false);
+                oViewModel.setProperty("/statusButtonText", "Desactivar");
                 return;
             }
 
+            // Selecciona todos los productos (incluyendo eliminados)
             const aSelectedProducts = aAllProducts.filter(p => aSelectedSKUIDs.includes(p.SKUID));
-            
-            // 1. Filtrar solo los productos que NO están DELETED (eliminados lógicamente o físicamente)
-            const aEligibleProducts = aSelectedProducts.filter(p => p.DELETED !== true); 
+            const iCount = aSelectedProducts.length;
+            const iActiveCount = aSelectedProducts.filter(p => p.ACTIVED === true && p.DELETED !== true).length;
+            const iInactiveCount = aSelectedProducts.filter(p => p.ACTIVED === false && p.DELETED !== true).length;
+            const iDeletedCount = aSelectedProducts.filter(p => p.DELETED === true).length;
 
-            // 2. Contar sobre los productos elegibles (que no están marcados como eliminados)
-            const iActiveCount = aEligibleProducts.filter(p => p.ACTIVED === true).length;
-            const iInactiveCount = aEligibleProducts.filter(p => p.ACTIVED === false).length;
+            let bCanActivate = false;
+            let bCanDeactivate = false;
+            let bIsMixedState = false;
+            let sButtonText = "Desactivar";
 
-            // 3. Determinar el estado de los botones
-            // Puede activar si todos los elegibles son inactivos.
-            const bCanActivate = iInactiveCount > 0 && iActiveCount === 0;
-            // Puede desactivar si todos los elegibles son activos.
-            const bCanDeactivate = iActiveCount > 0 && iInactiveCount === 0;
-            // Es estado mixto si hay mezcla de activos e inactivos.
-            const bIsMixedState = iActiveCount > 0 && iInactiveCount > 0; 
-            
-            // Si solo se seleccionaron productos eliminados (aEligibleProducts.length === 0),
-            // bCanActivate y bCanDeactivate serán false, lo cual es correcto.
+            if (iCount === 1) {
+                // Si solo hay un producto seleccionado
+                const prod = aSelectedProducts[0];
+                if (prod.DELETED === true) {
+                    bCanActivate = true;
+                    bCanDeactivate = false;
+                    bIsMixedState = false;
+                    sButtonText = "Activar";
+                } else if (prod.ACTIVED === false) {
+                    bCanActivate = true;
+                    bCanDeactivate = false;
+                    bIsMixedState = false;
+                    sButtonText = "Activar";
+                } else {
+                    bCanActivate = false;
+                    bCanDeactivate = true;
+                    bIsMixedState = false;
+                    sButtonText = "Desactivar";
+                }
+            } else if (iCount > 1) {
+                if (iDeletedCount === iCount) {
+                    // Todos eliminados
+                    bCanActivate = true;
+                    bCanDeactivate = false;
+                    bIsMixedState = false;
+                    sButtonText = "Activar";
+                } else if (iActiveCount === iCount) {
+                    // Todos activos (no eliminados)
+                    bCanDeactivate = true;
+                    sButtonText = "Desactivar";
+                } else if (iInactiveCount === iCount) {
+                    // Todos inactivos (no eliminados)
+                    bCanActivate = true;
+                    sButtonText = "Activar";
+                } else {
+                    // Mezcla
+                    bIsMixedState = true;
+                    sButtonText = "Activar/Desactivar";
+                }
+            }
 
             oViewModel.setProperty("/canActivate", bCanActivate);
             oViewModel.setProperty("/canDeactivate", bCanDeactivate);
             oViewModel.setProperty("/isMixedState", bIsMixedState);
+            oViewModel.setProperty("/statusButtonText", sButtonText);
         },
         
         onRowClick: async function (oEvent) {
