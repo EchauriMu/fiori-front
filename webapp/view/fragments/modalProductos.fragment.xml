@@ -122,13 +122,26 @@
                     <VBox class="sapUiSmallMargin">
                         <Toolbar>
                             <Title text="Presentaciones" />
-                            <ToolbarSpacer/>
-                            <ObjectStatus
-                                class="sapUiTinyMarginEnd"
-                                text="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusText'}"
-                                state="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusState'}"
-                                inverted="true"
-                                visible="{= !!${detailView>/selectedPresentation} }" />
+                            <ToolbarSpacer />
+                            <!-- Grupo de Status y Switch para la presentación -->
+                            <HBox alignItems="Center" visible="{= !!${detailView>/selectedPresentation} }">
+                                <ObjectStatus
+                                    class="sapUiTinyMarginEnd"
+                                    text="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusText'}"
+                                    state="{parts: [{path: 'detailView>/selectedPresentation/ACTIVED'}, {path: 'detailView>/selectedPresentation/DELETED'}], formatter: '.formatterProductStatusState'}"
+                                    inverted="false"
+                                />
+                                <Switch
+                                    state="{detailView>/selectedPresentation/ACTIVED}"
+                                    enabled="{= !${detailView>/presentationStatusSubmitting} }"
+                                    change="onTogglePresentationStatus"
+                                    tooltip="{= ${detailView>/selectedPresentation/ACTIVED} ? 'Desactivar Presentación' : 'Activar Presentación' }"
+                                    class="sapUiTinyMarginEnd"
+                                >
+                                    <layoutData><FlexItemData growFactor="0" /></layoutData>
+                                </Switch>
+                            </HBox>
+
                             <Button icon="sap-icon://add" type="Emphasized" text="Insertar" press="onAddPresentation" />
                             <Button icon="sap-icon://edit" press="onEditPresentation" enabled="{= !!${detailView>/selectedPresentation} }" />
                             <Button icon="sap-icon://delete" type="Negative" press="onDeletePresentation" enabled="{= !!${detailView>/selectedPresentation} }" />

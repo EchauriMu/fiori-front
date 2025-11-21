@@ -76,7 +76,8 @@ sap.ui.define([
                 // --- INICIO DE LA CORRECCIÓN: Estado para el Switch de Activo/Inactivo ---
                 statusSubmitting: false
                 ,
-                // --- Lista completa de categorías para el MultiComboBox ---
+                presentationStatusSubmitting: false, // <-- NUEVO: para el switch de presentación
+                 // --- Lista completa de categorías para el MultiComboBox ---
                 allCategories: []
             });
             this.getView().setModel(oDetailViewModel, "detailView");
@@ -785,6 +786,73 @@ sap.ui.define([
             });
         },
 
+        onTogglePresentationStatus: function (oEvent) {
+            const bState = oEvent.getParameter("state");
+            const oDetailModel = this.getView().getModel("detailView");
+            const oPresentation = oDetailModel.getProperty("/selectedPresentation");
+
+            if (!oPresentation || !oPresentation.IdPresentaOK) {
+                MessageBox.error("No se ha podido identificar la presentación seleccionada.");
+                oEvent.getSource().setState(!bState); // Revertir el switch
+                return;
+            }
+
+            const sPresentationId = oPresentation.IdPresentaOK;
+            const sPresentationName = oPresentation.NOMBREPRESENTACION;
+            const sActionText = bState ? "activar" : "desactivar";
+            
+            // CORRECCIÓN FINAL: El backend no tiene 'DeactivateOne'.
+            // Para activar, usamos 'ActivateOne'.
+            // Para desactivar, usamos 'UpdateOne' y enviamos el nuevo estado en el cuerpo (payload).
+            // Esto evita usar 'DeleteLogic', que oculta la presentación.
+            const sProcessType = bState ? "ActivateOne" : "UpdateOne";
+
+            oDetailModel.setProperty("/presentationStatusSubmitting", true); // Bloquear switch
+
+            MessageBox.confirm(`¿Estás seguro de que deseas ${sActionText} la presentación "${sPresentationName}"?`, {
+                title: "Confirmar Cambio de Estado",
+                onClose: async (sAction) => {
+                    if (sAction === MessageBox.Action.OK) {
+                        try {
+                            // Si estamos desactivando, preparamos el payload. Si activamos, el cuerpo va vacío.
+                            const payload = bState ? {} : { ACTIVED: false };
+
+                            await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', payload, {
+                                ProcessType: sProcessType,
+                                // El parámetro debe ser 'idpresentaok' en minúsculas, como en otras llamadas a esta API.
+                                idpresentaok: sPresentationId
+                            });
+
+                            MessageToast.show(`Presentación ${sActionText}da correctamente.`);
+                            
+                            // 1. Actualizar el estado en el modelo del diálogo para reflejar el cambio inmediato.
+                            oDetailModel.setProperty("/selectedPresentation/ACTIVED", bState);
+                            // Si se activa, nos aseguramos que DELETED sea false.
+                            // Si se desactiva, nos aseguramos que DELETED sea false también, para que no se oculte.
+                            if (bState) {
+                                oDetailModel.setProperty("/selectedPresentation/DELETED", false);
+                            } else {
+                                oDetailModel.setProperty("/selectedPresentation/DELETED", false);
+                            }
+
+                            // 2. Recargar las presentaciones para asegurar que la lista está sincronizada con el backend.
+                            const sSKUID = oDetailModel.getProperty("/SKUID");
+                            this._loadProductPresentations(sSKUID);
+
+                        } catch (oError) {
+                            MessageBox.error(`Error al ${sActionText} la presentación: ${oError.message}`);
+                            oEvent.getSource().setState(!bState); // Revertir en caso de error
+                        } finally {
+                            oDetailModel.setProperty("/presentationStatusSubmitting", false); // Desbloquear switch
+                        }
+                    } else {
+                        oEvent.getSource().setState(!bState); // Revertir si el usuario cancela
+                        oDetailModel.setProperty("/presentationStatusSubmitting", false); // Desbloquear switch
+                    }
+                }
+            });
+        },
+
         onAddPresentation: function (oEvent) {
             console.log("onAddPresentation: Botón 'Insertar' presionado.");
 
@@ -899,7 +967,7 @@ sap.ui.define([
         formatterProductStatusState: function (bActived, bDeleted) {
             if (bDeleted === true) return "Error";
             if (bActived === true) return "Success";
-            if (bActived === false) return "Warning";
+            if (bActived === false) return "Error"; // CORRECCIÓN: Cambiado de 'Warning' a 'Error' para que se vea rojo.
             return "None";
         },
         
