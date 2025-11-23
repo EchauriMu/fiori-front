@@ -8,9 +8,26 @@ sap.ui.define([
     return Controller.extend("com.invertions.sapfiorimodinv.controller.App", {
 
         onInit: function () {
-            // Redirige automáticamente a la vista de login al iniciar
             const oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("Login");
+            const oAppModel = this.getOwnerComponent().getModel("appView");
+            const sLoggedUser = sessionStorage.getItem("LoggedUser");
+
+            if (sLoggedUser) {
+                // Si el usuario ya está logueado en la sesión, restauramos su estado
+                const oUser = {
+                    USERNAME: sLoggedUser,
+                    EMAIL: sLoggedUser
+               
+                };
+                oAppModel.setProperty("/isLoggedIn", true);
+                oAppModel.setProperty("/currentUser", oUser);
+                // No navegamos aquí para permitir que el enrutador maneje la URL actual.
+                // Si la URL está vacía, el router por defecto irá al login, pero el onInit del login lo redirigirá.
+            } else {
+                // Si no hay sesión, nos aseguramos de que el estado sea "no logueado" y vamos al login
+                oAppModel.setProperty("/isLoggedIn", false);
+                oRouter.navTo("Login", {}, true);
+            }
         },
 
 

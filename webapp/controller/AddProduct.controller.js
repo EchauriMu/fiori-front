@@ -10,6 +10,72 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.AddProduct", {
 
+        // =================================================================
+        //  Funciones de Validación
+        // =================================================================
+        _validation: {
+            /**
+             * Valida los datos principales de un nuevo producto (Paso 1 del wizard).
+             * @param {object} productData - El objeto con los datos del producto.
+             * @returns {{errors: object, errorMessages: string[]}} - Un objeto con los campos erróneos y una lista de mensajes.
+             */
+            validateNewProduct: function (productData) {
+                const errorMessages = [];
+                const errors = {};
+
+                if (!productData.PRODUCTNAME || productData.PRODUCTNAME.trim() === '') {
+                    errorMessages.push('El nombre del producto es obligatorio.');
+                    errors.PRODUCTNAME = "Error";
+                } else if (productData.PRODUCTNAME.trim().length < 3) {
+                    errorMessages.push('El nombre del producto debe tener al menos 3 caracteres.');
+                    errors.PRODUCTNAME = "Error";
+                }
+
+                if (!productData.DESSKU || productData.DESSKU.trim() === '') {
+                    errorMessages.push('La descripción es obligatoria.');
+                    errors.DESSKU = "Error";
+                }
+
+                if (!productData.MARCA || productData.MARCA.trim() === '') {
+                    errorMessages.push('La marca es obligatoria.');
+                    errors.MARCA = "Error";
+                }
+
+                if (!productData.IDUNIDADMEDIDA || productData.IDUNIDADMEDIDA.trim() === '') {
+                    errorMessages.push('La unidad de medida es obligatoria.');
+                    errors.IDUNIDADMEDIDA = "Error";
+                }
+
+                return { errors, errorMessages };
+            },
+
+            /**
+             * Valida los datos de una presentación (Paso 2 del wizard).
+             * @param {object} presentationData - El objeto con los datos de la presentación.
+             * @returns {{errors: object, errorMessages: string[]}} - Un objeto con los campos erróneos y una lista de mensajes.
+             */
+            validatePresentation: function (presentationData) {
+                const errorMessages = [];
+                const errors = {};
+
+                if (!presentationData.IdPresentaOK || presentationData.IdPresentaOK.trim() === '') {
+                    errorMessages.push('El ID de la presentación (generado por el nombre) es obligatorio.');
+                    errors.NOMBREPRESENTACION = "Error";
+                }
+
+                if (!presentationData.NOMBREPRESENTACION || presentationData.NOMBREPRESENTACION.trim() === '') {
+                    errorMessages.push('El nombre de la presentación es obligatorio.');
+                    errors.NOMBREPRESENTACION = "Error";
+                }
+
+                if (!presentationData.Descripcion || presentationData.Descripcion.trim() === '') {
+                    errorMessages.push('La descripción de la presentación es obligatoria.');
+                    errors.Descripcion = "Error";
+                }
+                return { errors, errorMessages };
+            }
+        },
+
         onInit: function () {
             this._skuSuffix = null;
             this._barcode = null;
@@ -283,23 +349,17 @@ sap.ui.define([
             const oModel = this.getView().getModel("addProduct");
             const oNewPresentation = oModel.getProperty("/newPresentation");
 
-            // Validar campos de la nueva presentación
-            let bIsValid = true;
-            const oErrors = {};
-            if (!oNewPresentation.NOMBREPRESENTACION) {
-                oErrors.NOMBREPRESENTACION = "Error";
-                bIsValid = false;
-            }
-            if (!oNewPresentation.Descripcion) {
-                oErrors.Descripcion = "Error";
-                bIsValid = false;
-            }
-            oModel.setProperty("/newPresentationErrors", oErrors);
+            // Usar la nueva función de validación
+            const validationResult = this._validation.validatePresentation(oNewPresentation);
+            oModel.setProperty("/newPresentationErrors", validationResult.errors);
 
-            if (!bIsValid) {
-                MessageToast.show("Por favor, complete los campos obligatorios de la presentación.");
+            if (validationResult.errorMessages.length > 0) {
+                // Formatear errores para MessageBox
+                const sErrorText = validationResult.errorMessages.map(e => `• ${e}`).join("\n");
+                MessageBox.error("Por favor, corrija los siguientes errores en la presentación:\n\n" + sErrorText);
                 return;
             }
+            oModel.setProperty("/newPresentationErrors", {}); // Limpiar errores si es válido
 
             const oPresentationToAdd = JSON.parse(JSON.stringify(oNewPresentation));
             // Convertir PropiedadesExtras a un array de objetos para el binding de la agregación
@@ -350,20 +410,17 @@ sap.ui.define([
 
         _validateStep1: function() {
             const oModel = this.getView().getModel("addProduct");
-            const oData = oModel.getProperty("/");
-            const oErrors = {};
-            let bIsValid = true;
+            const productData = oModel.getProperty("/");
 
-            if (!oData.PRODUCTNAME) { oErrors.PRODUCTNAME = "Error"; bIsValid = false; }
-            if (!oData.MARCA) { oErrors.MARCA = "Error"; bIsValid = false; }
-            if (!oData.DESSKU) { oErrors.DESSKU = "Error"; bIsValid = false; }
-            if (!oData.IDUNIDADMEDIDA) { oErrors.IDUNIDADMEDIDA = "Error"; bIsValid = false; }
+            const validationResult = this._validation.validateNewProduct(productData);
+            oModel.setProperty("/errors", validationResult.errors);
 
-            oModel.setProperty("/errors", oErrors);
-            if (!bIsValid) {
-                MessageBox.error("Por favor, complete todos los campos obligatorios del producto.");
+            if (validationResult.errorMessages.length > 0) {
+                const sErrorText = validationResult.errorMessages.map(e => `• ${e}`).join("\n");
+                MessageBox.error("Por favor, corrija los siguientes errores en la información del producto:\n\n" + sErrorText);
+                return false;
             }
-            return bIsValid;
+            return true;
         },
 
         _validateStep2: function() {
