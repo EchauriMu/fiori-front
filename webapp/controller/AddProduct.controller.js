@@ -230,11 +230,13 @@ sap.ui.define([
 
             if (sKey) {
                 const oProps = oModel.getProperty("/newPresentation/PropiedadesExtras");
-                oProps[sKey] = sValue;
-                oModel.setProperty("/newPresentation/PropiedadesExtras", oProps);
+                const aPropsArray = Array.isArray(oProps) ? oProps : [];
+                aPropsArray.push({ key: sKey, value: sValue });
+
+                oModel.setProperty("/newPresentation/PropiedadesExtras", aPropsArray);
                 oModel.setProperty("/propKey", "");
                 oModel.setProperty("/propValue", "");
-                oModel.refresh(true); // Forzar actualización de la UI
+                // No es necesario refresh(true) si el binding es correcto
             }
         },
 
@@ -301,7 +303,10 @@ sap.ui.define([
 
             const oPresentationToAdd = JSON.parse(JSON.stringify(oNewPresentation));
             // Convertir PropiedadesExtras a un array de objetos para el binding de la agregación
-            oPresentationToAdd.PropiedadesExtras = Object.entries(oPresentationToAdd.PropiedadesExtras).map(([key, value]) => ({ key, value }));
+            // El modelo ya debería tener un array, pero nos aseguramos
+            if (!Array.isArray(oPresentationToAdd.PropiedadesExtras)) {
+                 oPresentationToAdd.PropiedadesExtras = Object.entries(oPresentationToAdd.PropiedadesExtras).map(([key, value]) => ({ key, value }));
+            }
 
             const aPresentations = oModel.getProperty("/presentations");
             aPresentations.push(oPresentationToAdd);
@@ -309,7 +314,7 @@ sap.ui.define([
 
             // Resetear el formulario de nueva presentación
             oModel.setProperty("/newPresentation", {
-                IdPresentaOK: '', Descripcion: '', NOMBREPRESENTACION: '', PropiedadesExtras: {}, files: []
+                IdPresentaOK: '', Descripcion: '', NOMBREPRESENTACION: '', PropiedadesExtras: [], files: []
             });
             oModel.setProperty("/propKey", "");
             oModel.setProperty("/propValue", "");
@@ -392,11 +397,15 @@ sap.ui.define([
             };
 
             const aPresentationsPayload = oData.presentations.map(pres => {
-                const propsObject = pres.PropiedadesExtras.reduce((acc, prop) => {
-                    acc[prop.key] = prop.value;
-                    return acc;
-                }, {});
-                return { ...pres, PropiedadesExtras: JSON.stringify(propsObject) };
+                // Si PropiedadesExtras ya es un array de {key, value}, lo convertimos a objeto
+                let propsObject = {};
+                if (Array.isArray(pres.PropiedadesExtras)) {
+                    propsObject = pres.PropiedadesExtras.reduce((acc, prop) => {
+                        acc[prop.key] = prop.value;
+                        return acc;
+                    }, {});
+                }
+                return { ...pres, PropiedadesExtras: JSON.stringify(propsObject), files: pres.files };
             });
 
             const oCompletePayload = {

@@ -20,13 +20,12 @@
             <NavContainer 
                 id="stepNavContainer"
                 autoFocus="false"
-                height="100%"
             >
                 <!-- PASO 1: INFORMACIÓN DEL PRODUCTO PADRE -->
                 <Page
                     id="ProductStepPage"
                     showHeader="false"
-                    enableScrolling="true"
+                    enableScrolling="false"
                     class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
@@ -108,7 +107,7 @@
                 <Page
                     id="PresentationsStepPage"
                     showHeader="false"
-                    enableScrolling="true"
+                    enableScrolling="false"
                 >
                     <MessageStrip
                         text="Añada una o más variantes o presentaciones para el producto. Cada presentación puede tener sus propias propiedades y archivos."
@@ -147,13 +146,14 @@
                                         <Label text="Propiedades Añadidas"/>
                                         <FlexBox items="{
                                             path: 'addProduct>/newPresentation/PropiedadesExtras',
-                                            templateShareable: false
+                                            templateShareable: true
                                         }" wrap="Wrap" class="sapUiTinyMarginTop">
-                                            <ObjectStatus
-                                                class="sapUiTinyMargin"
-                                                text="{addProduct>key}: {addProduct>value}"
-                                                state="Indication01"
-                                            />
+                                            <items>
+                                                <ObjectStatus
+                                                    class="sapUiTinyMargin"
+                                                    text="{addProduct>key}: {addProduct>value}"
+                                                    state="Indication01" />
+                                            </items>
                                         </FlexBox>
 
                                         <core:Title text="Archivos" />
@@ -225,7 +225,7 @@
                 <Page
                     id="ReviewStepPage"
                     showHeader="false"
-                    enableScrolling="true"
+                    enableScrolling="false"
                     class="sapUiResponsivePadding--content"
                 >
                     <MessageStrip
@@ -272,13 +272,12 @@
                                     <StandardListItem title="{addProduct>originalname}" icon="sap-icon://attachment" />
                                 </List>
 
-                                <Label text="Propiedades:" class="sapUiTinyMarginTop" visible="{= Object.keys(${addProduct>PropiedadesExtras}).length > 0 }"/>
-                                <Label text="Propiedades:" class="sapUiTinyMarginTop" visible="{= ${addProduct>PropiedadesExtras} &amp;&amp; Object.keys(${addProduct>PropiedadesExtras}).length > 0 }"/>
+                                <Label text="Propiedades:" class="sapUiTinyMarginTop" visible="{= ${addProduct>PropiedadesExtras} &amp;&amp; ${addProduct>PropiedadesExtras}.length > 0 }"/>
                                 <FlexBox items="{
                                     path: 'addProduct>PropiedadesExtras',
-                                    templateShareable: false
+                                    templateShareable: true
                                 }" wrap="Wrap">
-                                    <ObjectStatus class="sapUiTinyMargin" text="{addProduct>key}: {addProduct>value}" />
+                                    <ObjectStatus class="sapUiTinyMargin" text="{addProduct>key}: {addProduct>value}" state="Indication02" />
                                 </FlexBox>
                             </VBox>
                         </CustomListItem>

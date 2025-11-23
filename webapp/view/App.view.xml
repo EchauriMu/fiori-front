@@ -6,7 +6,9 @@
   xmlns="sap.m"
   models="{ appView: 'appView' }">
 
-  <tnt:ToolPage id="mainToolPage" class="sapUiSizeCompact">
+  <tnt:ToolPage 
+    id="mainToolPage" 
+    class="sapUiSizeCompact">
 
     <!-- Header -->
     <tnt:header>
@@ -33,10 +35,10 @@
       <tnt:SideNavigation
         id="sideNavigation"
         itemSelect=".onItemSelect"
-        selectedKey="main"
+        selectedKey="home"
         visible="{= ${appView>/isLoggedIn} }">
 
-        <tnt:NavigationList id="mainNavigationList">
+           <tnt:NavigationList id="mainNavigationList">
           
           <!-- Home -->
           <tnt:NavigationListItem
@@ -65,6 +67,13 @@
             key="categorias"
             text="{i18n>categoriasPageTitle}"
             icon="sap-icon://folder-blank" />
+
+          <!-- Módulo de Configuración -->
+          <tnt:NavigationListItem
+            id="navItemConfig"
+            key="config"
+            text="Configuración"
+            icon="sap-icon://action-settings" />
           
         </tnt:NavigationList>
 

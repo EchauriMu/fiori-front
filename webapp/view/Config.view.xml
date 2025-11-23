@@ -1,0 +1,27 @@
+<mvc:View
+    controllerName="com.invertions.sapfiorimodinv.controller.Config"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:core="sap.ui.core">
+    <Page title="Configuración">
+        <content>
+            <f:SimpleForm
+                editable="true"
+                layout="ResponsiveGridLayout"
+                labelSpanL="3" labelSpanM="3" emptySpanL="4" emptySpanM="4"
+                columnsL="1" columnsM="1">
+                <f:content>
+                    <Label text="Servidor de Base de Datos" />
+                    <Select
+                        id="dbServerSelect"
+                        selectedKey="{configView>/selectedDb}"
+                        change=".onDbServerChange">
+                        <core:Item key="mongo" text="Mongo DB" />
+                        <core:Item key="cosmo" text="Cosmos DB" />
+                    </Select>
+                </f:content>
+            </f:SimpleForm>
+        </content>
+    </Page>
+</mvc:View>

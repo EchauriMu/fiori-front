@@ -41,7 +41,7 @@ sap.ui.define([
       MessageToast.show(`Bienvenido, ${sUsername}`);
 
       // Navega a la vista principal
-      this.getOwnerComponent().getRouter().navTo("RouteMain");
+      this.getOwnerComponent().getRouter().navTo("RouteMain", {}, true);
     },    //Funcion para el ojito
     onVerContraseña: function () {
       const oInput = this.byId("passwordInput");

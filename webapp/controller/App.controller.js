@@ -8,20 +8,9 @@ sap.ui.define([
     return Controller.extend("com.invertions.sapfiorimodinv.controller.App", {
 
         onInit: function () {
-            // Intenta restaurar la sesión desde localStorage
-            const sUser = localStorage.getItem("currentUser");
+            // Redirige automáticamente a la vista de login al iniciar
             const oRouter = this.getOwnerComponent().getRouter();
-            const oAppModel = this.getOwnerComponent().getModel("appView");
-
-            if (sUser) {
-                const oUser = JSON.parse(sUser);
-                oAppModel.setProperty("/isLoggedIn", true);
-                oAppModel.setProperty("/currentUser", oUser);
-                // Si hay sesión, no es necesario ir al login, podrías ir a la ruta principal directamente
-                // o dejar que el router maneje la ruta inicial.
-            } else {
-                oRouter.navTo("Login");
-            }
+            oRouter.navTo("Login");
         },
 
 
@@ -35,7 +24,14 @@ sap.ui.define([
             const sKey = oItem.getKey();
             const oRouter = this.getOwnerComponent().getRouter();
 
-            switch (sKey) {
+            const isLoggedIn = this.getOwnerComponent().getModel("appView").getProperty("/isLoggedIn");
+
+            if (!isLoggedIn) {
+                MessageToast.show("Debe iniciar sesión para acceder");
+                return;
+            }
+
+           switch (sKey) {
                 case "main":
                     oRouter.navTo("RouteMain");
                     break;
@@ -47,6 +43,9 @@ sap.ui.define([
                     break;
                 case "categorias":
                     oRouter.navTo("RouteCategorias");
+                    break;
+                case "config":
+                    oRouter.navTo("RouteConfig");
                     break;
                 default:
                     // Opcional: Navegar a una vista de "no encontrado" o mostrar un mensaje
@@ -74,7 +73,7 @@ sap.ui.define([
                         oAppModel.setProperty("/currentUser", null);
 
                         // Redirige al login
-                        that.getOwnerComponent().getRouter().navTo("Login");
+                        that.getOwnerComponent().getRouter().navTo("Login", {}, true);
                     }
                 }
             });

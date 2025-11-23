@@ -182,6 +182,11 @@
                                         "pattern": "categorias",
                                         "name": "RouteCategorias",
                                         "target": "TargetCategorias"
+                                    },
+                                    {
+                                        "pattern": "config",
+                                        "name": "RouteConfig",
+                                        "target": "TargetConfig"
                                     }
             ],
             "targets": {
@@ -290,6 +295,12 @@
                         "viewId": "categorias",
                         "viewType": "XML",
                         "viewPath": "com.invertions.sapfiorimodinv.view.categorias"
+                },
+                "TargetConfig": {
+                        "viewName": "Config",
+                        "viewId": "config",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view"
                 }
             }
         },
