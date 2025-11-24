@@ -15,6 +15,10 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.Calendario", {
 
+        // ================================================================================
+        // LIFECYCLE METHODS
+        // ================================================================================
+
         onInit: function () {
             const today = new Date();
             
@@ -51,6 +55,18 @@ sap.ui.define([
             oRouter.navTo("RoutePromociones", {}, true);
         },
 
+        // ================================================================================
+        // API METHODS - CRUD OPERATIONS
+        // ================================================================================
+
+        /**
+         * Llama a la API REST del backend
+         * @param {string} sRelativeUrl - URL relativa del endpoint
+         * @param {string} sMethod - Método HTTP (GET, POST, etc.)
+         * @param {object} oData - Datos a enviar en el body
+         * @param {object} oParams - Parámetros de query string
+         * @returns {Promise} Promesa con la respuesta de la API
+         */
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
             const dbServer = sessionStorage.getItem('DBServer');
             if (dbServer === 'CosmosDB') {
@@ -86,11 +102,15 @@ sap.ui.define([
                 return oJson;
                 
             } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
         },
 
+        /**
+         * CRUD: READ - Carga todas las promociones desde el backend
+         * Endpoint: /ztpromociones/crudPromociones
+         * ProcessType: GetAll
+         */
         loadPromotions: async function () {
             const oModel = this.getView().getModel("calendarModel");
             
@@ -117,11 +137,14 @@ sap.ui.define([
                 this._generateCalendarDays();
                 
             } catch (error) {
-                console.error("Error al cargar promociones:", error);
                 MessageBox.error("Error al cargar promociones: " + error.message);
                 oModel.setProperty("/promotions", []);
             }
         },
+
+        // ================================================================================
+        // BUSINESS LOGIC - FILTERS & CALENDAR
+        // ================================================================================
 
         _applyFilters: function() {
             const oModel = this.getView().getModel("calendarModel");
@@ -228,10 +251,14 @@ sap.ui.define([
             
             if (!oGrid) return;
             
-            oGrid.removeAllContent();
+            oGrid.removeAllItems();
             
-            aDays.forEach(dayInfo => {
+            // Crear filas de 7 días (semanas)
+            let currentWeek = new sap.m.HBox();
+            
+            aDays.forEach((dayInfo, index) => {
                 const oVBox = new VBox({
+                    width: "14.28%",
                     alignItems: "Start",
                     justifyContent: "Start"
                 }).addStyleClass("calendar-day-cell");
@@ -294,8 +321,19 @@ sap.ui.define([
                     }
                 }
                 
-                oGrid.addContent(oVBox);
+                currentWeek.addItem(oVBox);
+                
+                // Cada 7 días, crear nueva semana
+                if ((index + 1) % 7 === 0) {
+                    oGrid.addItem(currentWeek);
+                    currentWeek = new sap.m.HBox();
+                }
             });
+            
+            // Agregar la última semana si tiene elementos
+            if (currentWeek.getItems().length > 0) {
+                oGrid.addItem(currentWeek);
+            }
         },
 
         _getPromotionIcon: function(oPromotion) {
@@ -312,6 +350,10 @@ sap.ui.define([
                    oDate.getFullYear() === today.getFullYear();
         },
 
+        // ================================================================================
+        // FORMATTERS & HELPERS
+        // ================================================================================
+
         _getMonthYearText: function(oDate) {
             const oDateFormat = DateFormat.getDateInstance({
                 pattern: "MMMM yyyy"
@@ -319,7 +361,10 @@ sap.ui.define([
             return oDateFormat.format(oDate);
         },
 
-        // Formatters
+        // ================================================================================
+        // FORMATTERS & HELPERS (less critical for debugging)
+        // ================================================================================
+
         formatDate: function(sDate) {
             if (!sDate) return "N/A";
             try {
@@ -373,7 +418,10 @@ sap.ui.define([
             }
         },
 
-        // Event Handlers
+        // ================================================================================
+        // UI EVENT HANDLERS
+        // ================================================================================
+
         onFilterChange: function() {
             this._applyFilters();
             const oModel = this.getView().getModel("calendarModel");
@@ -439,10 +487,37 @@ sap.ui.define([
             
             if (!oPromotion) return;
             
+            // Agrupar presentaciones por producto
+            const groupedProducts = this._groupProductsBySkuid(oPromotion.ProductosAplicables || []);
+            
             const oDetailModel = this.getView().getModel("detailModel");
-            oDetailModel.setData(oPromotion);
+            oDetailModel.setData({
+                ...oPromotion,
+                groupedProducts: groupedProducts
+            });
             
             this.byId("promoDetailDialog").open();
+        },
+
+        _groupProductsBySkuid: function(aPresentaciones) {
+            const grouped = new Map();
+            
+            aPresentaciones.forEach(presentacion => {
+                if (!grouped.has(presentacion.SKUID)) {
+                    grouped.set(presentacion.SKUID, {
+                        SKUID: presentacion.SKUID,
+                        NombreProducto: presentacion.NombreProducto,
+                        presentaciones: []
+                    });
+                }
+                grouped.get(presentacion.SKUID).presentaciones.push({
+                    IdPresentaOK: presentacion.IdPresentaOK,
+                    NombrePresentacion: presentacion.NombrePresentacion,
+                    Precio: presentacion.PrecioOriginal || presentacion.Precio
+                });
+            });
+            
+            return Array.from(grouped.values());
         },
 
         onCloseDetailDialog: function() {
@@ -505,3 +580,4 @@ sap.ui.define([
         }
     });
 });
+

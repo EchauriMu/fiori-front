@@ -12,40 +12,12 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.CrearPromocion", {
 
+        // ================================================================================
+        // 1. LIFECYCLE METHODS
+        // ================================================================================
+
         onInit: function () {
             this._initializeModel();
-
-            // Inicializar modelo de filtros para esta vista (similar a Promociones)
-            const oFilterModel = new JSONModel({
-                loading: false,
-                errorMessage: '',
-                searchTerm: '',
-                filters: {
-                    categorias: [],
-                    marcas: [],
-                    precioMin: '',
-                    precioMax: '',
-                    fechaIngresoDesde: '',
-                    fechaIngresoHasta: ''
-                },
-                filtersExpanded: true,
-                activeFiltersCount: 0,
-                allProducts: [],
-                allCategories: [],
-                allBrands: [],
-                filteredProducts: [],
-                filteredProductsCount: 0,
-                paginatedProducts: [],
-                selectedPresentacionesCount: 0,
-                lockedPresentaciones: [],
-                pagination: {
-                    currentPage: 1,
-                    itemsPerPage: 5,
-                    totalPages: 1,
-                    totalItems: 0
-                }
-            });
-            this.getView().setModel(oFilterModel, "filterModel");
             
             this.getOwnerComponent().getRouter().getRoute("RouteCrearPromocion")
                 .attachPatternMatched(this._onRouteMatched, this);
@@ -60,11 +32,10 @@ sap.ui.define([
             const oNavContainer = this.getView().byId("stepNavContainer");
             const oFirstPage = this.getView().byId("InfoStepPage");
             
-            // Limpiar contenedor y agregar primera página
+            // Limpiar contenedor y agregar páginas (ahora son 3 pasos)
             if (oNavContainer && oFirstPage) {
                 oNavContainer.removeAllPages();
                 oNavContainer.addPage(oFirstPage);
-                oNavContainer.addPage(this.getView().byId("DiscountStepPage"));
                 oNavContainer.addPage(this.getView().byId("ProductsStepPage"));
                 oNavContainer.addPage(this.getView().byId("ReviewStepPage"));
                 oNavContainer.to(oFirstPage);
@@ -104,8 +75,8 @@ sap.ui.define([
                 
                 // Navegación de pasos
                 currentStep: 1,
-                currentStepTitle: "Información General",
-                progressPercent: 25,
+                currentStepTitle: "Información General y Descuento",
+                progressPercent: 33,
                 
                 // Paginación de productos agrupados
                 groupedPagination: {
@@ -131,12 +102,9 @@ sap.ui.define([
             this.getView().setModel(oModel, "createPromo");
         },
 
-        _formatDateForInput: function(oDate) {
-            const year = oDate.getFullYear();
-            const month = String(oDate.getMonth() + 1).padStart(2, '0');
-            const day = String(oDate.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        },
+        // ================================================================================
+        // 2. API METHODS - CRUD OPERATIONS (CRÍTICAS PARA DEBUGGING)
+        // ================================================================================
 
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
             const dbServer = sessionStorage.getItem('DBServer');
@@ -178,7 +146,17 @@ sap.ui.define([
             }
         },
 
-        // Formatters
+        // ================================================================================
+        // 4. FORMATTERS & HELPERS (less critical for debugging)
+        // ================================================================================
+
+        _formatDateForInput: function(oDate) {
+            const year = oDate.getFullYear();
+            const month = String(oDate.getMonth() + 1).padStart(2, '0');
+            const day = String(oDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        },
+
         formatDate: function(sDate) {
             if (!sDate) return "N/A";
             try {
@@ -192,7 +170,10 @@ sap.ui.define([
             }
         },
 
-        // Event Handlers
+        // ================================================================================
+        // 5. UI EVENT HANDLERS
+        // ================================================================================
+
         onPlantillaChange: function(oEvent) {
             const sPlantilla = oEvent.getParameter("selectedItem").getKey();
             const oModel = this.getView().getModel("createPromo");
@@ -256,87 +237,6 @@ sap.ui.define([
             }
         },
 
-        // Función eliminada - Los filtros ahora están integrados directamente en el paso 3
-
-        _loadFilterData: async function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            oFilterModel.setProperty("/loading", true);
-            oFilterModel.setProperty("/errorMessage", "");
-
-            try {
-                // Cargar productos
-                const oProductsResponse = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
-                    ProcessType: 'GetAll'
-                });
-
-                let aProducts = [];
-                if (oProductsResponse?.data?.[0]?.dataRes) {
-                    aProducts = oProductsResponse.data[0].dataRes;
-                } else if (oProductsResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                    aProducts = oProductsResponse.value[0].data[0].dataRes;
-                } else if (Array.isArray(oProductsResponse?.data)) {
-                    aProducts = oProductsResponse.data;
-                } else if (Array.isArray(oProductsResponse)) {
-                    aProducts = oProductsResponse;
-                }
-
-                const aActiveProducts = aProducts.filter(function(p) {
-                    return p.ACTIVED === true && p.DELETED !== true;
-                });
-
-                // Categorías
-                const oCategoriesResponse = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
-                    ProcessType: 'GetAll',
-                    DBServer: 'MongoDB'
-                });
-
-                let aCategories = [];
-                if (oCategoriesResponse?.data?.[0]?.dataRes) {
-                    aCategories = oCategoriesResponse.data[0].dataRes;
-                } else if (oCategoriesResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                    aCategories = oCategoriesResponse.value[0].data[0].dataRes;
-                } else if (Array.isArray(oCategoriesResponse?.data)) {
-                    aCategories = oCategoriesResponse.data;
-                } else if (Array.isArray(oCategoriesResponse)) {
-                    aCategories = oCategoriesResponse;
-                }
-
-                const aActiveCategories = aCategories.filter(function(c) {
-                    return c.ACTIVED === true && c.DELETED !== true;
-                });
-
-                // Marcas únicas
-                const brandsSet = new Set();
-                aActiveProducts.forEach(function(p) {
-                    if (p.MARCA && p.MARCA.trim() !== '') {
-                        brandsSet.add(p.MARCA.trim());
-                    }
-                });
-
-                const aBrands = Array.from(brandsSet).map(function(marca) {
-                    const count = aActiveProducts.filter(function(p) { return p.MARCA === marca; }).length;
-                    return {
-                        id: marca,
-                        name: marca,
-                        productos: count
-                    };
-                }).sort(function(a, b) { return a.name.localeCompare(b.name); });
-
-                oFilterModel.setProperty("/allProducts", aActiveProducts);
-                oFilterModel.setProperty("/allCategories", aActiveCategories);
-                oFilterModel.setProperty("/allBrands", aBrands);
-
-                // Aplicar filtros iniciales (sin filtros => todos)
-                this._applyProductFilters();
-
-            } catch (error) {
-                console.error("Error cargando datos de filtros (CrearPromocion):", error);
-                oFilterModel.setProperty("/errorMessage", "Error al cargar productos: " + error.message);
-            } finally {
-                oFilterModel.setProperty("/loading", false);
-            }
-        },
-
         onRemovePresentacion: function(oEvent) {
             const oItem = oEvent.getParameter("listItem");
             const oContext = oItem.getBindingContext("createPromo");
@@ -356,725 +256,48 @@ sap.ui.define([
             }
         },
 
-        // ======== MÉTODOS COMPARTIDOS DE FILTROS (simplificados) ========
-
-        _applyProductFilters: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aAllProducts = oFilterModel.getProperty("/allProducts") || [];
-            const oFilters = oFilterModel.getProperty("/filters") || {};
-            const sSearchTerm = oFilterModel.getProperty("/searchTerm") || '';
-
-            console.log("🔍 Aplicando filtros:", {
-                totalProductos: aAllProducts.length,
-                filtros: oFilters,
-                busqueda: sSearchTerm,
-                primerProducto: aAllProducts[0]
-            });
-
-            let aFiltered = aAllProducts.filter(function(product) {
-                // Búsqueda
-                if (sSearchTerm && sSearchTerm.trim() !== '') {
-                    const searchLower = sSearchTerm.toLowerCase();
-                    const matchesSearch =
-                        (product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(searchLower)) ||
-                        (product.SKUID && product.SKUID.toLowerCase().includes(searchLower)) ||
-                        (product.MARCA && product.MARCA.toLowerCase().includes(searchLower));
-                    if (!matchesSearch) { return false; }
-                }
-
-                // Marcas
-                if (oFilters.marcas && oFilters.marcas.length > 0) {
-                    if (!product.MARCA || !oFilters.marcas.includes(product.MARCA)) {
-                        return false;
-                    }
-                }
-
-                // Categorías (suponiendo array CATEGORIAS)
-                if (oFilters.categorias && oFilters.categorias.length > 0) {
-                    console.log("📂 Filtrando por categorías:", oFilters.categorias, "Producto:", product.SKUID, "CATEGORIAS:", product.CATEGORIAS);
-                    if (!product.CATEGORIAS || !Array.isArray(product.CATEGORIAS)) {
-                        console.log("❌ Producto sin CATEGORIAS o no es array");
-                        return false;
-                    }
-                    const hasCategory = product.CATEGORIAS.some(function(cat) {
-                        return oFilters.categorias.includes(cat);
-                    });
-                    if (!hasCategory) { 
-                        console.log("❌ Producto no tiene categoría seleccionada");
-                        return false; 
-                    }
-                }
-
-                // Precio
-                if (oFilters.precioMin && product.PRECIO < parseFloat(oFilters.precioMin)) {
-                    return false;
-                }
-                if (oFilters.precioMax && product.PRECIO > parseFloat(oFilters.precioMax)) {
-                    return false;
-                }
-
-                return true;
-            });
-
-            console.log("✅ Productos filtrados:", aFiltered.length);
-
-            aFiltered = aFiltered.map(function(product) {
-                return {
-                    SKUID: product.SKUID,
-                    PRODUCTNAME: product.PRODUCTNAME,
-                    MARCA: product.MARCA,
-                    PRECIO: product.PRECIO,
-                    CATEGORIAS: product.CATEGORIAS,
-                    REGDATE: product.REGDATE,
-                    ACTIVED: product.ACTIVED,
-                    expanded: false, // COLAPSADOS POR DEFECTO
-                    presentaciones: [],
-                    presentacionesCount: 0,
-                    loadingPresentaciones: false,
-                    allSelected: false
-                };
-            });
-
-            oFilterModel.setProperty("/filteredProducts", aFiltered);
-            oFilterModel.setProperty("/filteredProductsCount", aFiltered.length);
-            
-            // Resetear a la primera página cuando cambien los filtros
-            oFilterModel.setProperty("/pagination/currentPage", 1);
-            
-            // Cargar presentaciones automáticamente y actualizar el contador
-            this._loadAllPresentaciones(aFiltered).then(() => {
-                this._updateSelectedPresentacionesCount();
-                this._updatePaginatedProducts();
-            });
-        },
-
-        onFilterSearch: function(oEvent) {
-            const sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue") || "";
-            const oFilterModel = this.getView().getModel("filterModel");
-            oFilterModel.setProperty("/searchTerm", sValue);
-            this._applyProductFilters();
-        },
-
-        onFilterCategoryChange: function(oEvent) {
-            const oMultiComboBox = oEvent.getSource();
-            const aSelectedKeys = oMultiComboBox.getSelectedKeys();
-            const oFilterModel = this.getView().getModel("filterModel");
-            console.log("📂 Categorías seleccionadas:", aSelectedKeys);
-            oFilterModel.setProperty("/filters/categorias", aSelectedKeys);
-            this._applyProductFilters();
-        },
-
-        onFilterBrandChange: function(oEvent) {
-            const oMultiComboBox = oEvent.getSource();
-            const aSelectedKeys = oMultiComboBox.getSelectedKeys();
-            const oFilterModel = this.getView().getModel("filterModel");
-            console.log("🏷️ Marcas seleccionadas:", aSelectedKeys);
-            oFilterModel.setProperty("/filters/marcas", aSelectedKeys);
-            this._applyProductFilters();
-        },
-
-        onFilterPriceChange: function() {
-            this._applyProductFilters();
-        },
-
-        onClearFilters: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            oFilterModel.setProperty("/searchTerm", "");
-            oFilterModel.setProperty("/filters", {
-                categorias: [],
-                marcas: [],
-                precioMin: '',
-                precioMax: '',
-                fechaIngresoDesde: '',
-                fechaIngresoHasta: ''
-            });
-            this._applyProductFilters();
-        },
-
-        // El resto de manejadores de selección de presentaciones se toma de Promociones.controller
-        onProductCheckBoxSelect: function(oEvent) {
-            const bSelected = oEvent.getParameter("selected");
-            const oContext = oEvent.getSource().getBindingContext("filterModel");
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aPresentaciones = oFilterModel.getProperty(sPath + "/presentaciones") || [];
-            
-            // Seleccionar/deseleccionar todas las presentaciones no bloqueadas
-            aPresentaciones.forEach(function(pres, index) {
-                if (!pres.locked) {
-                    oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
-                }
-            });
-            
-            oFilterModel.setProperty(sPath + "/allSelected", bSelected);
-            this._updateSelectedPresentacionesCount();
-        },
-
-        onFilterToggleProduct: async function(oEvent) {
-            const oItem = oEvent.getSource();
-            const oContext = oItem.getBindingContext("filterModel");
-            const oProduct = oContext.getObject();
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-
-            const bExpanded = !oProduct.expanded;
-            oFilterModel.setProperty(sPath + "/expanded", bExpanded);
-
-            if (bExpanded && (!oProduct.presentaciones || oProduct.presentaciones.length === 0)) {
-                oFilterModel.setProperty(sPath + "/loadingPresentaciones", true);
-                
-                try {
-                    const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
-                        ProcessType: 'GetBySKUID',
-                        skuid: oProduct.SKUID
-                    });
-
-                    let aPresentaciones = [];
-                    if (oPresentacionesResponse?.data?.[0]?.dataRes) {
-                        aPresentaciones = oPresentacionesResponse.data[0].dataRes;
-                    } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                        aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
-                    } else if (Array.isArray(oPresentacionesResponse?.data)) {
-                        aPresentaciones = oPresentacionesResponse.data;
-                    } else if (Array.isArray(oPresentacionesResponse)) {
-                        aPresentaciones = oPresentacionesResponse;
-                    }
-
-                    // Filtrar solo presentaciones activas (ya vienen filtradas por SKUID)
-                    const aProductPresentaciones = aPresentaciones.filter(function(p) {
-                        return p.ACTIVED === true;
-                    });
-
-                    const aLockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
-                    const aPresentacionesWithPrice = await Promise.all(aProductPresentaciones.map(async (pres) => {
-                        let precio = 0;
-                        try {
-                            const oPrecioResponse = await this._callApi('/ztprecios-items/preciosItemsCRUD', 'POST', {}, {
-                                ProcessType: 'GetByIdPresentaOK',
-                                idPresentaOK: pres.IdPresentaOK
-                            });
-
-                            let aPrecios = [];
-                            if (oPrecioResponse?.data?.[0]?.dataRes) {
-                                aPrecios = oPrecioResponse.data[0].dataRes;
-                            } else if (oPrecioResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                                aPrecios = oPrecioResponse.value[0].data[0].dataRes;
-                            } else if (Array.isArray(oPrecioResponse?.data)) {
-                                aPrecios = oPrecioResponse.data;
-                            } else if (Array.isArray(oPrecioResponse)) {
-                                aPrecios = oPrecioResponse;
-                            }
-
-                            // Tomar el primer precio activo (ya viene filtrado por IdPresentaOK)
-                            const oPrecioItem = aPrecios.find(function(pr) {
-                                return pr.ACTIVED === true;
-                            });
-
-                            if (oPrecioItem) {
-                                precio = oPrecioItem.PRECIO || 0;
-                            }
-                        } catch (error) {
-                            console.error("Error cargando precio para", pres.IdPresentaOK, error);
-                        }
-
-                        return {
-                            IdPresentaOK: pres.IdPresentaOK,
-                            NOMBREPRESENTACION: pres.NOMBREPRESENTACION,
-                            precio: precio,
-                            selected: false,
-                            locked: aLockedIds.includes(pres.IdPresentaOK)
-                        };
-                    }));
-
-                    oFilterModel.setProperty(sPath + "/presentaciones", aPresentacionesWithPrice);
-                    oFilterModel.setProperty(sPath + "/presentacionesCount", aPresentacionesWithPrice.length);
-
-                } catch (error) {
-                    console.error("Error cargando presentaciones:", error);
-                    MessageToast.show("Error al cargar presentaciones: " + error.message);
-                } finally {
-                    oFilterModel.setProperty(sPath + "/loadingPresentaciones", false);
-                }
-            }
-        },
-
-        onFilterPresentacionSelect: function(oEvent) {
-            const oCheckBox = oEvent.getSource();
-            const bSelected = oCheckBox.getSelected();
-            const oContext = oCheckBox.getBindingContext("filterModel");
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oPresentacion = oContext.getObject();
-            
-            oFilterModel.setProperty(sPath + "/selected", bSelected);
-            
-            // Actualizar checkbox del producto
-            const aPathParts = sPath.split("/");
-            const productIndex = parseInt(aPathParts[2]);
-            const oProduct = oFilterModel.getProperty("/filteredProducts/" + productIndex);
-            this._updateFilterProductCheckBox(productIndex);
-            
-            // Agregar o quitar de la lista de presentaciones seleccionadas
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aSelected = oCreateModel.getProperty("/selectedPresentaciones") || [];
-            
-            if (bSelected) {
-                // Agregar presentación
-                const newPres = {
-                    IdPresentaOK: oPresentacion.IdPresentaOK,
-                    SKUID: oProduct.SKUID,
-                    NOMBREPRESENTACION: oPresentacion.NOMBREPRESENTACION,
-                    Precio: oPresentacion.precio,
-                    producto: {
-                        SKUID: oProduct.SKUID,
-                        PRODUCTNAME: oProduct.PRODUCTNAME
-                    }
-                };
-                aSelected.push(newPres);
-            } else {
-                // Quitar presentación
-                const index = aSelected.findIndex(p => p.IdPresentaOK === oPresentacion.IdPresentaOK);
-                if (index > -1) {
-                    aSelected.splice(index, 1);
-                }
-            }
-            
-            oCreateModel.setProperty("/selectedPresentaciones", aSelected);
-            this._updateGroupedSelectedProducts();
-            this._updateSelectedPresentacionesCount();
-        },
-
-        onFilterTogglePresentacion: function(oEvent) {
-            const oItem = oEvent.getSource();
-            const oContext = oItem.getBindingContext("filterModel");
-            const oPresentacion = oContext.getObject();
-
-            if (oPresentacion.locked) {
-                MessageToast.show("Esta presentación ya está en la promoción");
-                return;
-            }
-
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-            const bCurrentlySelected = oPresentacion.selected;
-
-            oFilterModel.setProperty(sPath + "/selected", !bCurrentlySelected);
-            this._updateSelectedPresentacionesCount();
-            this._updateProductCheckBox(oContext);
-        },
-
-        _updateProductCheckBox: function(oPresentacionContext) {
-            const sPresPath = oPresentacionContext.getPath();
-            const productIndex = sPresPath.split("/")[2];
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aPresentaciones = oFilterModel.getProperty("/filteredProducts/" + productIndex + "/presentaciones");
-            
-            if (!aPresentaciones || aPresentaciones.length === 0) return;
-            
-            const aUnlocked = aPresentaciones.filter(p => !p.locked);
-            if (aUnlocked.length === 0) return;
-            
-            const allSelected = aUnlocked.every(p => p.selected);
-            oFilterModel.setProperty("/filteredProducts/" + productIndex + "/allSelected", allSelected);
-        },
-
-        _updateSelectedPresentacionesCount: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
-            
-            let count = 0;
-            aProducts.forEach(function(product) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(function(pres) {
-                        if (pres.selected && !pres.locked) {
-                            count++;
-                        }
-                    });
-                }
-            });
-            
-            oFilterModel.setProperty("/selectedPresentacionesCount", count);
-        },
-
-        onSelectAllFilteredProducts: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
-            
-            // Verificar si todas están seleccionadas
-            let allSelected = true;
-            let hasUnlockedPresentaciones = false;
-            
-            aProducts.forEach(function(product) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(function(pres) {
-                        if (!pres.locked) {
-                            hasUnlockedPresentaciones = true;
-                            if (!pres.selected) {
-                                allSelected = false;
-                            }
-                        }
-                    });
-                }
-            });
-            
-            if (!hasUnlockedPresentaciones) {
-                MessageToast.show("No hay presentaciones disponibles para seleccionar");
-                return;
-            }
-            
-            // Marcar/desmarcar todas
-            const newState = !allSelected;
-            
-            aProducts.forEach(function(product, productIndex) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    let allPresSelected = true;
-                    product.presentaciones.forEach(function(pres, presIndex) {
-                        if (!pres.locked) {
-                            // Actualizar el objeto directamente
-                            pres.selected = newState;
-                            // Y también en el modelo
-                            oFilterModel.setProperty("/filteredProducts/" + productIndex + "/presentaciones/" + presIndex + "/selected", newState);
-                        }
-                        // Verificar si todas las no-locked están seleccionadas
-                        if (!pres.locked && !pres.selected) {
-                            allPresSelected = false;
-                        }
-                    });
-                    // Actualizar el estado del checkbox del producto
-                    product.allSelected = allPresSelected;
-                    oFilterModel.setProperty("/filteredProducts/" + productIndex + "/allSelected", allPresSelected);
-                }
-            });
-            
-            // Forzar actualización completa del modelo
-            oFilterModel.refresh(true);
-            
-            // Actualizar la vista paginada y contador
-            this._updatePaginatedProducts();
-            this._updateSelectedPresentacionesCount();
-            
-            MessageToast.show(newState ? "Todas seleccionadas (" + oFilterModel.getProperty("/selectedPresentacionesCount") + ")" : "Todas deseleccionadas");
-        },
-
-        onPresentacionPress: function(oEvent) {
-            const oItem = oEvent.getSource();
-            const oContext = oItem.getBindingContext("filterModel");
-            const oPresentacion = oContext.getObject();
-
-            if (oPresentacion.locked) {
-                MessageToast.show("Esta presentación ya está en la promoción");
-                return;
-            }
-
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-            const bCurrentlySelected = oPresentacion.selected;
-
-            oFilterModel.setProperty(sPath + "/selected", !bCurrentlySelected);
-            this._updateSelectedPresentacionesCount();
-        },
-
-        onConfirmAddProducts: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oCreateModel = this.getView().getModel("createPromo");
-            // Usar filteredProducts (todos los productos filtrados, no solo los paginados)
-            const aAllProducts = oFilterModel.getProperty("/filteredProducts") || [];
-            const aCurrent = oCreateModel.getProperty("/selectedPresentaciones") || [];
-
-            const aNewPresentaciones = [];
-            aAllProducts.forEach(function(product) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(function(pres) {
-                        console.log("Revisando presentación:", pres.NOMBREPRESENTACION, "selected:", pres.selected, "locked:", pres.locked);
-                        if (pres.selected && !pres.locked) {
-                            aNewPresentaciones.push({
-                                IdPresentaOK: pres.IdPresentaOK,
-                                SKUID: product.SKUID,
-                                NOMBREPRESENTACION: pres.NOMBREPRESENTACION,
-                                Precio: pres.precio,
-                                producto: {
-                                    SKUID: product.SKUID,
-                                    PRODUCTNAME: product.PRODUCTNAME
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-
-            console.log("Total presentaciones encontradas seleccionadas:", aNewPresentaciones.length);
-
-            if (aNewPresentaciones.length === 0) {
-                MessageBox.warning("No hay presentaciones seleccionadas para agregar");
-                return;
-            }
-
-            const aCombined = aCurrent.concat(aNewPresentaciones);
-            oCreateModel.setProperty("/selectedPresentaciones", aCombined);
-            
-            // Agrupar por productos
-            this._updateGroupedSelectedProducts();
-
-            MessageToast.show(aNewPresentaciones.length + " presentación(es) agregada(s) a la promoción");
-        },
-
-        _updateGroupedSelectedProducts: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aPresentaciones = oCreateModel.getProperty("/selectedPresentaciones") || [];
-            
-            const productMap = new Map();
-            
-            aPresentaciones.forEach(function(pres) {
-                const skuid = pres.SKUID;
-                if (!productMap.has(skuid)) {
-                    productMap.set(skuid, {
-                        SKUID: skuid,
-                        PRODUCTNAME: pres.producto?.PRODUCTNAME || 'Sin nombre',
-                        presentaciones: [],
-                        expanded: false
-                    });
-                }
-                productMap.get(skuid).presentaciones.push(pres);
-            });
-            
-            const grouped = Array.from(productMap.values());
-            oCreateModel.setProperty("/groupedSelectedProducts", grouped);
-            
-            // Actualizar paginación del paso 3
-            this._updatePaginatedGroupedProducts();
-            
-            // Actualizar paginación del paso 4
-            this._updatePaginatedSelectedProducts();
-        },
-
-        _updatePaginatedSelectedProducts: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aGrouped = oCreateModel.getProperty("/groupedSelectedProducts") || [];
-            const currentPage = oCreateModel.getProperty("/paginationSelected/currentPage") || 1;
-            const itemsPerPage = oCreateModel.getProperty("/paginationSelected/itemsPerPage") || 5;
-
-            const totalItems = aGrouped.length;
-            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-            oCreateModel.setProperty("/paginationSelected/totalItems", totalItems);
-            oCreateModel.setProperty("/paginationSelected/totalPages", totalPages);
-
-            // Ajustar página actual si es necesaria
-            if (currentPage > totalPages && totalPages > 0) {
-                oCreateModel.setProperty("/paginationSelected/currentPage", totalPages);
-            }
-
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-            const paginatedSelected = aGrouped.slice(startIndex, endIndex);
-
-            oCreateModel.setProperty("/paginatedSelectedProducts", paginatedSelected);
-        },
-
-        onSelectedPreviousPage: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const currentPage = oCreateModel.getProperty("/paginationSelected/currentPage");
-            if (currentPage > 1) {
-                oCreateModel.setProperty("/paginationSelected/currentPage", currentPage - 1);
-                this._updatePaginatedSelectedProducts();
-            }
-        },
-
-        onSelectedNextPage: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const currentPage = oCreateModel.getProperty("/paginationSelected/currentPage");
-            const totalPages = oCreateModel.getProperty("/paginationSelected/totalPages");
-            if (currentPage < totalPages) {
-                oCreateModel.setProperty("/paginationSelected/currentPage", currentPage + 1);
-                this._updatePaginatedSelectedProducts();
-            }
-        },
-
-        onSelectedItemsPerPageChange: function(oEvent) {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const sKey = oEvent.getParameter("selectedItem").getKey();
-            oCreateModel.setProperty("/paginationSelected/itemsPerPage", parseInt(sKey));
-            oCreateModel.setProperty("/paginationSelected/currentPage", 1);
-            this._updatePaginatedSelectedProducts();
-        },
-
-        _updatePaginatedGroupedProducts: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aGrouped = oCreateModel.getProperty("/groupedSelectedProducts") || [];
-            const currentPage = oCreateModel.getProperty("/groupedPagination/currentPage") || 1;
-            const itemsPerPage = oCreateModel.getProperty("/groupedPagination/itemsPerPage") || 5;
-
-            const totalItems = aGrouped.length;
-            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-            oCreateModel.setProperty("/groupedPagination/totalItems", totalItems);
-            oCreateModel.setProperty("/groupedPagination/totalPages", totalPages);
-
-            // Ajustar página actual si es necesaria
-            if (currentPage > totalPages) {
-                oCreateModel.setProperty("/groupedPagination/currentPage", totalPages);
-            }
-
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-            const paginatedGrouped = aGrouped.slice(startIndex, endIndex);
-
-            oCreateModel.setProperty("/paginatedGroupedProducts", paginatedGrouped);
-        },
-
-        onPreviousGroupedPage: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const currentPage = oCreateModel.getProperty("/groupedPagination/currentPage");
-            if (currentPage > 1) {
-                oCreateModel.setProperty("/groupedPagination/currentPage", currentPage - 1);
-                this._updatePaginatedGroupedProducts();
-            }
-        },
-
-        onNextGroupedPage: function() {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const currentPage = oCreateModel.getProperty("/groupedPagination/currentPage");
-            const totalPages = oCreateModel.getProperty("/groupedPagination/totalPages");
-            if (currentPage < totalPages) {
-                oCreateModel.setProperty("/groupedPagination/currentPage", currentPage + 1);
-                this._updatePaginatedGroupedProducts();
-            }
-        },
-
-        onGroupedItemsPerPageChange: function(oEvent) {
-            const oCreateModel = this.getView().getModel("createPromo");
-            const newItemsPerPage = parseInt(oEvent.getParameter("selectedItem").getKey());
-            oCreateModel.setProperty("/groupedPagination/itemsPerPage", newItemsPerPage);
-            oCreateModel.setProperty("/groupedPagination/currentPage", 1);
-            this._updatePaginatedGroupedProducts();
-        },
-
-        onToggleGroupedProduct: function(oEvent) {
-            const oButton = oEvent.getSource();
-            const oContext = oButton.getBindingContext("createPromo");
-            const sPath = oContext.getPath();
-            const oCreateModel = this.getView().getModel("createPromo");
-            const bExpanded = oCreateModel.getProperty(sPath + "/expanded");
-            
-            oCreateModel.setProperty(sPath + "/expanded", !bExpanded);
-        },
-
-        // Función eliminada - No se necesita cancelar ya que no hay modal
-
-        onPreviousPage: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const currentPage = oFilterModel.getProperty("/pagination/currentPage");
-            if (currentPage > 1) {
-                oFilterModel.setProperty("/pagination/currentPage", currentPage - 1);
-                this._updatePaginatedProducts();
-            }
-        },
-
-        onNextPage: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const currentPage = oFilterModel.getProperty("/pagination/currentPage");
-            const totalPages = oFilterModel.getProperty("/pagination/totalPages");
-            if (currentPage < totalPages) {
-                oFilterModel.setProperty("/pagination/currentPage", currentPage + 1);
-                this._updatePaginatedProducts();
-            }
-        },
-
-        onItemsPerPageChange: function(oEvent) {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const newItemsPerPage = parseInt(oEvent.getParameter("selectedItem").getKey());
-            oFilterModel.setProperty("/pagination/itemsPerPage", newItemsPerPage);
-            oFilterModel.setProperty("/pagination/currentPage", 1);
-            this._updatePaginatedProducts();
-        },
-
-        _updatePaginatedProducts: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const aFilteredProducts = oFilterModel.getProperty("/filteredProducts") || [];
-            const currentPage = oFilterModel.getProperty("/pagination/currentPage");
-            const itemsPerPage = oFilterModel.getProperty("/pagination/itemsPerPage");
-
-            const totalItems = aFilteredProducts.length;
-            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-            oFilterModel.setProperty("/pagination/totalItems", totalItems);
-            oFilterModel.setProperty("/pagination/totalPages", totalPages);
-
-            // Ajustar página actual si es necesaria
-            if (currentPage > totalPages) {
-                oFilterModel.setProperty("/pagination/currentPage", totalPages);
-            }
-
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-            const paginatedProducts = aFilteredProducts.slice(startIndex, endIndex);
-
-            oFilterModel.setProperty("/paginatedProducts", paginatedProducts);
-        },
-
-        onStepActivate: async function(oEvent) {
-            const sStepId = oEvent.getSource().getId();
-            
-            if (sStepId.includes("ProductsStep")) {
-                // Cargar datos de filtros cuando se activa el paso 3
-                const oFilterModel = this.getView().getModel("filterModel");
-                const oCreateModel = this.getView().getModel("createPromo");
-                const aSelected = oCreateModel.getProperty("/selectedPresentaciones") || [];
-                const lockedIds = aSelected
-                    .filter(function(p){ return p && p.IdPresentaOK; })
-                    .map(function(p){ return p.IdPresentaOK; });
-                oFilterModel.setProperty("/lockedPresentaciones", lockedIds);
-                oFilterModel.setProperty("/selectedPresentacionesCount", 0);
-                oFilterModel.setProperty("/errorMessage", "");
-                
-                await this._loadFilterData();
-            } else if (sStepId.includes("ReviewStep")) {
-                // Actualizar agrupación antes de mostrar el paso de revisión
-                this._updateGroupedSelectedProducts();
-                this.getView().getModel("createPromo").refresh();
-            }
-        },
+        // ================================================================================
+        // 3. WIZARD NAVIGATION & STEP VALIDATION
+        // ================================================================================
 
         onNextStep: async function() {
             const oModel = this.getView().getModel("createPromo");
             const currentStep = oModel.getProperty("/currentStep");
             
-            // Validar paso actual antes de avanzar
-            let bIsValid = true;
+            // Validar el paso actual antes de avanzar
+            let isValid = false;
             if (currentStep === 1) {
-                bIsValid = this._validateStep1();
+                isValid = this._validateStep1() && this._validateStep2();
             } else if (currentStep === 2) {
-                bIsValid = this._validateStep2();
-            } else if (currentStep === 3) {
-                bIsValid = this._validateStep3();
+                isValid = this._validateStep3();
             }
             
-            if (!bIsValid) {
-                MessageToast.show("Por favor complete todos los campos requeridos");
-                return;
+            if (!isValid) {
+                return; // No avanzar si la validación falla
             }
             
-            // Navegar al siguiente paso
+            if (currentStep >= 3) return; // Ya estamos en el último paso
+            
             const oNavContainer = this.getView().byId("stepNavContainer");
             let nextPage;
             let stepTitle;
             let progressPercent;
             
             if (currentStep === 1) {
-                nextPage = this.getView().byId("DiscountStepPage");
-                stepTitle = "Descuento y Reglas";
-                progressPercent = 50;
-            } else if (currentStep === 2) {
+                // Inicializar filterModel antes de ir al paso 2
+                this._initializeFilterModel();
+                await this._loadProductsForDialog();
+                
                 nextPage = this.getView().byId("ProductsStepPage");
                 stepTitle = "Productos y Presentaciones";
-                progressPercent = 75;
-                // Cargar datos de filtros
-                await this._loadStep3Data();
-            } else if (currentStep === 3) {
+                progressPercent = 66;
+            } else if (currentStep === 2) {
+                // Transferir presentaciones agregadas al modelo createPromo
+                this._transferAddedPresentationsToModel();
+                
                 nextPage = this.getView().byId("ReviewStepPage");
-                stepTitle = "Revisión y Confirmación";
+                stepTitle = "Revisión Final";
                 progressPercent = 100;
-                this._updateGroupedSelectedProducts();
             }
             
             if (nextPage && oNavContainer) {
@@ -1082,7 +305,6 @@ sap.ui.define([
                 oModel.setProperty("/currentStep", currentStep + 1);
                 oModel.setProperty("/currentStepTitle", stepTitle);
                 oModel.setProperty("/progressPercent", progressPercent);
-                console.log("✅ Navegando a paso:", currentStep + 1, "- Título:", stepTitle);
                 oModel.refresh(true); // Force refresh del modelo
             }
         },
@@ -1100,16 +322,12 @@ sap.ui.define([
             
             if (currentStep === 2) {
                 prevPage = this.getView().byId("InfoStepPage");
-                stepTitle = "Información General";
-                progressPercent = 25;
+                stepTitle = "Información General y Descuento";
+                progressPercent = 33;
             } else if (currentStep === 3) {
-                prevPage = this.getView().byId("DiscountStepPage");
-                stepTitle = "Descuento y Reglas";
-                progressPercent = 50;
-            } else if (currentStep === 4) {
                 prevPage = this.getView().byId("ProductsStepPage");
                 stepTitle = "Productos y Presentaciones";
-                progressPercent = 75;
+                progressPercent = 66;
             }
             
             if (prevPage && oNavContainer) {
@@ -1121,19 +339,7 @@ sap.ui.define([
             }
         },
 
-        _loadStep3Data: async function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aSelected = oCreateModel.getProperty("/selectedPresentaciones") || [];
-            const lockedIds = aSelected
-                .filter(function(p){ return p && p.IdPresentaOK; })
-                .map(function(p){ return p.IdPresentaOK; });
-            oFilterModel.setProperty("/lockedPresentaciones", lockedIds);
-            oFilterModel.setProperty("/selectedPresentacionesCount", 0);
-            oFilterModel.setProperty("/errorMessage", "");
-            
-            await this._loadFilterData();
-        },
+
 
         _validateStep1: function() {
             const oModel = this.getView().getModel("createPromo");
@@ -1195,15 +401,56 @@ sap.ui.define([
         },
 
         _validateStep3: function() {
-            const oModel = this.getView().getModel("createPromo");
-            const aPresentaciones = oModel.getProperty("/selectedPresentaciones");
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
             
-            if (!aPresentaciones || aPresentaciones.length === 0) {
-                MessageBox.error("Debe seleccionar al menos una presentación para la promoción.");
+            if (Object.keys(oAddedPresentaciones).length === 0) {
+                MessageBox.error("Debe agregar al menos una presentación para la promoción. Selecciona presentaciones y haz clic en 'Agregar'.");
                 return false;
             }
             
             return true;
+        },
+
+        onToggleGroupedProduct: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("createPromo");
+            const sPath = oContext.getPath();
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const bExpanded = oCreatePromo.getProperty(sPath + "/expanded");
+            
+            oCreatePromo.setProperty(sPath + "/expanded", !bExpanded);
+        },
+
+        onSelectedItemsPerPageChange: function(oEvent) {
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const itemsPerPage = parseInt(oEvent.getParameter("selectedItem").getKey());
+            
+            oCreatePromo.setProperty("/paginationSelected/itemsPerPage", itemsPerPage);
+            oCreatePromo.setProperty("/paginationSelected/currentPage", 1);
+            
+            this._updateSelectedPagination();
+        },
+
+        onSelectedPreviousPage: function() {
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const currentPage = oCreatePromo.getProperty("/paginationSelected/currentPage");
+            
+            if (currentPage > 1) {
+                oCreatePromo.setProperty("/paginationSelected/currentPage", currentPage - 1);
+                this._updateSelectedPagination();
+            }
+        },
+
+        onSelectedNextPage: function() {
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const currentPage = oCreatePromo.getProperty("/paginationSelected/currentPage");
+            const totalPages = oCreatePromo.getProperty("/paginationSelected/totalPages");
+            
+            if (currentPage < totalPages) {
+                oCreatePromo.setProperty("/paginationSelected/currentPage", currentPage + 1);
+                this._updateSelectedPagination();
+            }
         },
 
         onSavePromotion: async function () {
@@ -1259,16 +506,13 @@ sap.ui.define([
                 DELETED: false
             };
 
-            console.log("📤 Payload a enviar:", oPromoPayload);
-
             try {
                 const oResponse = await this._callApi('/ztpromociones/crudPromociones', 'POST', oPromoPayload, {
                     ProcessType: 'AddOne',
                     DBServer: 'MongoDB'
                 });
                 
-                console.log("✅ Promoción creada exitosamente:", oResponse);
-                
+                                
                 MessageBox.success(`Promoción "${oData.titulo}" creada exitosamente.`, {
                     onClose: () => this.onNavBack()
                 });
@@ -1278,70 +522,463 @@ sap.ui.define([
             }
         },
 
-        _loadAllPresentaciones: async function(aProducts) {
+        // ================================================================================
+        // 6. BUSINESS LOGIC - DATA PROCESSING & FILTERS
+        // ================================================================================
+
+        _transferAddedPresentationsToModel: function() {
             const oFilterModel = this.getView().getModel("filterModel");
-            const lockedIds = oFilterModel.getProperty("/lockedPresentaciones") || [];
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const addedPresentaciones = oFilterModel.getProperty("/addedPresentaciones");
+            const allProducts = oFilterModel.getProperty("/allProducts");
+            const productPresentaciones = oFilterModel.getProperty("/productPresentaciones");
             
-            for (let i = 0; i < aProducts.length; i++) {
-                const product = aProducts[i];
-                
-                try {
-                    const oPresentacionesResponse = await this._callApi('/ztproducts-presentaciones/productsPresentacionesCRUD', 'POST', {}, {
-                        ProcessType: 'GetBySKUID',
-                        skuid: product.SKUID,
-                        DBServer: 'MongoDB'
-                    });
+            const selectedPresentaciones = [];
+            
+            Object.keys(addedPresentaciones).forEach(presId => {
+                // Buscar en qué producto está esta presentación
+                for (const skuid in productPresentaciones) {
+                    const presentacionesArray = productPresentaciones[skuid] || [];
+                    const presentacion = presentacionesArray.find(p => p.IdPresentaOK === presId);
                     
-                    let aPresentaciones = [];
-                    if (oPresentacionesResponse?.data?.[0]?.dataRes) {
-                        aPresentaciones = oPresentacionesResponse.data[0].dataRes;
-                    } else if (oPresentacionesResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                        aPresentaciones = oPresentacionesResponse.value[0].data[0].dataRes;
-                    }
-                    
-                    const aPresentacionesActivas = aPresentaciones
-                        .filter(function(p) { return p.ACTIVED === true && p.DELETED !== true; })
-                        .map(function(p) {
-                            return {
-                                ...p,
-                                selected: false,
-                                locked: lockedIds.includes(p.IdPresentaOK),
-                                precio: 0,
-                                listaPrecios: ''
-                            };
+                    if (presentacion) {
+                        const product = allProducts.find(p => p.SKUID === skuid);
+                        selectedPresentaciones.push({
+                            IdPresentaOK: presentacion.IdPresentaOK,
+                            SKUID: skuid,
+                            NOMBREPRESENTACION: presentacion.NOMBREPRESENTACION,
+                            Precio: presentacion.Precio,
+                            NombreProducto: product ? product.PRODUCTNAME : ""
                         });
-                    
-                    // Cargar precios
-                    for (const pres of aPresentacionesActivas) {
-                        try {
-                            const oPreciosResponse = await this._callApi('/ztprecios-items/preciosItemsCRUD', 'POST', {}, {
-                                ProcessType: 'GetByIdPresentaOK',
-                                idPresentaOK: pres.IdPresentaOK,
-                                DBServer: 'MongoDB'
-                            });
-                            
-                            let aPrecios = [];
-                            if (oPreciosResponse?.data?.[0]?.dataRes) {
-                                aPrecios = oPreciosResponse.data[0].dataRes;
-                            } else if (oPreciosResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                                aPrecios = oPreciosResponse.value[0].data[0].dataRes;
-                            }
-                            
-                            if (aPrecios.length > 0) {
-                                pres.precio = aPrecios[0].PRECIO || 0;
-                                pres.listaPrecios = aPrecios[0].IdListaPreciosOK || '';
-                            }
-                        } catch (error) {
-                            console.error("Error cargando precios:", error);
-                        }
+                        break;
                     }
-                    
-                    oFilterModel.setProperty(`/filteredProducts/${i}/presentaciones`, aPresentacionesActivas);
-                    oFilterModel.setProperty(`/filteredProducts/${i}/presentacionesCount`, aPresentacionesActivas.length);
-                    
-                } catch (error) {
-                    console.error(`Error cargando presentaciones para ${product.SKUID}:`, error);
                 }
+            });
+            
+            oCreatePromo.setProperty("/selectedPresentaciones", selectedPresentaciones);
+            this._updateGroupedSelectedProducts();
+        },
+
+        _updateGroupedSelectedProducts: function() {
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const selectedPresentaciones = oCreatePromo.getProperty("/selectedPresentaciones");
+            
+            const grouped = new Map();
+            
+            selectedPresentaciones.forEach(presentacion => {
+                if (!grouped.has(presentacion.SKUID)) {
+                    grouped.set(presentacion.SKUID, {
+                        SKUID: presentacion.SKUID,
+                        PRODUCTNAME: presentacion.NombreProducto,
+                        NombreProducto: presentacion.NombreProducto,
+                        presentaciones: [],
+                        expanded: false
+                    });
+                }
+                grouped.get(presentacion.SKUID).presentaciones.push({
+                    IdPresentaOK: presentacion.IdPresentaOK,
+                    NOMBREPRESENTACION: presentacion.NOMBREPRESENTACION,
+                    Precio: presentacion.Precio
+                });
+            });
+            
+            const groupedArray = Array.from(grouped.values());
+            oCreatePromo.setProperty("/groupedSelectedProducts", groupedArray);
+            this._updateSelectedPagination();
+        },
+
+        _updateSelectedPagination: function() {
+            const oCreatePromo = this.getView().getModel("createPromo");
+            const groupedProducts = oCreatePromo.getProperty("/groupedSelectedProducts");
+            const pagination = oCreatePromo.getProperty("/paginationSelected");
+            const itemsPerPage = pagination.itemsPerPage;
+            const currentPage = pagination.currentPage;
+            
+            const totalItems = groupedProducts.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+            
+            // Obtener productos paginados manteniendo el estado expanded
+            const currentPaginated = oCreatePromo.getProperty("/paginatedSelectedProducts") || [];
+            const paginatedProducts = groupedProducts.slice(startIndex, endIndex).map(product => {
+                const existing = currentPaginated.find(p => p.SKUID === product.SKUID);
+                return {
+                    ...product,
+                    expanded: existing ? existing.expanded : false
+                };
+            });
+            
+            oCreatePromo.setProperty("/paginatedSelectedProducts", paginatedProducts);
+            oCreatePromo.setProperty("/paginationSelected/totalItems", totalItems);
+            oCreatePromo.setProperty("/paginationSelected/totalPages", totalPages);
+            oCreatePromo.setProperty("/paginationSelected/currentPage", Math.min(currentPage, totalPages || 1));
+        },
+
+        _initializeFilterModel: function() {
+            if (this.getView().getModel("filterModel")) {
+                return; // Ya existe
+            }
+            
+            this.getView().setModel(new JSONModel({
+                allProducts: [],
+                filteredProducts: [],
+                paginatedProducts: [],
+                selectedPresentaciones: {},
+                addedPresentaciones: {},
+                alreadyInPromotion: {},
+                productPresentaciones: {},
+                loading: false,
+                errorMessage: "",
+                categories: [],
+                brands: [],
+                searchTerm: "",
+                filters: {
+                    category: [],
+                    brand: [],
+                    minPrice: null,
+                    maxPrice: null,
+                    startDate: null,
+                    endDate: null
+                },
+                pagination: {
+                    currentPage: 1,
+                    pageSize: 10,
+                    totalPages: 1
+                },
+                sortBy: "default",
+                showOnlyAdded: false,
+                isManagingSelection: false,
+                hasTemporarySelections: false,
+                activeFiltersCount: 0,
+                filteredProductsCount: 0
+            }), "filterModel");
+        },
+
+        // Cargar productos para el diálogo de selección
+        _loadProductsForDialog: async function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (!oFilterModel) return;
+            
+            oFilterModel.setProperty("/loading", true);
+            
+            try {
+                // Cargar productos
+                const productData = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
+                    ProcessType: 'GetAll'
+                });
+                
+                let aProducts = [];
+                
+                if (productData?.data?.[0]?.dataRes) {
+                    aProducts = productData.data[0].dataRes;
+                } else if (productData?.value?.[0]?.data?.[0]?.dataRes) {
+                    aProducts = productData.value[0].data[0].dataRes;
+                } else if (Array.isArray(productData?.data)) {
+                    aProducts = productData.data;
+                } else if (Array.isArray(productData)) {
+                    aProducts = productData;
+                }
+                
+                // Filtrar solo activos
+                aProducts = aProducts.filter(p => p.ACTIVED && !p.DELETED);
+                
+                // Cargar categorías
+                const categoryData = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
+                    ProcessType: 'GetAll',
+                    DBServer: 'MongoDB'
+                });
+                
+                let aCategories = [];
+                
+                if (categoryData?.data?.[0]?.dataRes) {
+                    aCategories = categoryData.data[0].dataRes;
+                } else if (categoryData?.value?.[0]?.data?.[0]?.dataRes) {
+                    aCategories = categoryData.value[0].data[0].dataRes;
+                } else if (Array.isArray(categoryData?.data)) {
+                    aCategories = categoryData.data;
+                }
+                
+                // Extraer marcas únicas
+                const marcasSet = new Set();
+                aProducts.forEach(p => {
+                    if (p.MARCA) marcasSet.add(p.MARCA);
+                });
+                const aBrands = Array.from(marcasSet).map(marca => ({
+                    id: marca,
+                    name: marca
+                }));
+                
+                oFilterModel.setProperty("/allProducts", aProducts);
+                oFilterModel.setProperty("/categories", aCategories);
+                oFilterModel.setProperty("/brands", aBrands);
+                oFilterModel.setProperty("/productPresentaciones", {});
+                
+                // Aplicar filtros
+                setTimeout(async () => {
+                    await this._applyFilters();
+                    oFilterModel.setProperty("/loading", false);
+                }, 100);
+                
+            } catch (error) {
+                console.error("Error cargando productos:", error);
+                MessageToast.show("Error al cargar productos: " + error.message);
+                oFilterModel.setProperty("/loading", false);
+            }
+        },
+
+        // Aplicar filtros a los productos
+        _applyFilters: async function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (!oFilterModel) return;
+            
+            const aAllProducts = oFilterModel.getProperty("/allProducts") || [];
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            const sSearchTerm = oFilterModel.getProperty("/searchTerm") || '';
+            const sSortBy = oFilterModel.getProperty("/sortBy") || "default";
+            const bShowOnlyAdded = oFilterModel.getProperty("/showOnlyAdded") || false;
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
+
+            // Construir Set de productos agregados
+            const addedProductsSet = new Set();
+            Object.keys(oAddedPresentaciones).forEach(presId => {
+                // Buscar en qué producto está esta presentación
+                for (const skuid in oProductPresentaciones) {
+                    const aPres = oProductPresentaciones[skuid] || [];
+                    if (aPres.some(p => p.IdPresentaOK === presId)) {
+                        addedProductsSet.add(skuid);
+                        break;
+                    }
+                }
+            });
+
+            let aFiltered = aAllProducts.filter(product => {
+                if (!product.ACTIVED || product.DELETED) return false;
+
+                // Filtro de solo agregados
+                if (bShowOnlyAdded) {
+                    if (!addedProductsSet.has(product.SKUID)) return false;
+                }
+
+                if (sSearchTerm) {
+                    const searchLower = sSearchTerm.toLowerCase();
+                    const matchesSearch = 
+                        (product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(searchLower)) ||
+                        (product.SKUID && product.SKUID.toLowerCase().includes(searchLower)) ||
+                        (product.MARCA && product.MARCA.toLowerCase().includes(searchLower));
+                    if (!matchesSearch) return false;
+                }
+
+                if (oFilters.marcas && oFilters.marcas.length > 0) {
+                    if (!oFilters.marcas.includes(product.MARCA)) return false;
+                }
+
+                if (oFilters.categorias && oFilters.categorias.length > 0) {
+                    if (product.CATEGORIAS && Array.isArray(product.CATEGORIAS)) {
+                        const hasCategory = product.CATEGORIAS.some(cat => oFilters.categorias.includes(cat));
+                        if (!hasCategory) return false;
+                    } else {
+                        return false;
+                    }
+                }
+
+                if (oFilters.minPrice && product.PRECIO < parseFloat(oFilters.minPrice)) return false;
+                if (oFilters.maxPrice && product.PRECIO > parseFloat(oFilters.maxPrice)) return false;
+
+                if (oFilters.startDate) {
+                    const fechaDesde = new Date(oFilters.startDate);
+                    const fechaProducto = new Date(product.REGDATE);
+                    if (fechaProducto < fechaDesde) return false;
+                }
+                if (oFilters.endDate) {
+                    const fechaHasta = new Date(oFilters.endDate);
+                    const fechaProducto = new Date(product.REGDATE);
+                    if (fechaProducto > fechaHasta) return false;
+                }
+
+                return true;
+            });
+
+            // Aplicar ordenamiento
+            switch (sSortBy) {
+                case "addedFirst":
+                    aFiltered.sort((a, b) => {
+                        const aIsAdded = addedProductsSet.has(a.SKUID);
+                        const bIsAdded = addedProductsSet.has(b.SKUID);
+                        if (aIsAdded && !bIsAdded) return -1;
+                        if (!aIsAdded && bIsAdded) return 1;
+                        return 0;
+                    });
+                    break;
+                case "notAddedFirst":
+                    aFiltered.sort((a, b) => {
+                        const aIsAdded = addedProductsSet.has(a.SKUID);
+                        const bIsAdded = addedProductsSet.has(b.SKUID);
+                        if (!aIsAdded && bIsAdded) return -1;
+                        if (aIsAdded && !bIsAdded) return 1;
+                        return 0;
+                    });
+                    break;
+                case "nameAsc":
+                    aFiltered.sort((a, b) => (a.PRODUCTNAME || "").localeCompare(b.PRODUCTNAME || ""));
+                    break;
+                case "nameDesc":
+                    aFiltered.sort((a, b) => (b.PRODUCTNAME || "").localeCompare(a.PRODUCTNAME || ""));
+                    break;
+                case "default":
+                default:
+                    break;
+            }
+
+            let activeCount = 0;
+            if (oFilters.categorias && oFilters.categorias.length > 0) activeCount++;
+            if (oFilters.marcas && oFilters.marcas.length > 0) activeCount++;
+            if (oFilters.minPrice) activeCount++;
+            if (oFilters.maxPrice) activeCount++;
+            if (oFilters.startDate) activeCount++;
+            if (oFilters.endDate) activeCount++;
+            if (sSearchTerm) activeCount++;
+
+            oFilterModel.setProperty("/activeFiltersCount", activeCount);
+            oFilterModel.setProperty("/filteredProducts", aFiltered);
+            oFilterModel.setProperty("/filteredProductsCount", aFiltered.length);
+            oFilterModel.setProperty("/pagination/currentPage", 1);
+
+            await this._updateFilterPagination();
+        },
+
+        // Actualizar paginación
+        _updateFilterPagination: async function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (!oFilterModel) return;
+            
+            const aFiltered = oFilterModel.getProperty("/filteredProducts") || [];
+            const iCurrentPage = oFilterModel.getProperty("/pagination/currentPage") || 1;
+            const iPageSize = 10;
+
+            const iTotal = aFiltered.length;
+            const iTotalPages = Math.ceil(iTotal / iPageSize);
+            const iStartIndex = (iCurrentPage - 1) * iPageSize;
+            const iEndIndex = Math.min(iStartIndex + iPageSize, iTotal);
+
+            let aPaginated = aFiltered.slice(iStartIndex, iEndIndex);
+
+            const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
+            
+            // Cargar presentaciones de todos los productos filtrados
+            for (const product of aFiltered) {
+                if (!oProductPresentaciones[product.SKUID]) {
+                    await this._loadPresentaciones(product.SKUID);
+                }
+            }
+
+            const updatedPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
+            const oSelectedPresentaciones = oFilterModel.getProperty("/selectedPresentaciones") || {};
+            
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
+            
+            aPaginated = aPaginated.map(product => {
+                const aPresentaciones = (updatedPresentaciones[product.SKUID] || []).map(pres => {
+                    const isAdded = !!oAddedPresentaciones[pres.IdPresentaOK];
+                    const isSelected = !!oSelectedPresentaciones[pres.IdPresentaOK];
+                    const isLocked = isAdded && !bIsManaging;
+                    
+                    return {
+                        ...pres,
+                        selected: isLocked || isAdded || isSelected,
+                        added: isAdded,
+                        locked: isLocked,
+                        alreadyInPromotion: false
+                    };
+                });
+                
+                const selectedCount = aPresentaciones.filter(p => p.selected).length;
+                const allSelected = aPresentaciones.length > 0 && selectedCount === aPresentaciones.length;
+                const hasAddedPresentations = aPresentaciones.some(p => p.added);
+                
+                // Bloquear producto si todas sus presentaciones están bloqueadas
+                const totalPresentaciones = aPresentaciones.length;
+                const lockedPresentaciones = aPresentaciones.filter(p => p.locked).length;
+                const productLocked = totalPresentaciones > 0 && lockedPresentaciones === totalPresentaciones;
+
+                return {
+                    ...product,
+                    presentaciones: aPresentaciones,
+                    presentacionesCount: aPresentaciones.length,
+                    expanded: false,
+                    allSelected: allSelected,
+                    hasAddedPresentations: hasAddedPresentations,
+                    alreadyInPromotionProduct: false,
+                    locked: productLocked
+                };
+            });
+
+            oFilterModel.setProperty("/paginatedProducts", aPaginated);
+            oFilterModel.setProperty("/pagination", {
+                currentPage: iCurrentPage,
+                totalPages: iTotalPages,
+                total: iTotal,
+                startItem: iTotal === 0 ? 0 : iStartIndex + 1,
+                endItem: iEndIndex,
+                hasNext: iCurrentPage < iTotalPages,
+                hasPrev: iCurrentPage > 1
+            });
+        },
+
+        // Cargar presentaciones de un producto
+        _loadPresentaciones: async function(sSKUID) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (!oFilterModel) return [];
+            
+            // Verificar si ya está en caché
+            const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
+            if (oProductPresentaciones[sSKUID]) {
+                                return oProductPresentaciones[sSKUID];
+            }
+            
+            try {
+                                
+                // Usar el endpoint correcto
+                const response = await this._callApi(
+                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
+                    'POST',
+                    {},
+                    {
+                        ProcessType: 'GetBySKUID',
+                        skuid: sSKUID
+                    }
+                );
+                
+                let presentaciones = [];
+                
+                // Extraer presentaciones de la respuesta
+                if (Array.isArray(response)) {
+                    presentaciones = response;
+                } else if (response?.data?.[0]?.dataRes) {
+                    presentaciones = response.data[0].dataRes;
+                } else if (response?.value?.[0]?.data?.[0]?.dataRes) {
+                    presentaciones = response.value[0].data[0].dataRes;
+                } else if (Array.isArray(response?.data)) {
+                    presentaciones = response.data;
+                }
+                
+                // Filtrar solo presentaciones activas
+                presentaciones = presentaciones.filter(p => p && p.ACTIVED && !p.DELETED);
+                
+                                if (presentaciones.length > 0) {
+                                    }
+                
+                // Guardar en caché
+                oProductPresentaciones[sSKUID] = presentaciones;
+                oFilterModel.setProperty("/productPresentaciones", oProductPresentaciones);
+                
+                return presentaciones;
+                
+            } catch (error) {
+                console.error(`❌ Error cargando presentaciones para ${sSKUID}:`, error);
+                return [];
             }
         },
 
@@ -1393,72 +1030,484 @@ sap.ui.define([
             this._updateSelectedPresentacionesCount();
         },
 
-        onSelectAllProducts: function() {
+
+
+        // Funciones del fragmento AdvancedFilters
+        onProductSelect: function(oEvent) {
+            const bSelected = oEvent.getParameter("selected");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("filterModel");
+            const sPath = oContext.getPath();
             const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
+            const aPresentaciones = oFilterModel.getProperty(sPath + "/presentaciones") || [];
+            const oSelectedPresentaciones = oFilterModel.getProperty("/selectedPresentaciones") || {};
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
             
-            let totalSelected = 0;
+            let selectionChanged = false;
+            let addedChanged = false;
             
-            // Clonar el array para forzar la actualización
-            const aUpdatedProducts = JSON.parse(JSON.stringify(aProducts));
-            
-            aUpdatedProducts.forEach(function(product) {
-                if (product.presentaciones && Array.isArray(product.presentaciones) && product.presentaciones.length > 0) {
-                    let hasUnlocked = false;
-                    product.presentaciones.forEach(function(pres) {
-                        if (!pres.locked) {
-                            hasUnlocked = true;
-                            pres.selected = true;
-                            totalSelected++;
-                        }
-                    });
-                    if (hasUnlocked) {
-                        product.allSelected = true;
+            aPresentaciones.forEach((pres, index) => {
+                const isAdded = !!oAddedPresentaciones[pres.IdPresentaOK];
+                const isLocked = isAdded && !bIsManaging;
+                
+                // Modo gestión: trabajar con addedPresentaciones
+                if (bIsManaging) {
+                    if (bSelected) {
+                        oAddedPresentaciones[pres.IdPresentaOK] = pres;
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", true);
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/added", true);
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/locked", false);
+                        addedChanged = true;
+                    } else {
+                        delete oAddedPresentaciones[pres.IdPresentaOK];
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", false);
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/added", false);
+                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/locked", false);
+                        addedChanged = true;
+                    }
+                }
+                // Modo normal: solo si no está bloqueada
+                else if (!isLocked) {
+                    oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
+                    
+                    if (bSelected) {
+                        oSelectedPresentaciones[pres.IdPresentaOK] = pres;
+                        selectionChanged = true;
+                    } else {
+                        delete oSelectedPresentaciones[pres.IdPresentaOK];
+                        selectionChanged = true;
                     }
                 }
             });
             
-            // Reemplazar todo el array de una vez
-            oFilterModel.setProperty("/filteredProducts", aUpdatedProducts);
-            this._updatePaginatedProducts();
-            this._updateSelectedPresentacionesCount();
-            MessageToast.show(totalSelected + " presentación(es) seleccionadas");
+            if (selectionChanged) {
+                oFilterModel.setProperty("/selectedPresentaciones", oSelectedPresentaciones);
+                const hasSelections = Object.keys(oSelectedPresentaciones).length > 0;
+                oFilterModel.setProperty("/hasTemporarySelections", hasSelections);
+            }
+            
+            if (addedChanged) {
+                oFilterModel.setProperty("/addedPresentaciones", oAddedPresentaciones);
+                
+                // Actualizar hasAddedPresentations del producto
+                const hasAdded = aPresentaciones.some(p => !!oAddedPresentaciones[p.IdPresentaOK]);
+                oFilterModel.setProperty(sPath + "/hasAddedPresentations", hasAdded);
+            }
+            
+            oFilterModel.setProperty(sPath + "/allSelected", bSelected);
         },
 
-        onClearSelection: function() {
+        onPresentacionSelect: function(oEvent) {
+            const bSelected = oEvent.getParameter("selected");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("filterModel");
+            const sPath = oContext.getPath();
             const oFilterModel = this.getView().getModel("filterModel");
-            const aProducts = oFilterModel.getProperty("/filteredProducts") || [];
+            const oSelectedPresentaciones = oFilterModel.getProperty("/selectedPresentaciones") || {};
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
             
-            // Clonar el array para forzar la actualización
-            const aUpdatedProducts = JSON.parse(JSON.stringify(aProducts));
+            const oPresentacion = oContext.getObject();
             
-            aUpdatedProducts.forEach(function(product) {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(function(pres) {
-                        pres.selected = false;
+            // Modo gestión: trabajar con addedPresentaciones
+            if (bIsManaging) {
+                if (bSelected) {
+                    // Agregar a agregados
+                    oAddedPresentaciones[oPresentacion.IdPresentaOK] = oPresentacion;
+                    oFilterModel.setProperty(sPath + "/added", true);
+                    oFilterModel.setProperty(sPath + "/locked", false);
+                } else {
+                    // Remover de agregados
+                    delete oAddedPresentaciones[oPresentacion.IdPresentaOK];
+                    oFilterModel.setProperty(sPath + "/added", false);
+                    oFilterModel.setProperty(sPath + "/locked", false);
+                }
+                oFilterModel.setProperty("/addedPresentaciones", oAddedPresentaciones);
+            }
+            // Modo normal: solo permitir selección temporal si no está agregada
+            else {
+                const isAdded = !!oAddedPresentaciones[oPresentacion.IdPresentaOK];
+                
+                if (isAdded) {
+                    // No permitir deseleccionar presentaciones agregadas
+                    if (!bSelected) {
+                        oFilterModel.setProperty(sPath + "/selected", true);
+                        MessageToast.show("Esta presentación está agregada. Usa el modo Gestión para quitarla.");
+                    }
+                    return;
+                }
+                
+                // Selección temporal normal
+                if (bSelected) {
+                    oSelectedPresentaciones[oPresentacion.IdPresentaOK] = oPresentacion;
+                } else {
+                    delete oSelectedPresentaciones[oPresentacion.IdPresentaOK];
+                }
+                oFilterModel.setProperty("/selectedPresentaciones", oSelectedPresentaciones);
+                oFilterModel.setProperty("/hasTemporarySelections", Object.keys(oSelectedPresentaciones).length > 0);
+            }
+            
+            // Actualizar allSelected y hasAddedPresentations del producto
+            const productPath = sPath.substring(0, sPath.lastIndexOf("/presentaciones"));
+            const oProduct = oFilterModel.getProperty(productPath);
+            
+            if (oProduct && oProduct.presentaciones) {
+                // Calcular allSelected considerando presentaciones no bloqueadas
+                const selectablePresentaciones = oProduct.presentaciones.filter(p => {
+                    const isAdded = !!oAddedPresentaciones[p.IdPresentaOK];
+                    const isLocked = isAdded && !bIsManaging;
+                    return !isLocked;
+                });
+                
+                const selectedPresentaciones = oProduct.presentaciones.filter(p => {
+                    const isAdded = !!oAddedPresentaciones[p.IdPresentaOK];
+                    const isLocked = isAdded && !bIsManaging;
+                    return p.selected && !isLocked;
+                });
+                
+                const allSelected = selectablePresentaciones.length > 0 && 
+                                  selectedPresentaciones.length === selectablePresentaciones.length;
+                oFilterModel.setProperty(productPath + "/allSelected", allSelected);
+                
+                // Actualizar hasAddedPresentations
+                const hasAdded = oProduct.presentaciones.some(p => !!oAddedPresentaciones[p.IdPresentaOK]);
+                oFilterModel.setProperty(productPath + "/hasAddedPresentations", hasAdded);
+            }
+        },
+
+        onToggleProduct: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("filterModel");
+            const sPath = oContext.getPath();
+            const oFilterModel = this.getView().getModel("filterModel");
+            const bExpanded = oFilterModel.getProperty(sPath + "/expanded");
+            
+            oFilterModel.setProperty(sPath + "/expanded", !bExpanded);
+        },
+
+        onPreviousPage: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const iCurrentPage = oFilterModel.getProperty("/pagination/currentPage");
+            if (iCurrentPage > 1) {
+                oFilterModel.setProperty("/pagination/currentPage", iCurrentPage - 1);
+                this._updateFilterPagination();
+            }
+        },
+
+        onNextPage: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const iCurrentPage = oFilterModel.getProperty("/pagination/currentPage");
+            const iTotalPages = oFilterModel.getProperty("/pagination/totalPages");
+            if (iCurrentPage < iTotalPages) {
+                oFilterModel.setProperty("/pagination/currentPage", iCurrentPage + 1);
+                this._updateFilterPagination();
+            }
+        },
+
+        onSelectAllProducts: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const aProducts = oFilterModel.getProperty("/paginatedProducts") || [];
+            const oSelectedPresentaciones = oFilterModel.getProperty("/selectedPresentaciones") || {};
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
+            
+            let count = 0;
+            aProducts.forEach((product, pIdx) => {
+                if (product.presentaciones) {
+                    let selectableCount = 0;
+                    product.presentaciones.forEach((pres, presIdx) => {
+                        const isAdded = !!oAddedPresentaciones[pres.IdPresentaOK];
+                        const isLocked = isAdded && !bIsManaging;
+                        
+                        // Solo seleccionar si no está bloqueada
+                        if (!isLocked) {
+                            if (bIsManaging) {
+                                // En modo gestión, agregar a addedPresentaciones
+                                oAddedPresentaciones[pres.IdPresentaOK] = pres;
+                                oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/added`, true);
+                                oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/locked`, false);
+                            } else {
+                                // En modo normal, agregar a selecciones temporales
+                                oSelectedPresentaciones[pres.IdPresentaOK] = pres;
+                            }
+                            oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/selected`, true);
+                            selectableCount++;
+                            count++;
+                        }
                     });
-                    product.allSelected = false;
+                    
+                    const allSelectable = product.presentaciones.filter(p => {
+                        const isAdded = !!oAddedPresentaciones[p.IdPresentaOK];
+                        return !(isAdded && !bIsManaging);
+                    }).length;
+                    
+                    oFilterModel.setProperty(`/paginatedProducts/${pIdx}/allSelected`, selectableCount === allSelectable && allSelectable > 0);
                 }
             });
             
-            // Reemplazar todo el array de una vez
-            oFilterModel.setProperty("/filteredProducts", aUpdatedProducts);
-            this._updatePaginatedProducts();
-            this._updateSelectedPresentacionesCount();
-            MessageToast.show("Selección eliminada");
+            if (bIsManaging) {
+                oFilterModel.setProperty("/addedPresentaciones", oAddedPresentaciones);
+            } else {
+                oFilterModel.setProperty("/selectedPresentaciones", oSelectedPresentaciones);
+                oFilterModel.setProperty("/hasTemporarySelections", Object.keys(oSelectedPresentaciones).length > 0);
+            }
+            
+            // Actualizar hasAddedPresentations de cada producto
+            aProducts.forEach((product, pIdx) => {
+                if (product.presentaciones) {
+                    const hasAdded = product.presentaciones.some(p => !!oAddedPresentaciones[p.IdPresentaOK]);
+                    oFilterModel.setProperty(`/paginatedProducts/${pIdx}/hasAddedPresentations`, hasAdded);
+                }
+            });
+            
+            MessageToast.show(`${count} presentación(es) seleccionada(s)`);
         },
 
-        _updateFilterProductCheckBox: function(productIndex) {
+        onDeselectAllProducts: function() {
             const oFilterModel = this.getView().getModel("filterModel");
-            const oProduct = oFilterModel.getProperty("/filteredProducts/" + productIndex);
+            const aProducts = oFilterModel.getProperty("/paginatedProducts") || [];
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
             
-            if (!oProduct || !oProduct.presentaciones) return;
+            let count = 0;
+            aProducts.forEach((product, pIdx) => {
+                if (product.presentaciones) {
+                    product.presentaciones.forEach((pres, presIdx) => {
+                        const isAdded = !!oAddedPresentaciones[pres.IdPresentaOK];
+                        const isLocked = isAdded && !bIsManaging;
+                        
+                        // Solo deseleccionar si no está bloqueada
+                        if (!isLocked) {
+                            if (bIsManaging) {
+                                // En modo gestión, quitar de addedPresentaciones
+                                delete oAddedPresentaciones[pres.IdPresentaOK];
+                                oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/added`, false);
+                                oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/locked`, false);
+                            }
+                            oFilterModel.setProperty(`/paginatedProducts/${pIdx}/presentaciones/${presIdx}/selected`, false);
+                            count++;
+                        }
+                    });
+                    oFilterModel.setProperty(`/paginatedProducts/${pIdx}/allSelected`, false);
+                }
+            });
             
-            const totalPresentaciones = oProduct.presentaciones.filter(p => !p.locked).length;
-            const selectedPresentaciones = oProduct.presentaciones.filter(p => p.selected && !p.locked).length;
-            const bAllSelected = totalPresentaciones > 0 && selectedPresentaciones === totalPresentaciones;
+            if (bIsManaging) {
+                oFilterModel.setProperty("/addedPresentaciones", oAddedPresentaciones);
+            } else {
+                oFilterModel.setProperty("/selectedPresentaciones", {});
+                oFilterModel.setProperty("/hasTemporarySelections", false);
+            }
             
-            oFilterModel.setProperty("/filteredProducts/" + productIndex + "/allSelected", bAllSelected);
+            // Actualizar hasAddedPresentations de cada producto
+            aProducts.forEach((product, pIdx) => {
+                if (product.presentaciones) {
+                    const hasAdded = product.presentaciones.some(p => !!oAddedPresentaciones[p.IdPresentaOK]);
+                    oFilterModel.setProperty(`/paginatedProducts/${pIdx}/hasAddedPresentations`, hasAdded);
+                }
+            });
+            
+            MessageToast.show(`${count} presentación(es) deseleccionada(s)`);
+        },
+
+        onFilterSearch: function(oEvent) {
+            const sValue = oEvent.getParameter("newValue");
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/searchTerm", sValue);
+            this._applyFilters();
+        },
+
+        onCategoryChange: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const aSelectedKeys = oSource.getSelectedKeys();
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            
+            oFilters.categorias = aSelectedKeys;
+            oFilterModel.setProperty("/filters", oFilters);
+            this._applyFilters();
+        },
+
+        onBrandChange: function(oEvent) {
+            const oSource = oEvent.getSource();
+            const aSelectedKeys = oSource.getSelectedKeys();
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            
+            oFilters.marcas = aSelectedKeys;
+            oFilterModel.setProperty("/filters", oFilters);
+            this._applyFilters();
+        },
+
+        onPriceChange: function(oEvent) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            
+            // Los valores se actualizan automáticamente por el binding
+            // Solo necesitamos aplicar filtros
+            this._applyFilters();
+        },
+
+        onPriceShortcut: function(oEvent) {
+            const sText = oEvent.getSource().getText();
+            const oFilterModel = this.getView().getModel("filterModel");
+            
+            switch(sText) {
+                case "$0-$50":
+                    oFilterModel.setProperty("/filters/minPrice", 0);
+                    oFilterModel.setProperty("/filters/maxPrice", 50);
+                    break;
+                case "$50-$100":
+                    oFilterModel.setProperty("/filters/minPrice", 50);
+                    oFilterModel.setProperty("/filters/maxPrice", 100);
+                    break;
+                case "$100-$200":
+                    oFilterModel.setProperty("/filters/minPrice", 100);
+                    oFilterModel.setProperty("/filters/maxPrice", 200);
+                    break;
+                case "$200+":
+                    oFilterModel.setProperty("/filters/minPrice", 200);
+                    oFilterModel.setProperty("/filters/maxPrice", null);
+                    break;
+            }
+            
+            this._applyFilters();
+        },
+
+        onDateShortcut: function(oEvent) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const sText = oEvent.getSource().getText();
+            const today = new Date();
+            let startDate, endDate;
+            
+            switch (sText) {
+                case "Hoy":
+                    startDate = new Date(today);
+                    endDate = new Date(today);
+                    break;
+                case "Últimos 7 días":
+                    startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() - 7);
+                    endDate = new Date(today);
+                    break;
+                case "Últimos 30 días":
+                    startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() - 30);
+                    endDate = new Date(today);
+                    break;
+                case "Este mes":
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    endDate = new Date(today);
+                    break;
+            }
+            
+            // Format dates as YYYY-MM-DD for DatePicker
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            oFilterModel.setProperty("/filters/startDate", formatDate(startDate));
+            oFilterModel.setProperty("/filters/endDate", formatDate(endDate));
+            
+            this._applyFilters();
+        },
+
+        onDateChange: function(oEvent) {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oFilters = oFilterModel.getProperty("/filters") || {};
+            
+            // Los valores se actualizan automáticamente por el binding
+            // Solo necesitamos aplicar filtros
+            this._applyFilters();
+        },
+
+        onClearAllFilters: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/searchTerm", "");
+            oFilterModel.setProperty("/filters", {
+                categorias: [],
+                marcas: [],
+                minPrice: null,
+                maxPrice: null,
+                startDate: null,
+                endDate: null
+            });
+            this._applyFilters();
+        },
+
+        onSortChange: function(oEvent) {
+            const sKey = oEvent.getParameter("selectedItem").getKey();
+            const oFilterModel = this.getView().getModel("filterModel");
+            oFilterModel.setProperty("/sortBy", sKey);
+            this._applyFilters();
+        },
+
+        onShowOnlyAddedChange: function(oEvent) {
+            const bState = oEvent.getParameter("state");
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            
+            if (bState && Object.keys(oAddedPresentaciones).length === 0) {
+                MessageToast.show("No hay presentaciones agregadas aún.");
+                oFilterModel.setProperty("/showOnlyAdded", false);
+                return;
+            }
+            
+            oFilterModel.setProperty("/showOnlyAdded", bState);
+            this._applyFilters();
+        },
+
+        onToggleManageSelection: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const bIsManaging = oFilterModel.getProperty("/isManagingSelection") || false;
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            
+            if (!bIsManaging) {
+                // Verificar que haya agregadas
+                if (Object.keys(oAddedPresentaciones).length === 0) {
+                    MessageToast.show("No hay presentaciones agregadas para gestionar. Selecciona y agrega algunas primero.");
+                    return;
+                }
+                MessageToast.show("Modo Gestión activado. Ahora puedes modificar las presentaciones agregadas.");
+                oFilterModel.setProperty("/showOnlyAdded", true);
+            } else {
+                MessageToast.show("Modo Gestión desactivado.");
+                oFilterModel.setProperty("/showOnlyAdded", false);
+            }
+            
+            oFilterModel.setProperty("/isManagingSelection", !bIsManaging);
+            this._applyFilters();
+        },
+
+        onPreAddSelections: function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            const oSelectedPresentaciones = oFilterModel.getProperty("/selectedPresentaciones") || {};
+            const oAddedPresentaciones = oFilterModel.getProperty("/addedPresentaciones") || {};
+            
+            if (Object.keys(oSelectedPresentaciones).length === 0) {
+                MessageToast.show("No hay presentaciones seleccionadas para agregar.");
+                return;
+            }
+            
+            // Mover selecciones temporales a agregadas
+            let count = 0;
+            Object.keys(oSelectedPresentaciones).forEach(presId => {
+                oAddedPresentaciones[presId] = oSelectedPresentaciones[presId];
+                count++;
+            });
+            
+            oFilterModel.setProperty("/addedPresentaciones", oAddedPresentaciones);
+            oFilterModel.setProperty("/selectedPresentaciones", {});
+            oFilterModel.setProperty("/hasTemporarySelections", false);
+            
+            MessageToast.show(`${count} presentación(es) agregada(s). Estas se incluirán en la promoción.`);
+            
+            // Refrescar para actualizar locked y mostrar indicadores
+            this._updateFilterPagination();
         }
     });
 });

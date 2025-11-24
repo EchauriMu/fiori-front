@@ -16,11 +16,10 @@
             <VBox class="sapUiMediumMargin">
                 <!-- Header con controles -->
                 <Panel>
-                    <l:Grid defaultSpan="L6 M6 S12" class="sapUiSmallMargin">
-                        <l:content>
-                            <!-- Filtros -->
-                            <VBox>
-                                <Label text="Estado" />
+                    <FlexBox wrap="Wrap" justifyContent="SpaceBetween" class="sapUiSmallMargin">
+                        <!-- Filtros -->
+                        <VBox class="sapUiSmallMarginEnd" width="23%">
+                            <Label text="Estado" />
                                 <Select
                                     selectedKey="{calendarModel>/filters/estado}"
                                     change="onFilterChange"
@@ -31,20 +30,20 @@
                                     <core:Item key="scheduled" text="Programadas" />
                                     <core:Item key="finished" text="Finalizadas" />
                                 </Select>
-                            </VBox>
+                        </VBox>
 
-                            <VBox>
-                                <Label text="Buscar" />
+                        <VBox class="sapUiSmallMarginEnd" width="23%">
+                            <Label text="Buscar" />
                                 <SearchField
                                     value="{calendarModel>/filters/search}"
                                     search="onFilterChange"
                                     placeholder="Nombre de promoción..."
                                     width="100%"
                                 />
-                            </VBox>
+                        </VBox>
 
-                            <VBox>
-                                <Label text="Vista" />
+                        <VBox class="sapUiSmallMarginEnd" width="23%">
+                            <Label text="Vista" />
                                 <SegmentedButton
                                     selectedKey="{calendarModel>/viewMode}"
                                     selectionChange="onViewModeChange"
@@ -54,18 +53,17 @@
                                         <SegmentedButtonItem key="agenda" text="Agenda" icon="sap-icon://list" />
                                     </items>
                                 </SegmentedButton>
-                            </VBox>
+                        </VBox>
 
-                            <VBox class="sapUiSmallMarginTop">
-                                <Button
-                                    text="Exportar CSV"
-                                    icon="sap-icon://excel-attachment"
-                                    press="onExport"
-                                    type="Emphasized"
-                                />
-                            </VBox>
-                        </l:content>
-                    </l:Grid>
+                        <VBox class="sapUiSmallMarginTop" width="23%">
+                            <Button
+                                text="Exportar CSV"
+                                icon="sap-icon://excel-attachment"
+                                press="onExport"
+                                type="Emphasized"
+                            />
+                        </VBox>
+                    </FlexBox>
                 </Panel>
 
                 <!-- Vista Mensual -->
@@ -95,28 +93,37 @@
                     <content>
                         <VBox>
                             <!-- Días de la semana -->
-                            <l:Grid defaultSpan="L1.714 M1.714 S1.714" class="calendar-header">
-                                <l:content>
+                            <HBox class="calendar-header">
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Dom" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Lun" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Mar" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Mié" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Jue" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Vie" class="calendar-day-header" />
+                                </VBox>
+                                <VBox width="14.28%" alignItems="Center">
                                     <Text text="Sáb" class="calendar-day-header" />
-                                </l:content>
-                            </l:Grid>
+                                </VBox>
+                            </HBox>
 
                             <!-- Días del mes -->
-                            <l:Grid 
-                                defaultSpan="L1.714 M1.714 S1.714" 
+                            <VBox 
                                 class="calendar-grid"
                                 id="calendarGrid"
                             >
-                                <l:content>
-                                    <!-- Los días se generarán dinámicamente en el controlador -->
-                                </l:content>
-                            </l:Grid>
+                                <!-- Los días se generarán dinámicamente en el controlador -->
+                            </VBox>
                         </VBox>
                     </content>
                 </Panel>
@@ -216,137 +223,141 @@
     <!-- Dialog de Detalle de Promoción -->
     <Dialog
         id="promoDetailDialog"
-        title="{detailModel>/Titulo}"
-        contentWidth="800px"
+        contentWidth="900px"
+        contentHeight="700px"
         resizable="true"
         draggable="true"
+        title="{detailModel>/Titulo}"
     >
         <content>
-            <VBox class="sapUiMediumMargin">
-                <!-- Header con Avatar -->
-                <HBox alignItems="Center" class="sapUiMediumMarginBottom">
-                    <core:Icon
-                        src="sap-icon://product"
-                        size="3rem"
-                        color="{path: 'detailModel>/', formatter: '.getPromotionColor'}"
-                        class="sapUiMediumMarginEnd"
-                    />
-                    <VBox>
-                        <Title level="H4" text="{detailModel>/Titulo}" />
-                        <Text text="{detailModel>/Descripcion}" class="sapUiTinyMarginTop" />
-                        <HBox class="sapUiTinyMarginTop">
-                            <ObjectStatus
-                                text="{path: 'detailModel>/', formatter: '.getPromotionStatusText'}"
-                                state="{path: 'detailModel>/', formatter: '.getPromotionStatusState'}"
+            <ScrollContainer height="100%" width="100%" vertical="true">
+                <VBox class="sapUiSmallMargin">
+                    <!-- Header Info -->
+                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
+                        <HBox alignItems="Center">
+                            <core:Icon
+                                src="sap-icon://product"
+                                size="2.5rem"
+                                color="{path: 'detailModel>/', formatter: '.getPromotionColor'}"
+                                class="sapUiSmallMarginEnd"
                             />
-                            <Text text="Creado por: {detailModel>/REGUSER}" class="sapUiSmallMarginBegin" />
-                        </HBox>
-                    </VBox>
-                </HBox>
-
-                <!-- Información en Cards -->
-                <l:Grid defaultSpan="L6 M6 S12">
-                    <l:content>
-                        <Panel headerText="Fecha de Inicio">
-                            <VBox alignItems="Center" class="sapUiSmallMargin">
-                                <Title 
-                                    level="H5" 
-                                    text="{path: 'detailModel>/FechaIni', formatter: '.formatDateFull'}"
-                                />
-                            </VBox>
-                        </Panel>
-
-                        <Panel headerText="Fecha de Fin">
-                            <VBox alignItems="Center" class="sapUiSmallMargin">
-                                <Title 
-                                    level="H5" 
-                                    text="{path: 'detailModel>/FechaFin', formatter: '.formatDateFull'}"
-                                />
-                            </VBox>
-                        </Panel>
-
-                        <Panel headerText="Descuento">
-                            <VBox alignItems="Center" class="sapUiSmallMargin">
-                                <Title level="H5">
-                                    <ObjectNumber
-                                        number="{detailModel>/DescuentoPorcentaje}"
-                                        unit="%"
-                                        emphasized="true"
-                                        state="Success"
-                                    />
-                                </Title>
-                                <Text 
-                                    text="{detailModel>/TipoDescuento}" 
-                                    class="sapUiTinyText"
-                                />
-                            </VBox>
-                        </Panel>
-
-                        <Panel headerText="Presentaciones">
-                            <VBox alignItems="Center" class="sapUiSmallMargin">
-                                <Title level="H5">
-                                    <ObjectNumber
-                                        number="{= ${detailModel>/ProductosAplicables} ? ${detailModel>/ProductosAplicables}.length : 0 }"
-                                        emphasized="true"
-                                    />
-                                </Title>
-                                <Text text="en esta promoción" class="sapUiTinyText" />
-                            </VBox>
-                        </Panel>
-                    </l:content>
-                </l:Grid>
-
-                <!-- Lista de Presentaciones -->
-                <Panel 
-                    headerText="Presentaciones Incluidas"
-                    class="sapUiMediumMarginTop"
-                    visible="{= ${detailModel>/ProductosAplicables} &amp;&amp; ${detailModel>/ProductosAplicables}.length > 0 }"
-                >
-                    <List
-                        items="{detailModel>/ProductosAplicables}"
-                        noDataText="No hay presentaciones"
-                    >
-                        <StandardListItem
-                            title="{detailModel>NombrePresentacion}"
-                            description="SKU: {detailModel>SKUID}"
-                            info="$ {detailModel>PrecioOriginal}"
-                            icon="sap-icon://product"
-                        />
-                    </List>
-                </Panel>
-
-                <!-- Información Adicional -->
-                <Panel headerText="Información Adicional" class="sapUiMediumMarginTop">
-                    <VBox class="sapUiSmallMargin">
-                        <HBox justifyContent="SpaceBetween">
                             <VBox>
-                                <Text text="Fecha de Creación" class="sapUiTinyText" />
-                                <Text 
-                                    text="{path: 'detailModel>/REGDATE', formatter: '.formatDateFull'}"
-                                    class="sapUiSmallMarginTop"
-                                />
-                            </VBox>
-                            <VBox alignItems="End" visible="{= !!${detailModel>/MODDATE} }">
-                                <Text text="Última Modificación" class="sapUiTinyText" />
-                                <Text 
-                                    text="{path: 'detailModel>/MODDATE', formatter: '.formatDateFull'}"
-                                    class="sapUiSmallMarginTop"
+                                <Title level="H3" text="{detailModel>/Titulo}" wrapping="true" />
+                                <ObjectStatus
+                                    text="{path: 'detailModel>/', formatter: '.getPromotionStatusText'}"
+                                    state="{path: 'detailModel>/', formatter: '.getPromotionStatusState'}"
+                                    class="sapUiTinyMarginTop"
                                 />
                             </VBox>
                         </HBox>
+                    </HBox>
+
+                    <!-- Descripción -->
+                    <VBox class="sapUiSmallMarginBottom">
+                        <Label text="Descripción" class="sapUiTinyMarginBottom" design="Bold" />
+                        <Text text="{detailModel>/Descripcion}" wrapping="true" />
                     </VBox>
-                </Panel>
-            </VBox>
+
+                    <!-- Fechas -->
+                    <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                        <VBox width="48%">
+                            <Label text="Fecha de Inicio" class="sapUiTinyMarginBottom" design="Bold" />
+                            <Text 
+                                text="{path: 'detailModel>/FechaIni', formatter: '.formatDateFull'}"
+                                wrapping="true"
+                            />
+                        </VBox>
+                        <VBox width="48%">
+                            <Label text="Fecha de Fin" class="sapUiTinyMarginBottom" design="Bold" />
+                            <Text 
+                                text="{path: 'detailModel>/FechaFin', formatter: '.formatDateFull'}"
+                                wrapping="true"
+                            />
+                        </VBox>
+                    </HBox>
+
+                    <!-- Descuento y Productos -->
+                    <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                        <VBox width="48%">
+                            <Label text="Descuento" class="sapUiTinyMarginBottom" design="Bold" />
+                            <HBox alignItems="Center">
+                                <ObjectNumber
+                                    number="{detailModel>/DescuentoPorcentaje}"
+                                    unit="%"
+                                    emphasized="true"
+                                    state="Success"
+                                    class="sapUiTinyMarginEnd"
+                                />
+                                <Text text="({detailModel>/TipoDescuento})" />
+                            </HBox>
+                        </VBox>
+                        <VBox width="48%">
+                            <Label text="Presentaciones" class="sapUiTinyMarginBottom" design="Bold" />
+                            <ObjectNumber
+                                number="{= ${detailModel>/ProductosAplicables} ? ${detailModel>/ProductosAplicables}.length : 0 }"
+                                emphasized="true"
+                            />
+                        </VBox>
+                    </HBox>
+
+                    <!-- Lista de Productos con Presentaciones -->
+                    <VBox 
+                        class="sapUiSmallMarginTop"
+                        visible="{= ${detailModel>/groupedProducts} &amp;&amp; ${detailModel>/groupedProducts}.length > 0 }"
+                    >
+                        <Label text="Productos Incluidos" class="sapUiSmallMarginBottom" design="Bold" />
+                        <List
+                            items="{detailModel>/groupedProducts}"
+                            noDataText="No hay productos"
+                            mode="None"
+                        >
+                            <CustomListItem>
+                                <VBox width="100%">
+                                    <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%">
+                                        <HBox alignItems="Center" width="80%">
+                                            <core:Icon src="sap-icon://product" size="1.5rem" class="sapUiTinyMarginEnd" color="#0854a0" />
+                                            <VBox>
+                                                <Text text="{detailModel>NombreProducto}" class="sapUiTextBold" />
+                                                <Text text="SKU: {detailModel>SKUID}" style="font-size: 0.75rem; color: #6a6d70;" />
+                                            </VBox>
+                                        </HBox>
+                                        <ObjectStatus 
+                                            text="{= ${detailModel>presentaciones}.length } presentación(es)" 
+                                            state="Information"
+                                        />
+                                    </HBox>
+                                </VBox>
+                            </CustomListItem>
+                        </List>
+                    </VBox>
+
+                    <!-- Información Adicional -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Información Adicional" class="sapUiSmallMarginBottom" design="Bold" />
+                        <VBox class="sapUiSmallPadding" style="background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                                <Text text="Creado por:" class="sapUiTinyText" />
+                                <Text text="{detailModel>/REGUSER}" />
+                            </HBox>
+                            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                                <Text text="Fecha de creación:" class="sapUiTinyText" />
+                                <Text text="{path: 'detailModel>/REGDATE', formatter: '.formatDate'}" />
+                            </HBox>
+                            <HBox 
+                                justifyContent="SpaceBetween"
+                                visible="{= !!${detailModel>/MODDATE} }"
+                            >
+                                <Text text="Última modificación:" class="sapUiTinyText" />
+                                <Text text="{path: 'detailModel>/MODDATE', formatter: '.formatDate'}" />
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </VBox>
+            </ScrollContainer>
         </content>
 
         <buttons>
-            <Button text="Cerrar" press="onCloseDetailDialog" />
-            <Button 
-                text="Gestionar Promoción" 
-                type="Emphasized"
-                press="onManagePromotion"
-                icon="sap-icon://edit"
-            />
+            <Button text="Cerrar" press="onCloseDetailDialog" type="Emphasized" />
         </buttons>
     </Dialog>
 </mvc:View>

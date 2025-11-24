@@ -207,3 +207,233 @@
     color: #1976d2 !important;
 }
 
+/* ===== ESTILOS PARA FILTROS AVANZADOS ===== */
+.filterDialogHeader {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px 8px 0 0;
+}
+
+.filterDialogHeader .sapMTitle {
+    color: white !important;
+}
+
+.filterDialogHeader .sapMText {
+    color: white !important;
+}
+
+.filterChipsContainer {
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    padding: 0.5rem;
+    border: 1px solid #90caf9;
+}
+
+.filterChip {
+    background-color: #2196f3;
+    color: white;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    cursor: pointer;
+    margin: 0.2rem;
+}
+
+.filterChip:hover {
+    background-color: #1976d2;
+}
+
+.filterLabel {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #333;
+}
+
+.priceShortcutBtn {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+    border: 1px solid #e0e6ed !important;
+    border-radius: 4px !important;
+}
+
+.dateShortcutBtn {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+    border: 1px solid #e0e6ed !important;
+    border-radius: 4px !important;
+}
+
+.productCard {
+    border-radius: 6px;
+    padding: 0.75rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.productCard.selected {
+    background: #f0f9f1 !important;
+    border: 2px solid #4CAF50 !important;
+}
+
+.productCard.inGlobal {
+    background: #e3f2fd !important;
+    border: 2px solid #2196F3 !important;
+}
+
+.productCard.locked {
+    background: #f5f5f5 !important;
+    border: 2px solid #9e9e9e !important;
+    opacity: 0.75;
+}
+
+.productCard.default {
+    background: #ffffff !important;
+    border: 1px solid #e8ecef !important;
+}
+
+.presentacionCard {
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+.presentacionCard.selected {
+    background: #e8f5e9 !important;
+    border: 2px solid #4CAF50 !important;
+}
+
+.presentacionCard.inGlobal {
+    background: #e3f2fd !important;
+    border: 2px solid #2196F3 !important;
+}
+
+.presentacionCard.locked {
+    background: #f5f5f5 !important;
+    border: 2px solid #9e9e9e !important;
+    opacity: 0.75;
+}
+
+.presentacionCard.default {
+    background: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+.searchHighlight {
+    background-color: #fff3cd;
+    font-weight: 700;
+}
+
+.paginationBar {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.75rem;
+    border: 1px solid #e9ecef;
+}
+
+.emptyStateIcon {
+    font-size: 4rem;
+    color: #ccc;
+}
+
+.filterControlBar {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #e9ecef;
+}
+
+.filterControlBar.showOnlyAdded {
+    background-color: #e8f5e9 !important;
+    border: 1px solid #4CAF50 !important;
+}
+
+/* ===== CLASES ADICIONALES PARA FILTROS ===== */
+
+.filterDialogHeaderGradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.filterDialogHeaderTitle {
+    color: white !important;
+}
+
+.filterDialogHeaderText {
+    color: white !important;
+    font-size: 0.875rem !important;
+}
+
+.filterChipsContainer {
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    padding: 0.5rem;
+    border: 1px solid #90caf9;
+}
+
+.filterChipsLabel {
+    font-weight: 600 !important;
+    color: #1976d2 !important;
+    font-size: 0.75rem !important;
+}
+
+.filterSectionLabel {
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+}
+
+.filterEmptyText {
+    color: #666 !important;
+}
+
+.filterErrorText {
+    color: #d32f2f !important;
+    font-size: 0.75rem !important;
+}
+
+.filterShortcutButton .sapMBtnInner {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+    border: 1px solid #e0e6ed !important;
+    border-radius: 4px !important;
+}
+
+.filterProductSearchContainer {
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 0.5rem;
+    border: 1px solid #e9ecef;
+}
+
+.filterControlsBar {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+}
+
+.filterResultsText {
+    font-size: 0.75rem !important;
+    color: #666 !important;
+}
+
+.filterShowOnlyAddedText {
+    font-size: 0.8rem !important;
+}
+
+.filterShowOnlyAddedActive {
+    color: #2e7d32 !important;
+    font-weight: 500 !important;
+}
+
+.filterShowOnlyAddedInactive {
+    color: #666 !important;
+    font-weight: 500 !important;
+}
+
+/* Padding para evitar que se corten los controles inferiores */
+.filterProductsContainer {
+    padding-bottom: 3rem !important;
+}
+

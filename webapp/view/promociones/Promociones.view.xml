@@ -12,20 +12,16 @@
         showNavButton="true"
         navButtonPress="onNavBack"
     >
+        <headerContent>
+            <Button
+                text="Ver Calendario"
+                icon="sap-icon://calendar"
+                type="Emphasized"
+                press="onNavigateToCalendar"
+            />
+        </headerContent>
         <content>
-            <IconTabBar
-                id="promoTabBar"
-                select="onTabSelect"
-                class="sapUiResponsiveContentPadding"
-            >
-                <!-- Tab 1: Lista de Promociones -->
-                <items>
-                    <IconTabFilter
-                        text="Promociones"
-                        key="list"
-                        icon="sap-icon://product"
-                    >
-                        <VBox class="sapUiMediumMargin">
+            <VBox class="sapUiMediumMargin">
                             <!-- Header con acciones -->
                             <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
                                 <VBox>
@@ -42,38 +38,6 @@
                                 </HBox>
                             </HBox>
 
-                            <!-- Barra de búsqueda y acciones -->
-                            <Toolbar>
-                                <SearchField 
-                                    placeholder="Buscar por título, descripción..."
-                                    value="{promotionsModel>/searchText}"
-                                    search="onSearch"
-                                    width="60%"
-                                />
-                                <ToolbarSpacer />
-                                <Button 
-                                    text="Editar" 
-                                    icon="sap-icon://edit" 
-                                    type="Transparent" 
-                                    press="onEditPromotion"
-                                    enabled="{= ${promotionsModel>/selectedCount} === 1 }"
-                                />
-                                <Button 
-                                    text="Eliminar" 
-                                    icon="sap-icon://delete" 
-                                    type="Negative"
-                                    press="onDeletePromotion"
-                                    enabled="{= ${promotionsModel>/selectedCount} > 0 }"
-                                />
-                                <Button 
-                                    text="Desactivar" 
-                                    icon="sap-icon://decline" 
-                                    type="Transparent"
-                                    press="onDeactivatePromotion"
-                                    enabled="{= ${promotionsModel>/selectedCount} > 0 }"
-                                />
-                            </Toolbar>
-
                             <!-- Tabla de Promociones -->
                             <Table
                                 id="promotionsTable"
@@ -86,6 +50,38 @@
                                 sticky="ColumnHeaders,HeaderToolbar"
                                 selectionChange="onSelectionChange"
                             >
+                                <headerToolbar>
+                                    <Toolbar>
+                                        <SearchField 
+                                            placeholder="Buscar por título, descripción..."
+                                            value="{promotionsModel>/searchText}"
+                                            search="onSearch"
+                                            width="60%"
+                                        />
+                                        <ToolbarSpacer />
+                                        <Button 
+                                            text="Editar" 
+                                            icon="sap-icon://edit" 
+                                            type="Transparent" 
+                                            press="onEditPromotion"
+                                            enabled="{= ${promotionsModel>/selectedCount} === 1 }"
+                                        />
+                                        <Button 
+                                            text="Eliminar" 
+                                            icon="sap-icon://delete" 
+                                            type="Negative"
+                                            press="onDeletePromotion"
+                                            enabled="{= ${promotionsModel>/selectedCount} > 0 }"
+                                        />
+                                        <Button 
+                                            text="Desactivar" 
+                                            icon="sap-icon://decline" 
+                                            type="Transparent"
+                                            press="onDeactivatePromotion"
+                                            enabled="{= ${promotionsModel>/selectedCount} > 0 }"
+                                        />
+                                    </Toolbar>
+                                </headerToolbar>
                                 <columns>
                                     <Column width="12%">
                                         <Text text="ID Promoción" />
@@ -169,166 +165,6 @@
                                 </HBox>
                             </Panel>
                         </VBox>
-                    </IconTabFilter>
-
-                    <!-- Tab 2: Calendario -->
-                    <IconTabFilter
-                        text="Calendario"
-                        key="calendar"
-                        icon="sap-icon://calendar"
-                    >
-                        <VBox class="sapUiMediumMargin">
-                            <!-- Header con navegación -->
-                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
-                                <VBox>
-                                    <Title text="Calendario de Promociones" level="H3" />
-                                </VBox>
-                                <HBox>
-                                    <Button 
-                                        text="Nueva Promoción" 
-                                        type="Emphasized"
-                                        icon="sap-icon://add"
-                                        press="onNewPromotion"
-                                    />
-                                </HBox>
-                            </HBox>
-
-                            <!-- Panel de filtros y controles -->
-                            <Panel headerText="Filtros y Vista" expandable="true" expanded="true" class="sapUiMediumMarginBottom">
-                                <VBox>
-                                    <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMargin">
-                                        <!-- Filtros izquierda -->
-                                        <HBox alignItems="Center">
-                                            <Label text="Estado:" class="sapUiTinyMarginEnd" />
-                                            <Select
-                                                id="estadoFilter"
-                                                selectedKey="{calendarModel>/filters/estado}"
-                                                change="onCalendarFilterChange"
-                                                width="150px"
-                                                class="sapUiSmallMarginEnd"
-                                            >
-                                                <items>
-                                                    <core:Item key="all" text="Todas" />
-                                                    <core:Item key="active" text="Activas" />
-                                                    <core:Item key="scheduled" text="Programadas" />
-                                                    <core:Item key="finished" text="Finalizadas" />
-                                                </items>
-                                            </Select>
-                                            
-                                            <SearchField
-                                                placeholder="Buscar promoción..."
-                                                value="{calendarModel>/filters/search}"
-                                                search="onCalendarFilterChange"
-                                                width="250px"
-                                            />
-                                        </HBox>
-                                        
-                                        <!-- Controles derecha -->
-                                        <HBox alignItems="Center">
-                                            <SegmentedButton
-                                                id="viewModeSelector"
-                                                selectedKey="{calendarModel>/viewMode}"
-                                                selectionChange="onCalendarViewModeChange"
-                                                class="sapUiSmallMarginEnd"
-                                            >
-                                                <items>
-                                                    <SegmentedButtonItem key="month" icon="sap-icon://calendar" text="Mes" />
-                                                    <SegmentedButtonItem key="agenda" icon="sap-icon://list" text="Agenda" />
-                                                </items>
-                                            </SegmentedButton>
-                                            
-                                            <Button
-                                                text="Exportar CSV"
-                                                icon="sap-icon://excel-attachment"
-                                                press="onCalendarExport"
-                                            />
-                                        </HBox>
-                                    </HBox>
-                                </VBox>
-                            </Panel>
-
-                            <!-- Navegación de mes (solo visible en vista mes) -->
-                            <HBox 
-                                justifyContent="SpaceBetween" 
-                                alignItems="Center" 
-                                class="sapUiMediumMarginBottom"
-                                visible="{= ${calendarModel>/viewMode} === 'month' }"
-                            >
-                                <Button icon="sap-icon://navigation-left-arrow" press="onCalendarPreviousMonth" />
-                                <Title text="{calendarModel>/currentMonthYear}" level="H4" />
-                                <HBox>
-                                    <Button text="Hoy" press="onCalendarToday" class="sapUiTinyMarginEnd" />
-                                    <Button icon="sap-icon://navigation-right-arrow" press="onCalendarNextMonth" />
-                                </HBox>
-                            </HBox>
-
-                            <!-- Vista de Mes -->
-                            <VBox visible="{= ${calendarModel>/viewMode} === 'month' }">
-                                <!-- Encabezados de días -->
-                                <HBox class="sapUiMediumMarginBottom">
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Domingo" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Lunes" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Martes" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Miércoles" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Jueves" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Viernes" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                    <VBox width="14.28%" alignItems="Center">
-                                        <Text text="Sábado" class="sapUiSmallText sapUiTextBold" />
-                                    </VBox>
-                                </HBox>
-                                
-                                <!-- Grid del calendario (se renderiza dinámicamente) -->
-                                <l:Grid id="promoCalendarGrid" defaultSpan="L2 M2 S2" />
-                            </VBox>
-
-                            <!-- Vista de Agenda -->
-                            <VBox visible="{= ${calendarModel>/viewMode} === 'agenda' }">
-                                <List
-                                    items="{calendarModel>/filteredPromotions}"
-                                    noDataText="No hay promociones para mostrar"
-                                >
-                                    <CustomListItem type="Active" press="onCalendarPromotionPress">
-                                        <VBox class="sapUiSmallMargin">
-                                            <HBox justifyContent="SpaceBetween" alignItems="Center">
-                                                <VBox width="60%">
-                                                    <Title text="{calendarModel>Titulo}" level="H5" />
-                                                    <Text text="{calendarModel>Descripcion}" wrapping="true" class="sapUiTinyMarginTop" />
-                                                </VBox>
-                                                <VBox alignItems="End">
-                                                    <ObjectStatus 
-                                                        text="{path: 'calendarModel>', formatter: '.getPromotionStatus'}" 
-                                                        state="{path: 'calendarModel>', formatter: '.getPromotionStatusState'}"
-                                                    />
-                                                    <HBox class="sapUiTinyMarginTop">
-                                                        <core:Icon src="sap-icon://calendar" size="1rem" class="sapUiTinyMarginEnd" />
-                                                        <Text text="{path: 'calendarModel>FechaIni', formatter: '.formatDate'} - {path: 'calendarModel>FechaFin', formatter: '.formatDate'}" />
-                                                    </HBox>
-                                                    <HBox class="sapUiTinyMarginTop">
-                                                        <core:Icon src="sap-icon://sales-quote" size="1rem" class="sapUiTinyMarginEnd" />
-                                                        <Text text="Descuento: {calendarModel>DescuentoPorcentaje}%" />
-                                                    </HBox>
-                                                </VBox>
-                                            </HBox>
-                                        </VBox>
-                                    </CustomListItem>
-                                </List>
-                            </VBox>
-                        </VBox>
-                    </IconTabFilter>
-                </items>
-            </IconTabBar>
         </content>
     </Page>
 </mvc:View>

@@ -1,0 +1,366 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+>
+    <l:Splitter height="600px">
+        <l:contentAreas>
+            <!-- COLUMNA IZQUIERDA - FILTROS -->
+            <VBox class="sapUiSmallMargin">
+                <layoutData>
+                    <l:SplitterLayoutData size="30%" minSize="280"/>
+                </layoutData>
+                
+                <!-- Header de Filtros -->
+                <VBox class="sapUiSmallPadding sapUiResponsiveMargin">
+                        <HBox justifyContent="SpaceBetween" alignItems="Center">
+                            <Title text="Filtros Avanzados" level="H4" class="sapUiTinyMarginBottom"/>
+                            <core:Icon src="sap-icon://filter" size="1.5rem"/>
+                        </HBox>
+                        <Text text="{filterModel>/activeFiltersCount} filtros activos" class="sapUiTinyText"/>
+                    </VBox>
+
+                    <!-- Botón Limpiar Filtros -->
+                    <Button
+                        icon="sap-icon://clear-filter"
+                        text="Limpiar Filtros"
+                        type="Transparent"
+                        press=".onClearAllFilters"
+                        visible="{= ${filterModel>/activeFiltersCount} > 0 }"
+                        class="sapUiTinyMarginTop"
+                    />
+
+                    <!-- Chips de Filtros Activos -->
+                    <VBox visible="{= ${filterModel>/activeFiltersCount} > 0 }" class="sapUiSmallMarginTop sapUiSmallPadding sapContrast" backgroundDesign="Solid">
+                        <Label text="Filtros aplicados:" class="sapUiTinyMarginBottom" design="Bold"/>
+                        <HBox wrap="Wrap">
+                            <!-- Chip de Búsqueda -->
+                            <Token
+                                text="Búsqueda: {filterModel>/searchTerm}"
+                                delete=".onRemoveFilterChip"
+                                visible="{= ${filterModel>/searchTerm} !== '' }"
+                                class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+                            >
+                                <customData>
+                                    <core:CustomData key="filterKey" value="busqueda"/>
+                                </customData>
+                            </Token>
+                            
+                            <!-- Chip de Precio -->
+                            <Token
+                                text="Precio: ${filterModel>/filters/precioMin} - ${filterModel>/filters/precioMax}"
+                                delete=".onRemoveFilterChip"
+                                visible="{= ${filterModel>/filters/precioMin} !== '' || ${filterModel>/filters/precioMax} !== '' }"
+                                class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+                            >
+                                <customData>
+                                    <core:CustomData key="filterKey" value="precio"/>
+                                </customData>
+                            </Token>
+                            
+                            <!-- Chip de Fecha -->
+                            <Token
+                                text="Fecha: {filterModel>/filters/fechaIngresoDesde} - {filterModel>/filters/fechaIngresoHasta}"
+                                delete=".onRemoveFilterChip"
+                                visible="{= ${filterModel>/filters/fechaIngresoDesde} !== '' || ${filterModel>/filters/fechaIngresoHasta} !== '' }"
+                                class="sapUiTinyMarginEnd sapUiTinyMarginBottom"
+                            >
+                                <customData>
+                                    <core:CustomData key="filterKey" value="fecha"/>
+                                </customData>
+                            </Token>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Búsqueda Rápida -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Búsqueda Rápida" class="sapUiTinyMarginBottom"/>
+                        <SearchField
+                            placeholder="Buscar por nombre o SKU..."
+                            value="{filterModel>/searchTerm}"
+                            search=".onFilterSearch"
+                            liveChange=".onFilterSearch"
+                            width="100%"
+                        />
+                    </VBox>
+
+                    <!-- Categorías -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Categorías" class="sapUiTinyMarginBottom"/>
+                        <MultiComboBox
+                            selectedKeys="{filterModel>/filters/categorias}"
+                            items="{
+                                path: 'filterModel>/categories',
+                                templateShareable: true
+                            }"
+                            placeholder="Seleccionar categorías..."
+                            selectionChange=".onCategoryChange"
+                            width="100%"
+                        >
+                            <core:Item key="{filterModel>CATID}" text="{filterModel>Nombre}"/>
+                        </MultiComboBox>
+                    </VBox>
+
+                    <!-- Marcas -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Marcas" class="sapUiTinyMarginBottom"/>
+                        <MultiComboBox
+                            selectedKeys="{filterModel>/filters/marcas}"
+                            items="{
+                                path: 'filterModel>/brands',
+                                templateShareable: true
+                            }"
+                            placeholder="Seleccionar marcas..."
+                            selectionChange=".onBrandChange"
+                            width="100%"
+                        >
+                            <core:Item key="{filterModel>id}" text="{filterModel>name}"/>
+                        </MultiComboBox>
+                    </VBox>
+
+                    <!-- Rango de Precios -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Rango de Precios" class="sapUiTinyMarginBottom"/>
+                        <HBox alignItems="Center">
+                            <Input
+                                value="{filterModel>/filters/minPrice}"
+                                placeholder="Mínimo"
+                                type="Number"
+                                width="45%"
+                                change=".onPriceChange"
+                            />
+                            <Text text="-" class="sapUiTinyMarginBegin sapUiTinyMarginEnd"/>
+                            <Input
+                                value="{filterModel>/filters/maxPrice}"
+                                placeholder="Máximo"
+                                type="Number"
+                                width="45%"
+                                change=".onPriceChange"
+                            />
+                        </HBox>
+                        <HBox class="sapUiTinyMarginTop">
+                            <Button text="$0-$50" press=".onPriceShortcut" type="Transparent" class="sapUiTinyMarginEnd"/>
+                            <Button text="$50-$100" press=".onPriceShortcut" type="Transparent" class="sapUiTinyMarginEnd"/>
+                            <Button text="$100-$200" press=".onPriceShortcut" type="Transparent" class="sapUiTinyMarginEnd"/>
+                            <Button text="$200+" press=".onPriceShortcut" type="Transparent"/>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Rango de Fechas -->
+                    <VBox class="sapUiSmallMarginTop">
+                        <Label text="Rango de Fechas" class="sapUiTinyMarginBottom"/>
+                        <DatePicker
+                            value="{filterModel>/filters/startDate}"
+                            placeholder="Desde"
+                            change=".onDateChange"
+                            width="100%"
+                            class="sapUiTinyMarginBottom"
+                        />
+                        <DatePicker
+                            value="{filterModel>/filters/endDate}"
+                            placeholder="Hasta"
+                            change=".onDateChange"
+                            width="100%"
+                        />
+                        <HBox class="sapUiTinyMarginTop" wrap="Wrap">
+                            <Button text="Hoy" press=".onDateShortcut" type="Transparent" class="sapUiTinyMarginEnd sapUiTinyMarginBottom"/>
+                            <Button text="Últimos 7 días" press=".onDateShortcut" type="Transparent" class="sapUiTinyMarginEnd sapUiTinyMarginBottom"/>
+                            <Button text="Últimos 30 días" press=".onDateShortcut" type="Transparent" class="sapUiTinyMarginEnd sapUiTinyMarginBottom"/>
+                            <Button text="Este mes" press=".onDateShortcut" type="Transparent" class="sapUiTinyMarginBottom"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+            <!-- COLUMNA DERECHA - PRODUCTOS -->
+            <VBox class="sapUiSmallMargin filterProductsContainer">
+                <layoutData>
+                    <l:SplitterLayoutData size="70%"/>
+                </layoutData>
+                
+                <VBox visible="{filterModel>/loading}" alignItems="Center" class="sapUiLargeMarginTopBottom">
+                    <BusyIndicator size="4rem" class="sapUiMediumMarginBottom"/>
+                    <Text text="Cargando productos y presentaciones..." class="sapUiMediumMarginBottom"/>
+                </VBox>
+
+                <MessageStrip
+                    text="{filterModel>/errorMessage}"
+                    type="Error"
+                    showIcon="true"
+                    visible="{= ${filterModel>/errorMessage} !== '' }"
+                    class="sapUiSmallMarginBottom"
+                />
+                
+                <!-- Controles de Visualización y Ordenamiento -->
+                <Toolbar visible="{= !${filterModel>/loading} }">
+                        <ToolbarSpacer/>
+                        <Label text="Solo agregados:" class="sapUiTinyMarginEnd"/>
+                        <Switch state="{filterModel>/showOnlyAdded}" change=".onShowOnlyAddedChange" enabled="{= !${filterModel>/isManagingSelection} }"/>
+                        <ToolbarSeparator/>
+                        <Label text="Ordenar:" class="sapUiTinyMarginEnd"/>
+                        <ComboBox
+                            selectedKey="{filterModel>/sortBy}"
+                            selectionChange=".onSortChange"
+                            width="200px"
+                        >
+                            <core:Item key="default" text="Orden predeterminado"/>
+                            <core:Item key="addedFirst" text="Primero ya agregados"/>
+                            <core:Item key="notAddedFirst" text="Primero sin agregar"/>
+                            <core:Item key="nameAsc" text="Nombre A-Z"/>
+                            <core:Item key="nameDesc" text="Nombre Z-A"/>
+                        </ComboBox>
+                        <ToolbarSeparator/>
+                        <Button
+                            icon="{= ${filterModel>/isManagingSelection} ? 'sap-icon://accept' : 'sap-icon://edit' }"
+                            text="{= ${filterModel>/isManagingSelection} ? 'Terminar' : 'Gestionar' }"
+                            type="{= ${filterModel>/isManagingSelection} ? 'Emphasized' : 'Transparent' }"
+                            press=".onToggleManageSelection"
+                        />
+                </Toolbar>
+
+                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom" visible="{= !${filterModel>/loading} }">
+                    <VBox>
+                        <Title text="Productos Disponibles" level="H5"/>
+                        <Text text="{filterModel>/filteredProductsCount} productos encontrados"/>
+                    </VBox>
+                    <HBox alignItems="Center">
+                        <Button
+                            text="Agregar"
+                            icon="sap-icon://add"
+                            type="Emphasized"
+                            press=".onPreAddSelections"
+                            visible="{= ${filterModel>/hasTemporarySelections} &amp;&amp; !${filterModel>/isManagingSelection} }"
+                            class="sapUiTinyMarginEnd"
+                        />
+                        <Button
+                            text="Seleccionar Todos"
+                            type="Transparent"
+                            press=".onSelectAllProducts"
+                            class="sapUiTinyMarginEnd"
+                        />
+                        <Button
+                            text="Deseleccionar Todos"
+                            type="Transparent"
+                            press=".onDeselectAllProducts"
+                        />
+                    </HBox>
+                </HBox>
+
+                <List
+                        items="{filterModel>/paginatedProducts}"
+                        mode="None"
+                        noDataText="No se encontraron productos"
+                        class="sapUiSmallMarginBottom"
+                        visible="{= !${filterModel>/loading} }"
+                    >
+                        <CustomListItem>
+                            <VBox width="100%">
+                                <!-- PRODUCTO -->
+                                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallPadding">
+                                    <HBox alignItems="Center" width="70%">
+                                        <CheckBox
+                                            selected="{filterModel>allSelected}"
+                                            enabled="{= !${filterModel>locked} }"
+                                            select=".onProductSelect"
+                                            class="sapUiTinyMarginEnd"
+                                        />
+                                        <VBox width="100%">
+                                            <Text text="{filterModel>PRODUCTNAME}" class="sapUiTextBold"/>
+                                            <Text text="SKU: {filterModel>SKUID} | Marca: {filterModel>MARCA}"/>
+                                        </VBox>
+                                    </HBox>
+                                    <HBox alignItems="Center">
+                                        <ObjectStatus 
+                                            text="Agregado" 
+                                            state="Success"
+                                            visible="{filterModel>hasAddedPresentations}"
+                                            class="sapUiTinyMarginEnd"
+                                        />
+                                        <ObjectStatus 
+                                            text="Ya en la promoción" 
+                                            state="Information"
+                                            visible="{filterModel>alreadyInPromotionProduct}"
+                                            class="sapUiTinyMarginEnd"
+                                        />
+                                        <Text text="{filterModel>presentacionesCount} presentación(es)" class="sapUiTinyMarginEnd"/>
+                                        <Button
+                                            type="Transparent"
+                                            press=".onToggleProduct"
+                                            icon="{= ${filterModel>expanded} ? 'sap-icon://navigation-down-arrow' : 'sap-icon://navigation-right-arrow' }"
+                                        />
+                                    </HBox>
+                                </HBox>
+                                
+                                <!-- PRESENTACIONES -->
+                                <VBox visible="{filterModel>expanded}" class="sapUiMediumMarginBegin">
+                                    <List
+                                        items="{filterModel>presentaciones}"
+                                        mode="None"
+                                        showSeparators="Inner"
+                                    >
+                                        <CustomListItem>
+                                            <HBox alignItems="Center" width="100%" class="sapUiSmallPadding">
+                                                <CheckBox 
+                                                    selected="{filterModel>selected}"
+                                                    enabled="{= !${filterModel>locked} }"
+                                                    select=".onPresentacionSelect"
+                                                    class="sapUiTinyMarginEnd"
+                                                />
+                                                <VBox width="60%">
+                                                    <Text text="{filterModel>NOMBREPRESENTACION}" class="sapUiTextBold"/>
+                                                    <Text text="ID: {filterModel>IdPresentaOK}" class="sapUiTinyText"/>
+                                                </VBox>
+                                                <HBox alignItems="Center" justifyContent="End" width="40%">
+                                                    <ObjectNumber number="{filterModel>Precio}" unit="MXN" class="sapUiTinyMarginEnd"/>
+                                                    <core:Icon 
+                                                        src="sap-icon://accept" 
+                                                        visible="{filterModel>added}"
+                                                        color="#107E3E"
+                                                        tooltip="Agregado"
+                                                        class="sapUiTinyMarginEnd"
+                                                    />
+                                                    <ObjectStatus 
+                                                        text="Ya en la promoción" 
+                                                        state="Information"
+                                                        visible="{filterModel>alreadyInPromotion}"
+                                                    />
+                                                </HBox>
+                                            </HBox>
+                                        </CustomListItem>
+                                    </List>
+                                </VBox>
+                            </VBox>
+                        </CustomListItem>
+                    </List>
+
+                    <HBox 
+                        justifyContent="SpaceBetween" 
+                        alignItems="Center"
+                        class="sapUiMediumMarginTop"
+                        visible="{= ${filterModel>/pagination/totalPages} &gt; 1 &amp;&amp; !${filterModel>/loading} }"
+                    >
+                        <Button
+                            icon="sap-icon://navigation-left-arrow"
+                            text="Anterior"
+                            type="Transparent"
+                            enabled="{= ${filterModel>/pagination/currentPage} &gt; 1 }"
+                            press=".onPreviousPage"
+                        />
+                        
+                        <VBox alignItems="Center">
+                            <Text text="Mostrando {= (${filterModel>/pagination/currentPage} - 1) * 10 + 1 }–{= Math.min(${filterModel>/pagination/currentPage} * 10, ${filterModel>/filteredProductsCount}) } de {filterModel>/filteredProductsCount} productos"/>
+                            <Text text="Página {filterModel>/pagination/currentPage} de {filterModel>/pagination/totalPages}" class="sapUiTinyText"/>
+                        </VBox>
+                        
+                        <Button
+                            icon="sap-icon://navigation-right-arrow"
+                            text="Siguiente"
+                            type="Transparent"
+                            enabled="{= ${filterModel>/pagination/currentPage} &lt; ${filterModel>/pagination/totalPages} }"
+                            press=".onNextPage"
+                        />
+                </HBox>
+            </VBox>
+        </l:contentAreas>
+    </l:Splitter>
+</core:FragmentDefinition>
+
