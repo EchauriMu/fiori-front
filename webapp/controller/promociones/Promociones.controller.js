@@ -315,10 +315,19 @@ sap.ui.define([
             // Toggle de selección: si está seleccionado, deseleccionar; si no, seleccionar
             oTable.setSelectedItem(oItem, !bSelected);
             
-            // Actualizar el contador de selección
+            // Actualizar el contador de selección y estado activo
             const aSelectedItems = oTable.getSelectedItems();
             const oModel = this.getView().getModel("promotionsModel");
+            
+            // Verificar si al menos una promoción seleccionada está activa
+            const bHasActiveSelected = aSelectedItems.some(oItem => {
+                const oContext = oItem.getBindingContext("promotionsModel");
+                const oPromotion = oContext.getObject();
+                return oPromotion.ACTIVED === true && oPromotion.DELETED !== true;
+            });
+            
             oModel.setProperty("/selectedCount", aSelectedItems.length);
+            oModel.setProperty("/hasActiveSelected", bHasActiveSelected);
         },
 
         onNewPromotion: function () {
@@ -1341,7 +1350,6 @@ sap.ui.define([
             }
             
             const sAction = bHasActiveSelected ? "desactivar" : "activar";
-            const bNewState = !bHasActiveSelected;
             
             MessageBox.confirm(
                 `¿Deseas ${sAction} ${aSelectedItems.length} promoción(es)?`,
@@ -1354,17 +1362,27 @@ sap.ui.define([
                                     const oContext = oItem.getBindingContext("promotionsModel");
                                     const oPromotion = oContext.getObject();
                                     
-                                    await this._callApi('/ztpromociones/crudPromociones', 'POST', {
-                                        ACTIVED: bNewState,
-                                        DELETED: !bNewState
-                                    }, {
-                                        ProcessType: 'ActivateOne',
-                                        IdPromoOK: oPromotion.IdPromoOK,
-                                        DBServer: 'MongoDB'
-                                    });
+                                    if (bHasActiveSelected) {
+                                        // Desactivar usando DeleteLogic
+                                        await this._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
+                                            ProcessType: 'DeleteLogic',
+                                            IdPromoOK: oPromotion.IdPromoOK,
+                                            DBServer: 'MongoDB'
+                                        });
+                                    } else {
+                                        // Activar usando UpdateOne
+                                        await this._callApi('/ztpromociones/crudPromociones', 'POST', {
+                                            ACTIVED: true,
+                                            DELETED: false
+                                        }, {
+                                            ProcessType: 'UpdateOne',
+                                            IdPromoOK: oPromotion.IdPromoOK,
+                                            DBServer: 'MongoDB'
+                                        });
+                                    }
                                 }
                                 
-                                MessageToast.show(`${aSelectedItems.length} promoción(es) ${bNewState ? 'activada(s)' : 'desactivada(s)'} correctamente`);
+                                MessageToast.show(`${aSelectedItems.length} promoción(es) ${bHasActiveSelected ? 'desactivada(s)' : 'activada(s)'} correctamente`);
                                 oTable.removeSelections();
                                 this.forceReloadPromotions();
                                 
