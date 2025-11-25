@@ -8,7 +8,7 @@
 >
     <Page
         id="promocionesPage"
-        title="Gestión de Promociones"
+        title="Lista de Promociones - {promotionsModel>/totalPromotions} promociones"
         showNavButton="true"
         navButtonPress="onNavBack"
     >
@@ -22,21 +22,6 @@
         </headerContent>
         <content>
             <VBox class="sapUiMediumMargin">
-                            <!-- Header con acciones -->
-                            <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiMediumMarginBottom">
-                                <VBox>
-                                    <Title text="Lista de Promociones" level="H3" />
-                                    <Text text="{promotionsModel>/totalPromotions} promociones encontradas" class="sapUiTinyMarginTop" />
-                                </VBox>
-                                <HBox>
-                                    <Button 
-                                        text="Nueva Promoción" 
-                                        type="Emphasized"
-                                        icon="sap-icon://add"
-                                        press="onNewPromotion"
-                                    />
-                                </HBox>
-                            </HBox>
 
                             <!-- Tabla de Promociones -->
                             <Table
@@ -51,12 +36,30 @@
                                 selectionChange="onSelectionChange"
                             >
                                 <headerToolbar>
-                                    <Toolbar>
+                                    <OverflowToolbar>
+                                        <Label text="Estado:" class="sapUiTinyMarginEnd" />
+                                        <Select
+                                            selectedKey="{promotionsModel>/statusFilter}"
+                                            change="onStatusFilterChange"
+                                            width="150px"
+                                        >
+                                            <core:Item key="all" text="Todas" />
+                                            <core:Item key="Activa" text="Activas" />
+                                            <core:Item key="Programada" text="Programadas" />
+                                            <core:Item key="Expirada" text="Expiradas" />
+                                            <core:Item key="Inactiva" text="Inactivas" />
+                                        </Select>
                                         <SearchField 
                                             placeholder="Buscar por título, descripción..."
                                             value="{promotionsModel>/searchText}"
                                             search="onSearch"
-                                            width="60%"
+                                            width="30%"
+                                        />
+                                        <Button 
+                                            text="Nueva Promoción" 
+                                            type="Emphasized"
+                                            icon="sap-icon://add"
+                                            press="onNewPromotion"
                                         />
                                         <ToolbarSpacer />
                                         <Button 
@@ -74,13 +77,13 @@
                                             enabled="{= ${promotionsModel>/selectedCount} > 0 }"
                                         />
                                         <Button 
-                                            text="Desactivar" 
-                                            icon="sap-icon://decline" 
+                                            text="{= ${promotionsModel>/hasActiveSelected} ? 'Desactivar' : 'Activar' }" 
+                                            icon="{= ${promotionsModel>/hasActiveSelected} ? 'sap-icon://decline' : 'sap-icon://accept' }"
                                             type="Transparent"
-                                            press="onDeactivatePromotion"
+                                            press="onToggleActivationBulk"
                                             enabled="{= ${promotionsModel>/selectedCount} > 0 }"
                                         />
-                                    </Toolbar>
+                                    </OverflowToolbar>
                                 </headerToolbar>
                                 <columns>
                                     <Column width="12%">

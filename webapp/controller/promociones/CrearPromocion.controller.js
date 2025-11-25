@@ -24,6 +24,7 @@ sap.ui.define([
         },
 
         _onRouteMatched: function(oEvent) {
+            this._cleanupFilterModelState();
             this._initializeModel();
             this._initializeNavContainer();
         },
@@ -43,8 +44,36 @@ sap.ui.define([
         },
 
         onNavBack: function () {
+            this._cleanupFilterModelState();
             const oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RoutePromociones", {}, true);
+        },
+
+        _cleanupFilterModelState: function() {
+            // Limpiar selecciones temporales pero mantener cache de datos
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (oFilterModel) {
+                oFilterModel.setProperty("/addedPresentaciones", {});
+                oFilterModel.setProperty("/selectedPresentaciones", {});
+                oFilterModel.setProperty("/hasTemporarySelections", false);
+                oFilterModel.setProperty("/currentPage", 1);
+                oFilterModel.setProperty("/totalPages", 1);
+                // Mantener allPresentacionesLoaded y productPresentaciones en cache
+            }
+            
+            // Limpiar también el modelo createPromo
+            const oCreatePromo = this.getView().getModel("createPromo");
+            if (oCreatePromo) {
+                oCreatePromo.setProperty("/selectedPresentaciones", []);
+                oCreatePromo.setProperty("/groupedSelectedProducts", []);
+                oCreatePromo.setProperty("/paginatedGroupedProducts", []);
+                oCreatePromo.setProperty("/groupedPagination", {
+                    currentPage: 1,
+                    itemsPerPage: 5,
+                    totalPages: 1,
+                    totalItems: 0
+                });
+            }
         },
 
         _initializeModel: function () {
@@ -512,7 +541,12 @@ sap.ui.define([
                     DBServer: 'MongoDB'
                 });
                 
-                                
+                // Establecer flag para que Promociones recargue datos
+                const oAppView = this.getOwnerComponent().getModel("appView");
+                if (oAppView) {
+                    oAppView.setProperty("/needsPromotionsReload", true);
+                }
+                
                 MessageBox.success(`Promoción "${oData.titulo}" creada exitosamente.`, {
                     onClose: () => this.onNavBack()
                 });
@@ -616,10 +650,18 @@ sap.ui.define([
         },
 
         _initializeFilterModel: function() {
-            if (this.getView().getModel("filterModel")) {
-                return; // Ya existe
+            const existingModel = this.getView().getModel("filterModel");
+            
+            // Si existe, solo limpiar las selecciones pero mantener TODO el cache
+            if (existingModel) {
+                existingModel.setProperty("/selectedPresentaciones", {});
+                existingModel.setProperty("/addedPresentaciones", {});
+                existingModel.setProperty("/hasTemporarySelections", false);
+                existingModel.setProperty("/showOnlyAdded", false);
+                return; // Mantener el modelo existente con su cache
             }
             
+            // Crear nuevo modelo solo si no existe
             this.getView().setModel(new JSONModel({
                 allProducts: [],
                 filteredProducts: [],
@@ -651,7 +693,8 @@ sap.ui.define([
                 isManagingSelection: false,
                 hasTemporarySelections: false,
                 activeFiltersCount: 0,
-                filteredProductsCount: 0
+                filteredProductsCount: 0,
+                allPresentacionesLoaded: false
             }), "filterModel");
         },
 
@@ -660,6 +703,18 @@ sap.ui.define([
             const oFilterModel = this.getView().getModel("filterModel");
             if (!oFilterModel) return;
             
+            // Si ya están cargados, no recargar
+            const allProducts = oFilterModel.getProperty("/allProducts");
+            if (allProducts && allProducts.length > 0) {
+                return;
+            }
+            
+            // Evitar llamadas simultáneas
+            if (this._isLoadingProducts) {
+                return;
+            }
+            
+            this._isLoadingProducts = true;
             oFilterModel.setProperty("/loading", true);
             
             try {
@@ -724,6 +779,8 @@ sap.ui.define([
                 console.error("Error cargando productos:", error);
                 MessageToast.show("Error al cargar productos: " + error.message);
                 oFilterModel.setProperty("/loading", false);
+            } finally {
+                this._isLoadingProducts = false;
             }
         },
 
@@ -866,11 +923,11 @@ sap.ui.define([
 
             const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
             
-            // Cargar presentaciones de todos los productos filtrados
-            for (const product of aFiltered) {
-                if (!oProductPresentaciones[product.SKUID]) {
-                    await this._loadPresentaciones(product.SKUID);
-                }
+            // Cargar TODAS las presentaciones en una sola llamada si no están cargadas
+            const allPresentacionesLoaded = oFilterModel.getProperty("/allPresentacionesLoaded");
+            
+            if (!allPresentacionesLoaded) {
+                await this._loadAllPresentaciones();
             }
 
             const updatedPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
@@ -905,6 +962,7 @@ sap.ui.define([
 
                 return {
                     ...product,
+                    PRODUCTNAME: product.PRODUCTNAME || product.Nombre || 'Sin nombre',
                     presentaciones: aPresentaciones,
                     presentacionesCount: aPresentaciones.length,
                     expanded: false,
@@ -928,6 +986,57 @@ sap.ui.define([
         },
 
         // Cargar presentaciones de un producto
+        _loadAllPresentaciones: async function() {
+            const oFilterModel = this.getView().getModel("filterModel");
+            if (!oFilterModel) return;
+            
+            try {
+                // Cargar TODAS las presentaciones en una sola llamada
+                const oResponse = await this._callApi(
+                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
+                    'POST',
+                    {},
+                    {
+                        ProcessType: 'GetAll'
+                    }
+                );
+                
+                let aPresentaciones = [];
+                
+                // Extraer presentaciones de la respuesta
+                if (Array.isArray(oResponse)) {
+                    aPresentaciones = oResponse;
+                } else if (oResponse?.data?.[0]?.dataRes) {
+                    aPresentaciones = oResponse.data[0].dataRes;
+                } else if (oResponse?.value?.[0]?.data?.[0]?.dataRes) {
+                    aPresentaciones = oResponse.value[0].data[0].dataRes;
+                } else if (Array.isArray(oResponse?.data)) {
+                    aPresentaciones = oResponse.data;
+                }
+                
+                // Filtrar solo presentaciones activas
+                aPresentaciones = aPresentaciones.filter(p => p && p.ACTIVED && !p.DELETED);
+                
+                // Agrupar presentaciones por SKUID
+                const oProductPresentaciones = {};
+                aPresentaciones.forEach(pres => {
+                    const skuid = pres.SKUID;
+                    if (!oProductPresentaciones[skuid]) {
+                        oProductPresentaciones[skuid] = [];
+                    }
+                    oProductPresentaciones[skuid].push(pres);
+                });
+                
+                // Guardar en el modelo
+                oFilterModel.setProperty("/productPresentaciones", oProductPresentaciones);
+                oFilterModel.setProperty("/allPresentacionesLoaded", true);
+                
+            } catch (error) {
+                console.error("Error cargando todas las presentaciones:", error);
+                MessageToast.show("Error al cargar presentaciones: " + error.message);
+            }
+        },
+
         _loadPresentaciones: async function(sSKUID) {
             const oFilterModel = this.getView().getModel("filterModel");
             if (!oFilterModel) return [];

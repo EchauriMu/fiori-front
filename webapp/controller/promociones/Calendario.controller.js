@@ -47,7 +47,13 @@ sap.ui.define([
         },
 
         _onRouteMatched: function(oEvent) {
-            this.loadPromotions();
+            // Solo recargar si no hay datos cargados
+            const oModel = this.getView().getModel("calendarModel");
+            const aPromotions = oModel.getProperty("/promotions");
+            
+            if (!aPromotions || aPromotions.length === 0) {
+                this.loadPromotions();
+            }
         },
 
         onNavBack: function () {
@@ -111,7 +117,13 @@ sap.ui.define([
          * Endpoint: /ztpromociones/crudPromociones
          * ProcessType: GetAll
          */
-        loadPromotions: async function () {
+        loadPromotions: async function() {
+            // Evitar llamadas simultáneas
+            if (this._isLoadingPromotions) {
+                return;
+            }
+            
+            this._isLoadingPromotions = true;
             const oModel = this.getView().getModel("calendarModel");
             
             try {
@@ -139,6 +151,8 @@ sap.ui.define([
             } catch (error) {
                 MessageBox.error("Error al cargar promociones: " + error.message);
                 oModel.setProperty("/promotions", []);
+            } finally {
+                this._isLoadingPromotions = false;
             }
         },
 
@@ -179,19 +193,19 @@ sap.ui.define([
         },
 
         _getPromotionStatus: function(oPromotion) {
-            if (!oPromotion) return "finished";
+            if (!oPromotion) return "Inactiva";
             
             if (oPromotion.DELETED === true || oPromotion.ACTIVED === false) {
-                return "finished";
+                return "Inactiva";
             }
             
-            const today = new Date();
-            const inicio = new Date(oPromotion.FechaIni);
-            const fin = new Date(oPromotion.FechaFin);
+            const now = new Date();
+            const startDate = new Date(oPromotion.FechaIni);
+            const endDate = new Date(oPromotion.FechaFin);
             
-            if (today < inicio) return "scheduled";
-            if (today >= inicio && today <= fin) return "active";
-            return "finished";
+            if (now < startDate) return "Programada";
+            if (now > endDate) return "Expirada";
+            return "Activa";
         },
 
         _generateCalendarDays: function() {
@@ -338,8 +352,8 @@ sap.ui.define([
 
         _getPromotionIcon: function(oPromotion) {
             const status = this._getPromotionStatus(oPromotion);
-            if (status === "active") return "●";
-            if (status === "scheduled") return "○";
+            if (status === "Activa") return "●";
+            if (status === "Programada") return "○";
             return "◌";
         },
 
@@ -393,27 +407,23 @@ sap.ui.define([
 
         getPromotionColor: function(oPromotion) {
             const status = this._getPromotionStatus(oPromotion);
-            if (status === "active") return "#388e3c";
-            if (status === "scheduled") return "#1976d2";
-            return "#757575";
+            if (status === "Activa") return "#388e3c";
+            if (status === "Programada") return "#1976d2";
+            if (status === "Expirada") return "#d32f2f";
+            return "#757575"; // Inactiva
         },
 
         getPromotionStatusText: function(oPromotion) {
-            const status = this._getPromotionStatus(oPromotion);
-            switch (status) {
-                case "active": return "Activa";
-                case "scheduled": return "Programada";
-                case "finished": return "Finalizada";
-                default: return "Desconocida";
-            }
+            return this._getPromotionStatus(oPromotion);
         },
 
         getPromotionStatusState: function(oPromotion) {
             const status = this._getPromotionStatus(oPromotion);
             switch (status) {
-                case "active": return "Success";
-                case "scheduled": return "Information";
-                case "finished": return "Error";
+                case "Activa": return "Success";
+                case "Programada": return "Information";
+                case "Expirada": return "Error";
+                case "Inactiva": return "Warning";
                 default: return "None";
             }
         },

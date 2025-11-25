@@ -26,9 +26,10 @@
                                     width="100%"
                                 >
                                     <core:Item key="all" text="Todas" />
-                                    <core:Item key="active" text="Activas" />
-                                    <core:Item key="scheduled" text="Programadas" />
-                                    <core:Item key="finished" text="Finalizadas" />
+                                    <core:Item key="Activa" text="Activas" />
+                                    <core:Item key="Programada" text="Programadas" />
+                                    <core:Item key="Expirada" text="Expiradas" />
+                                    <core:Item key="Inactiva" text="Inactivas" />
                                 </Select>
                         </VBox>
 

@@ -53,7 +53,7 @@
                 >
                     <!-- Tab Detalles -->
                     <items>
-                        <IconTabFilter text="Detalles" key="details" icon="sap-icon://detail-view">
+                        <IconTabFilter text="Detalles" key="details">
                             <VBox class="sapUiSmallMargin">
                                 
                                 <!-- Información Básica -->
@@ -166,7 +166,7 @@
                         </IconTabFilter>
 
                         <!-- Tab Productos -->
-                        <IconTabFilter text="Productos" key="products" icon="sap-icon://product">
+                        <IconTabFilter text="Productos" key="products">
                             <VBox class="sapUiSmallMargin">
                                 
                                 <!-- Toolbar con acciones -->
