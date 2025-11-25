@@ -77,8 +77,8 @@
                                             enabled="{= ${promotionsModel>/selectedCount} > 0 }"
                                         />
                                         <Button 
-                                            text="{= ${promotionsModel>/hasActiveSelected} ? 'Desactivar' : 'Activar' }" 
-                                            icon="{= ${promotionsModel>/hasActiveSelected} ? 'sap-icon://decline' : 'sap-icon://accept' }"
+                                            text="{= ${promotionsModel>/hasActiveSelected} === null ? 'Desactivar/Activar' : (${promotionsModel>/hasActiveSelected} ? 'Desactivar' : 'Activar') }" 
+                                            icon="{= ${promotionsModel>/hasActiveSelected} === null ? 'sap-icon://synchronize' : (${promotionsModel>/hasActiveSelected} ? 'sap-icon://decline' : 'sap-icon://accept') }"
                                             type="Transparent"
                                             press="onToggleActivationBulk"
                                             enabled="{= ${promotionsModel>/selectedCount} > 0 }"

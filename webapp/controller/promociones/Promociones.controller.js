@@ -130,7 +130,18 @@ sap.ui.define([
                 oParams.LoggedUser = loggedUser;
             }
 
-            const sQueryString = new URLSearchParams(oParams).toString();
+            // Construir query string manualmente para manejar arrays correctamente
+            const params = new URLSearchParams();
+            for (const [key, value] of Object.entries(oParams)) {
+                if (Array.isArray(value)) {
+                    // Para arrays, agregar cada elemento con el mismo nombre de parámetro
+                    value.forEach(item => params.append(key, item));
+                } else {
+                    params.append(key, value);
+                }
+            }
+
+            const sQueryString = params.toString();
             const sFullUrl = `${BASE_URL}${sRelativeUrl}?${sQueryString}`;
             
             try {
@@ -292,15 +303,34 @@ sap.ui.define([
             const aSelectedItems = oTable.getSelectedItems();
             const oModel = this.getView().getModel("promotionsModel");
             
-            // Verificar si al menos una promoción seleccionada está activa
-            const bHasActiveSelected = aSelectedItems.some(oItem => {
+            // Contar activas e inactivas
+            let activeCount = 0;
+            let inactiveCount = 0;
+            
+            aSelectedItems.forEach(oItem => {
                 const oContext = oItem.getBindingContext("promotionsModel");
                 const oPromotion = oContext.getObject();
-                return oPromotion.ACTIVED === true && oPromotion.DELETED !== true;
+                if (oPromotion.ACTIVED === true && oPromotion.DELETED !== true) {
+                    activeCount++;
+                } else {
+                    inactiveCount++;
+                }
             });
             
+            // Determinar el estado: true si hay activas, false si solo inactivas, null si mixtas
+            let hasActiveSelected;
+            if (activeCount > 0 && inactiveCount === 0) {
+                hasActiveSelected = true; // Solo activas
+            } else if (inactiveCount > 0 && activeCount === 0) {
+                hasActiveSelected = false; // Solo inactivas
+            } else if (activeCount > 0 && inactiveCount > 0) {
+                hasActiveSelected = null; // Mixtas
+            } else {
+                hasActiveSelected = false; // Default
+            }
+            
             oModel.setProperty("/selectedCount", aSelectedItems.length);
-            oModel.setProperty("/hasActiveSelected", bHasActiveSelected);
+            oModel.setProperty("/hasActiveSelected", hasActiveSelected);
         },
 
         // ================================================================================
@@ -319,15 +349,34 @@ sap.ui.define([
             const aSelectedItems = oTable.getSelectedItems();
             const oModel = this.getView().getModel("promotionsModel");
             
-            // Verificar si al menos una promoción seleccionada está activa
-            const bHasActiveSelected = aSelectedItems.some(oItem => {
+            // Contar activas e inactivas
+            let activeCount = 0;
+            let inactiveCount = 0;
+            
+            aSelectedItems.forEach(oItem => {
                 const oContext = oItem.getBindingContext("promotionsModel");
                 const oPromotion = oContext.getObject();
-                return oPromotion.ACTIVED === true && oPromotion.DELETED !== true;
+                if (oPromotion.ACTIVED === true && oPromotion.DELETED !== true) {
+                    activeCount++;
+                } else {
+                    inactiveCount++;
+                }
             });
             
+            // Determinar el estado: true si hay activas, false si solo inactivas, null si mixtas
+            let hasActiveSelected;
+            if (activeCount > 0 && inactiveCount === 0) {
+                hasActiveSelected = true; // Solo activas
+            } else if (inactiveCount > 0 && activeCount === 0) {
+                hasActiveSelected = false; // Solo inactivas
+            } else if (activeCount > 0 && inactiveCount > 0) {
+                hasActiveSelected = null; // Mixtas
+            } else {
+                hasActiveSelected = false; // Default
+            }
+            
             oModel.setProperty("/selectedCount", aSelectedItems.length);
-            oModel.setProperty("/hasActiveSelected", bHasActiveSelected);
+            oModel.setProperty("/hasActiveSelected", hasActiveSelected);
         },
 
         onNewPromotion: function () {
@@ -1240,20 +1289,32 @@ sap.ui.define([
                     onClose: async function (oAction) {
                         if (oAction === MessageBox.Action.OK) {
                             try {
-                                for (const oItem of aSelectedItems) {
+                                // Obtener todos los IDs de promociones seleccionadas
+                                const aIdsToDelete = aSelectedItems.map(oItem => {
                                     const oContext = oItem.getBindingContext("promotionsModel");
-                                    const oPromotion = oContext.getObject();
-                                    
-                                    await that._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
-                                        ProcessType: 'DeleteHard',
-                                        IdPromoOK: oPromotion.IdPromoOK,
-                                        DBServer: 'MongoDB'
-                                    });
-                                }
+                                    return oContext.getObject().IdPromoOK;
+                                });
                                 
-                                MessageToast.show(`${aSelectedItems.length} promoción(es) eliminada(s) correctamente`);
+                                // Usar endpoint unificado que acepta uno o varios IDs
+                                await that._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
+                                    ProcessType: 'DeleteHard',
+                                    IdPromoOK: aIdsToDelete,
+                                    DBServer: 'MongoDB'
+                                });
+                                
+                                // Actualizar el modelo localmente sin recargar
+                                const oModel = that.getView().getModel("promotionsModel");
+                                let aPromotions = oModel.getProperty("/promotions");
+                                
+                                // Filtrar las promociones eliminadas
+                                aPromotions = aPromotions.filter(promo => !aIdsToDelete.includes(promo.IdPromoOK));
+                                
+                                oModel.setProperty("/promotions", aPromotions);
+                                oModel.setProperty("/totalPromotions", aPromotions.length);
+                                oModel.refresh(true);
+                                
+                                MessageToast.show(`${aIdsToDelete.length} promoción(es) eliminada(s) correctamente`);
                                 oTable.removeSelections();
-                                that.forceReloadPromotions(); // Recargar la lista
                                 
                             } catch (error) {
                                 MessageBox.error("Error al eliminar promociones: " + error.message);
@@ -1275,20 +1336,35 @@ sap.ui.define([
             
             const that = this;
             try {
-                for (const oItem of aSelectedItems) {
+                // Obtener todos los IDs de promociones seleccionadas
+                const aIdsToDeactivate = aSelectedItems.map(oItem => {
                     const oContext = oItem.getBindingContext("promotionsModel");
-                    const oPromotion = oContext.getObject();
-                    
-                    await that._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
-                        ProcessType: 'DeleteLogic',
-                        IdPromoOK: oPromotion.IdPromoOK,
-                        DBServer: 'MongoDB'
-                    });
-                }
+                    return oContext.getObject().IdPromoOK;
+                });
+                
+                // Usar endpoint unificado que acepta uno o varios IDs
+                await that._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
+                    ProcessType: 'DeleteLogic',
+                    IdPromoOK: aIdsToDeactivate,
+                    DBServer: 'MongoDB'
+                });
+                
+                // Actualizar el modelo localmente sin recargar
+                const oModel = that.getView().getModel("promotionsModel");
+                const aPromotions = oModel.getProperty("/promotions");
+                
+                aPromotions.forEach(promo => {
+                    if (aIdsToDeactivate.includes(promo.IdPromoOK)) {
+                        promo.ACTIVED = false;
+                        promo.DELETED = true;
+                    }
+                });
+                
+                oModel.setProperty("/promotions", aPromotions);
+                oModel.refresh(true);
                 
                 MessageToast.show(`${aSelectedItems.length} promoción(es) desactivada(s) correctamente`);
                 oTable.removeSelections();
-                that.loadPromotions(); // Recargar la lista
                 
             } catch (error) {
                 MessageBox.error("Error al desactivar promociones: " + error.message);
@@ -1341,59 +1417,97 @@ sap.ui.define([
         onToggleActivationBulk: async function() {
             const oTable = this.byId("promotionsTable");
             const aSelectedItems = oTable.getSelectedItems();
-            const oModel = this.getView().getModel("promotionsModel");
-            const bHasActiveSelected = oModel.getProperty("/hasActiveSelected");
             
             if (aSelectedItems.length === 0) {
                 MessageBox.warning("Por favor selecciona al menos una promoción.");
                 return;
             }
             
-            const sAction = bHasActiveSelected ? "desactivar" : "activar";
+            // Separar IDs por estado actual (activas vs inactivas)
+            const aIdsToActivate = [];
+            const aIdsToDeactivate = [];
             
-            MessageBox.confirm(
-                `¿Deseas ${sAction} ${aSelectedItems.length} promoción(es)?`,
-                {
-                    title: "Confirmar acción",
-                    onClose: async (oAction) => {
-                        if (oAction === MessageBox.Action.OK) {
-                            try {
-                                for (const oItem of aSelectedItems) {
-                                    const oContext = oItem.getBindingContext("promotionsModel");
-                                    const oPromotion = oContext.getObject();
-                                    
-                                    if (bHasActiveSelected) {
-                                        // Desactivar usando DeleteLogic
-                                        await this._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
-                                            ProcessType: 'DeleteLogic',
-                                            IdPromoOK: oPromotion.IdPromoOK,
-                                            DBServer: 'MongoDB'
-                                        });
-                                    } else {
-                                        // Activar usando UpdateOne
-                                        await this._callApi('/ztpromociones/crudPromociones', 'POST', {
-                                            ACTIVED: true,
-                                            DELETED: false
-                                        }, {
-                                            ProcessType: 'UpdateOne',
-                                            IdPromoOK: oPromotion.IdPromoOK,
-                                            DBServer: 'MongoDB'
-                                        });
-                                    }
-                                }
-                                
-                                MessageToast.show(`${aSelectedItems.length} promoción(es) ${bHasActiveSelected ? 'desactivada(s)' : 'activada(s)'} correctamente`);
-                                oTable.removeSelections();
-                                this.forceReloadPromotions();
-                                
-                            } catch (error) {
-                                console.error("Error al cambiar estado:", error);
-                                MessageBox.error("Error al cambiar el estado de las promociones: " + error.message);
+            aSelectedItems.forEach(oItem => {
+                const oContext = oItem.getBindingContext("promotionsModel");
+                const oPromotion = oContext.getObject();
+                
+                if (oPromotion.ACTIVED === true && oPromotion.DELETED !== true) {
+                    // Está activa, se desactivará
+                    aIdsToDeactivate.push(oPromotion.IdPromoOK);
+                } else {
+                    // Está inactiva, se activará
+                    aIdsToActivate.push(oPromotion.IdPromoOK);
+                }
+            });
+            
+            if (aIdsToActivate.length === 0 && aIdsToDeactivate.length === 0) {
+                MessageToast.show("No hay promociones para procesar");
+                return;
+            }
+            
+            // Construir mensaje dinámico
+            let sMessage = "¿Deseas cambiar el estado de las promociones seleccionadas?\n\n";
+            if (aIdsToActivate.length > 0) {
+                sMessage += `Activar: ${aIdsToActivate.length} promoción(es)\n`;
+            }
+            if (aIdsToDeactivate.length > 0) {
+                sMessage += `Desactivar: ${aIdsToDeactivate.length} promoción(es)`;
+            }
+            
+            MessageBox.confirm(sMessage, {
+                title: "Confirmar cambio de estado",
+                onClose: async (oAction) => {
+                    if (oAction === MessageBox.Action.OK) {
+                        try {
+                            let totalProcessed = 0;
+                            
+                            // Activar las que están inactivas
+                            if (aIdsToActivate.length > 0) {
+                                await this._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
+                                    ProcessType: 'ActivateOne',
+                                    IdPromoOK: aIdsToActivate,
+                                    DBServer: 'MongoDB'
+                                });
+                                totalProcessed += aIdsToActivate.length;
                             }
+                            
+                            // Desactivar las que están activas
+                            if (aIdsToDeactivate.length > 0) {
+                                await this._callApi('/ztpromociones/crudPromociones', 'POST', {}, {
+                                    ProcessType: 'DeleteLogic',
+                                    IdPromoOK: aIdsToDeactivate,
+                                    DBServer: 'MongoDB'
+                                });
+                                totalProcessed += aIdsToDeactivate.length;
+                            }
+                            
+                            // Actualizar el modelo localmente sin recargar
+                            const oModel = this.getView().getModel("promotionsModel");
+                            const aPromotions = oModel.getProperty("/promotions");
+                            
+                            aPromotions.forEach(promo => {
+                                if (aIdsToActivate.includes(promo.IdPromoOK)) {
+                                    promo.ACTIVED = true;
+                                    promo.DELETED = false;
+                                } else if (aIdsToDeactivate.includes(promo.IdPromoOK)) {
+                                    promo.ACTIVED = false;
+                                    promo.DELETED = true;
+                                }
+                            });
+                            
+                            oModel.setProperty("/promotions", aPromotions);
+                            oModel.refresh(true);
+                            
+                            MessageToast.show(`${totalProcessed} promoción(es) actualizadas correctamente`);
+                            oTable.removeSelections();
+                            
+                        } catch (error) {
+                            console.error("Error al cambiar estado:", error);
+                            MessageBox.error("Error al cambiar el estado de las promociones: " + error.message);
                         }
                     }
                 }
-            );
+            });
         },
 
         onPromotionPress: function (oEvent) {
