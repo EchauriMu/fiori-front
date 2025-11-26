@@ -674,11 +674,7 @@ sap.ui.define([
             if (sSearchTerm) iActiveFilters++;
             if (sRangoPrecio) iActiveFilters++;
             
-            oModel.setProperty("/activeFilterCount", iActiveFilters);
-            
-            console.log(`📱 Toast: ${aFilteredProducts.length} productos encontrados`);
-            MessageToast.show(`${aFilteredProducts.length} productos encontrados`);
-        },
+            oModel.setProperty("/activeFilterCount", iActiveFilters)        },
         
         _updatePaginatedProducts: function () {
             const oModel = this.getView().getModel("wizardModel");
