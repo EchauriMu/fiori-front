@@ -15,6 +15,7 @@ sap.ui.define([
             
             const oWizardModel = new JSONModel({
                 DESLISTA: "",
+                IDLISTAOK: "",
                 IDINSTITUTOOK: "",
                 IDTIPOLISTAOK: "",
                 IDTIPOGENERALISTAOK: "ESPECIFICA",
@@ -23,7 +24,6 @@ sap.ui.define([
                 FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
                 RANGO_PRECIOS: "",
                 REGUSER: oUser?.USERNAME || "SYSTEM",
-                selectedProducts: [],
                 selectedProductsCount: 0,
                 filteredProducts: [],
                 selectedProductsInPile: [],
@@ -47,7 +47,7 @@ sap.ui.define([
                 itemsPerPage: 5,
                 currentPage: 1,
                 totalPages: 1,
-                paginatedProducts: []  // 🆕 Productos paginados
+                paginatedProducts: []
             });
             
             this.getView().setModel(oWizardModel, "wizardModel");
@@ -68,11 +68,19 @@ sap.ui.define([
             oModel.setProperty("/editingListaId", null);
             // Reset del formulario
             oModel.setProperty("/DESLISTA", "");
+            oModel.setProperty("/IDLISTAOK", "");
             oModel.setProperty("/IDINSTITUTOOK", "");
             oModel.setProperty("/IDTIPOLISTAOK", "");
-            oModel.setProperty("/selectedProducts", []);
             oModel.setProperty("/selectedProductsCount", 0);
             oModel.setProperty("/currentStep", 1);
+            oModel.setProperty("/selectedMarcas", []);
+            oModel.setProperty("/selectedCategories", []);
+            oModel.setProperty("/searchTerm", "");
+            oModel.setProperty("/RANGO_PRECIOS", "");
+            
+            // Limpiar selección de productos
+            const aAllProducts = oModel.getProperty("/allProducts") || [];
+            aAllProducts.forEach(p => { p._selected = false; });
         },
         
         _onEditarListaRoute: function (oEvent) {
@@ -99,8 +107,11 @@ sap.ui.define([
                     return;
                 }
                 
+                console.log("✅ Lista encontrada:", oLista);
+                
                 const oModel = this.getView().getModel("wizardModel");
                 oModel.setProperty("/DESLISTA", oLista.DESLISTA || "");
+                oModel.setProperty("/IDLISTAOK", oLista.IDLISTAOK || sListaId);
                 oModel.setProperty("/IDINSTITUTOOK", oLista.IDINSTITUTOOK || "");
                 oModel.setProperty("/IDTIPOLISTAOK", oLista.IDTIPOLISTAOK || "");
                 oModel.setProperty("/IDTIPOGENERALISTAOK", oLista.IDTIPOGENERALISTAOK || "ESPECIFICA");
@@ -108,15 +119,40 @@ sap.ui.define([
                 oModel.setProperty("/FECHAEXPIRAINI", this._formatDateForInput(new Date(oLista.FECHAEXPIRAINI)));
                 oModel.setProperty("/FECHAEXPIRAFIN", this._formatDateForInput(new Date(oLista.FECHAEXPIRAFIN)));
                 
-                // Marcar los SKUs que están en la lista
-                if (oLista.SKUSIDS && Array.isArray(oLista.SKUSIDS)) {
-                    const aAllProducts = oModel.getProperty("/allProducts") || [];
-                    const aSelectedProducts = aAllProducts.filter(p => oLista.SKUSIDS.includes(p.SKUID));
-                    oModel.setProperty("/selectedProducts", aSelectedProducts);
-                    oModel.setProperty("/selectedProductsCount", aSelectedProducts.length);
+                // Marcar los SKUs que están en la lista como seleccionados
+                const aAllProducts = oModel.getProperty("/allProducts") || [];
+                let iSelectedCount = 0;
+                
+                // SKUSIDS puede venir como string o array
+                let aSKUSIDs = oLista.SKUSIDS;
+                if (typeof aSKUSIDs === 'string') {
+                    try {
+                        aSKUSIDs = JSON.parse(aSKUSIDs);
+                    } catch (e) {
+                        aSKUSIDs = [];
+                    }
                 }
                 
+                if (aSKUSIDs && Array.isArray(aSKUSIDs)) {
+                    console.log("📍 SKUSIDs a marcar:", aSKUSIDs);
+                    aAllProducts.forEach(p => {
+                        if (aSKUSIDs.includes(p.SKUID)) {
+                            p._selected = true;
+                            iSelectedCount++;
+                        } else {
+                            p._selected = false;
+                        }
+                    });
+                }
+                
+                oModel.setProperty("/selectedProductsCount", iSelectedCount);
                 oModel.setProperty("/currentStep", 1);
+                oModel.setProperty("/isEditing", true);
+                oModel.setProperty("/editingListaId", sListaId);
+                
+                console.log("✅ EditingListaId confirmado:", sListaId);
+                
+                this._applyFilters();
                 MessageToast.show("Datos cargados para edición");
                 
             } catch (error) {
@@ -359,6 +395,28 @@ sap.ui.define([
             
             const bValid = sDESLISTA && sINSTITUTO && sFechaIni && sFechaFin;
             oModel.setProperty("/canProceed", bValid);
+        },
+
+        onDescriptionChange: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const sDescription = oEvent.getParameter("value") || "";
+            
+            console.log("📝 Descripción cambiada:", sDescription);
+            
+            // Generar ID automáticamente
+            if (sDescription.length >= 3) {
+                const sFirstThreeLetters = sDescription.substring(0, 3).toUpperCase();
+                const iRandomNumbers = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                const sGeneratedId = `${sFirstThreeLetters}-${iRandomNumbers}`;
+                
+                oModel.setProperty("/IDLISTAOK", sGeneratedId);
+                console.log("✅ ID generado:", sGeneratedId);
+            } else {
+                oModel.setProperty("/IDLISTAOK", "");
+            }
+            
+            // Validar paso 1
+            this.onValidateStep1();
         },
 
         onTipoGeneralChange: function (oEvent) {
@@ -740,17 +798,19 @@ sap.ui.define([
             
             // Marcar/desmarcar el producto en el modelo
             oProduct._selected = bSelected;
-            oContext.getModel().refresh(true);
             
             // Recalcular el contador de productos seleccionados
             const aAllProducts = oModel.getProperty("/allProducts") || [];
-            const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
+            const iSelectedCount = aAllProducts.filter(p => p._selected === true).length;
             
-            console.log(`  Total seleccionados ahora: ${aSelectedProducts.length}`);
+            console.log(`  Total seleccionados ahora: ${iSelectedCount}`);
             
-            oModel.setProperty("/selectedProducts", aSelectedProducts);
-            oModel.setProperty("/selectedProductsCount", aSelectedProducts.length);
-            oModel.setProperty("/canProceed", aSelectedProducts.length > 0);
+            // Actualizar el modelo de forma sincrónica
+            oModel.setProperty("/selectedProductsCount", iSelectedCount);
+            oModel.setProperty("/canProceed", iSelectedCount > 0);
+            
+            // Refrescar todo el modelo para asegurar que los bindings se actualicen
+            oModel.refresh(true);
             
             // 🔧 REAPLICAR FILTROS PARA ACTUALIZAR LAS PILAS
             this._applyFilters();
@@ -776,13 +836,16 @@ sap.ui.define([
             const aAllProducts = oModel.getProperty("/allProducts") || [];
             
             // Recalcular el contador de productos seleccionados (desde allProducts)
-            const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
+            const iSelectedCount = aAllProducts.filter(p => p._selected === true).length;
             
-            console.log(`  Total seleccionados ahora: ${aSelectedProducts.length}`);
+            console.log(`  Total seleccionados ahora: ${iSelectedCount}`);
             
-            oModel.setProperty("/selectedProducts", aSelectedProducts);
-            oModel.setProperty("/selectedProductsCount", aSelectedProducts.length);
-            oModel.setProperty("/canProceed", aSelectedProducts.length > 0);
+            // Actualizar el modelo
+            oModel.setProperty("/selectedProductsCount", iSelectedCount);
+            oModel.setProperty("/canProceed", iSelectedCount > 0);
+            
+            // Refrescar todo el modelo para asegurar que los bindings se actualicen
+            oModel.refresh(true);
             
             // Refrescar filtros para actualizar pilas
             this._applyFilters();
@@ -795,13 +858,33 @@ sap.ui.define([
             const oModel = this.getView().getModel("wizardModel");
             const iCurrentStep = oModel.getProperty("/currentStep");
             
-            if (iCurrentStep === 2) {
-                // Paso 2 es el último - Guardar
-                this._saveLista();
-            } else {
-                // Paso 1 - pasar al paso 2
+            console.log("🔘 onWizardNext - Paso actual:", iCurrentStep);
+            
+            if (iCurrentStep === 1) {
+                // Paso 1 - validar y pasar al paso 2
+                const sDESLISTA = oModel.getProperty("/DESLISTA");
+                const sINSTITUTO = oModel.getProperty("/IDINSTITUTOOK");
+                
+                if (!sDESLISTA || !sINSTITUTO) {
+                    MessageBox.error("Completa los campos: Descripción e Instituto.");
+                    return;
+                }
+                
                 oWizard.nextStep();
                 oModel.setProperty("/currentStep", 2);
+                console.log("✅ Avanzando a Paso 2");
+            } else if (iCurrentStep === 2) {
+                // Paso 2 - validar productos y guardar
+                const aAllProducts = oModel.getProperty("/allProducts") || [];
+                const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
+                
+                if (aSelectedProducts.length === 0) {
+                    MessageBox.error("Selecciona al menos un producto para continuar.");
+                    return;
+                }
+                
+                console.log("✅ Guardando lista con", aSelectedProducts.length, "productos");
+                this._saveLista();
             }
         },
 
@@ -823,8 +906,15 @@ sap.ui.define([
             const oModel = this.getView().getModel("wizardModel");
             const bIsEditing = oModel.getProperty("/isEditing");
             
-            const aSelectedProducts = oModel.getProperty("/selectedProducts") || [];
+            // Obtener productos seleccionados desde allProducts (fuente de verdad)
+            const aAllProducts = oModel.getProperty("/allProducts") || [];
+            const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
             const aSKUIDs = aSelectedProducts.map(p => p.SKUID);
+            
+            console.log("💾 Iniciando guardado de lista");
+            console.log("📦 Productos seleccionados para guardar:", aSelectedProducts.length);
+            console.log("🔑 SKUIDs:", aSKUIDs);
+            console.log("✏️ ¿Es edición?:", bIsEditing);
             
             if (aSKUIDs.length === 0) {
                 MessageBox.error("Debes seleccionar al menos un producto.");
@@ -833,16 +923,30 @@ sap.ui.define([
             
             const sDESLISTA = oModel.getProperty("/DESLISTA");
             const sINSTITUTO = oModel.getProperty("/IDINSTITUTOOK");
+            const sIDTIPOLISTA = oModel.getProperty("/IDTIPOLISTAOK");
             
             if (!sDESLISTA || !sINSTITUTO) {
-                MessageBox.error("Completa todos los campos obligatorios.");
+                MessageBox.error("Completa todos los campos obligatorios: Descripción e Instituto.");
                 return;
             }
             
             oModel.setProperty("/loading", true);
             
             try {
-                const sIdListaOK = bIsEditing ? oModel.getProperty("/editingListaId") : `LISTA-${Date.now()}`;
+                let sIdListaOK;
+                
+                if (bIsEditing) {
+                    sIdListaOK = oModel.getProperty("/editingListaId");
+                    console.log("🔍 ID para edición:", sIdListaOK);
+                    
+                    if (!sIdListaOK) {
+                        MessageBox.error("Error: No se encontró el ID de la lista a editar.");
+                        return;
+                    }
+                } else {
+                    sIdListaOK = `LISTA-${Date.now()}`;
+                    console.log("🆕 ID para crear:", sIdListaOK);
+                }
                 
                 const payload = {
                     IDLISTAOK: sIdListaOK,
@@ -852,15 +956,19 @@ sap.ui.define([
                     DESLISTA: sDESLISTA.trim(),
                     FECHAEXPIRAINI: oModel.getProperty("/FECHAEXPIRAINI"),
                     FECHAEXPIRAFIN: oModel.getProperty("/FECHAEXPIRAFIN"),
-                    IDTIPOLISTAOK: oModel.getProperty("/IDTIPOLISTAOK") || "GENERAL",
-                    IDTIPOGENERALISTAOK: oModel.getProperty("/IDTIPOGENERALISTAOK"),
-                    IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK"),
+                    IDTIPOLISTAOK: sIDTIPOLISTA || "GENERAL",
+                    IDTIPOGENERALISTAOK: oModel.getProperty("/IDTIPOGENERALISTAOK") || "ESPECIFICA",
+                    IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK") || "FIJO",
                     REGUSER: oModel.getProperty("/REGUSER"),
                     ACTIVED: true,
                     DELETED: false
                 };
                 
+                console.log("📤 Payload a enviar:", JSON.stringify(payload, null, 2));
+                
                 const sProcessType = bIsEditing ? 'UpdateOne' : 'AddOne';
+                console.log("🔄 ProcessType:", sProcessType);
+                
                 await this._callApi('/ztprecios-listas/preciosListasCRUD', 'POST', payload, {
                     ProcessType: sProcessType
                 });
@@ -868,11 +976,14 @@ sap.ui.define([
                 const sMessage = bIsEditing ? "Lista de precios actualizada correctamente" : "Lista de precios creada correctamente";
                 MessageToast.show(sMessage);
                 
+                console.log("✅ Lista guardada exitosamente");
+                
                 // Navegar de vuelta a la lista
                 const oRouter = this.getOwnerComponent().getRouter();
                 oRouter.navTo("RouteListasPrecios", {}, true);
                 
             } catch (error) {
+                console.error("❌ Error al guardar lista:", error);
                 const sErrorMsg = bIsEditing ? "Error al actualizar la lista: " : "Error al crear la lista: ";
                 MessageBox.error(sErrorMsg + error.message);
             } finally {
@@ -887,6 +998,10 @@ sap.ui.define([
             const month = `${d.getUTCMonth() + 1}`.padStart(2, '0');
             const day = `${d.getUTCDate()}`.padStart(2, '0');
             return `${year}-${month}-${day}`;
+        },
+
+        formatVisibleBack: function (iCurrentStep) {
+            return iCurrentStep > 1;
         }
     });
 });

@@ -36,15 +36,27 @@
                                 <VBox width="45em" class="sapUiSmallMargin">
                                     <Title text="Información General" level="H3" class="sapUiSmallMarginBottom"/>
                                     
-                                    <Label text="Descripción de la Lista" required="true" class="sapUiTinyMarginTop"/>
-                                    <Input
-                                        id="inputDESLISTA"
-                                        value="{wizardModel>/DESLISTA}"
-                                        placeholder="Ej: Lista de Precios Retail 2025"
-                                        required="true"
-                                        change=".onValidateStep1"
-                                        width="100%"
-                                        maxLength="100"/>
+                                    <HBox>
+                                        <VBox width="70%">
+                                            <Label text="Descripción de la Lista" required="true" class="sapUiTinyMarginTop"/>
+                                            <Input
+                                                id="inputDESLISTA"
+                                                value="{wizardModel>/DESLISTA}"
+                                                placeholder="Ej: Lista de Precios Retail 2025"
+                                                required="true"
+                                                change=".onDescriptionChange"
+                                                width="100%"
+                                                maxLength="100"/>
+                                        </VBox>
+                                        <VBox width="30%" class="sapUiSmallMarginStart">
+                                            <Label text="ID (Autogenerado)" class="sapUiTinyMarginTop"/>
+                                            <Input
+                                                id="inputIDLISTA"
+                                                value="{wizardModel>/IDLISTAOK}"
+                                                enabled="false"
+                                                width="100%"/>
+                                        </VBox>
+                                    </HBox>
                                     
                                     <Label text="Instituto" required="true" class="sapUiTinyMarginTop"/>
                                     <Input
@@ -331,9 +343,9 @@
                             <Button
                                 text="Anterior"
                                 press=".onWizardBack"
-                                visible="{= ${wizardModel>/currentStep} > 1}"/>
+                                visible="{path: 'wizardModel>/currentStep', formatter: '.formatVisibleBack'}"/>
                             <Button
-                                text="{= ${wizardModel>/currentStep} === 2 ? 'Guardar' : 'Siguiente'}"
+                                text="Guardar"
                                 type="Emphasized"
                                 press=".onWizardNext"
                                 enabled="{= ${wizardModel>/currentStep} === 1 ? ${wizardModel>/canProceed} : ${wizardModel>/selectedProductsCount} > 0 }"/>
