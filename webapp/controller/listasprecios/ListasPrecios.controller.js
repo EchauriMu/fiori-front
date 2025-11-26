@@ -571,31 +571,9 @@ sap.ui.define([
                 return;
             }
             
-            const aListas = oViewModel.getProperty("/filteredListas") || [];
-            const oLista = aListas.find(l => l.IDLISTAOK === aSelectedListaIDs[0]);
-            
-            if (!oLista) {
-                MessageBox.error("No se pudo encontrar la lista seleccionada.");
-                return;
-            }
-            
-            const oDetailModel = this.getView().getModel("detailView");
-            
-            // Deep copy para evitar modificar el original
-            const oListaCopy = JSON.parse(JSON.stringify(oLista));
-            
-            oDetailModel.setData({
-                ...oLista,
-                availableProducts: [],
-                editing: true,
-                saving: false,
-                editableLista: oListaCopy,
-                activeTab: "config"
-            });
-            
-            this._currentEditingListaID = oLista.IDLISTAOK;
-            this._loadAvailableProducts();
-            this._openListaDialogEdit();
+            const sListaId = aSelectedListaIDs[0];
+            const oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteEditarLista", { listaId: sListaId });
         },
 
         _openListaDialogEdit: function () {
@@ -636,8 +614,9 @@ sap.ui.define([
         },
 
         onOpenListaDialog: function () {
-            // Llamar al método del wizard en lugar del diálogo antiguo
-            this.onOpenListaWizard();
+            // Navegar a la página de crear lista en lugar de abrir modal
+            const oRouter = this.getOwnerComponent().getRouter();
+            oRouter.navTo("RouteCrearLista");
         },
 
         onCloseListaDialog: function () {

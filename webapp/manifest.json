@@ -159,9 +159,19 @@
                                         "target": "TargetInvestments"
                                     },
                                     {
-                                                "pattern": "listasprecios",
-                                                "name": "RouteListasPrecios",
-                                                "target": "TargetListasPrecios"
+                                        "pattern": "listasprecios",
+                                        "name": "RouteListasPrecios",
+                                        "target": "TargetListasPrecios"
+                                    },
+                                    {
+                                        "pattern": "listasprecios/crear",
+                                        "name": "RouteCrearLista",
+                                        "target": "TargetCrearLista"
+                                    },
+                                    {
+                                        "pattern": "listasprecios/{listaId}/editar",
+                                        "name": "RouteEditarLista",
+                                        "target": "TargetEditarLista"
                                     },
                                     {
                                         "pattern": "promociones",
@@ -269,6 +279,18 @@
                 "TargetListasPrecios": {
                         "viewName": "ListasPrecios",
                         "viewId": "listasPrecios",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.listasprecios"
+                },
+                "TargetCrearLista": {
+                        "viewName": "CrearLista",
+                        "viewId": "crearLista",
+                        "viewType": "XML",
+                        "viewPath": "com.invertions.sapfiorimodinv.view.listasprecios"
+                },
+                "TargetEditarLista": {
+                        "viewName": "CrearLista",
+                        "viewId": "editarLista",
                         "viewType": "XML",
                         "viewPath": "com.invertions.sapfiorimodinv.view.listasprecios"
                 },
