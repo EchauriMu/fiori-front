@@ -26,18 +26,28 @@ sap.ui.define([
                 selectedProducts: [],
                 selectedProductsCount: 0,
                 filteredProducts: [],
+                selectedProductsInPile: [],
+                availableProductsInList: [],
                 allProducts: [],
                 availableMarcas: [],
                 allCategories: [],
+                filteredMarcas: [],
+                filteredCategories: [],
                 selectedMarcas: [],
                 selectedCategories: [],
+                searchMarcas: "",
+                searchCategorias: "",
                 searchTerm: "",
                 activeFilterCount: 0,
                 currentStep: 1,
                 canProceed: false,
                 loading: false,
                 isEditing: false,
-                editingListaId: null
+                editingListaId: null,
+                itemsPerPage: 5,
+                currentPage: 1,
+                totalPages: 1,
+                paginatedProducts: []  // 🆕 Productos paginados
             });
             
             this.getView().setModel(oWizardModel, "wizardModel");
@@ -163,6 +173,14 @@ sap.ui.define([
                     aProducts = [];
                 }
                 
+                // 🔧 INICIALIZAR LA PROPIEDAD _selected EN CADA PRODUCTO
+                aProducts.forEach(product => {
+                    if (product._selected === undefined) {
+                        product._selected = false;
+                    }
+                });
+                console.log("✅ Inicializadas propiedades _selected en productos");
+                
                 oModel.setProperty("/allProducts", aProducts);
                 oModel.setProperty("/filteredProducts", aProducts);
                 console.log("✅ Productos guardados en modelo");
@@ -174,8 +192,9 @@ sap.ui.define([
                         oMarcasSet.add(p.MARCA);
                     }
                 });
-                const aMarcas = Array.from(oMarcasSet);
+                const aMarcas = Array.from(oMarcasSet).map(marca => ({ name: marca, selected: false }));
                 oModel.setProperty("/availableMarcas", aMarcas);
+                oModel.setProperty("/filteredMarcas", aMarcas);
                 console.log("🏷️ Marcas encontradas:", aMarcas.length, aMarcas);
                 
                 // Extraer categorías únicas
@@ -185,9 +204,14 @@ sap.ui.define([
                         p.CATEGORIAS.forEach(cat => oCategorias.add(cat));
                     }
                 });
-                const aCategories = Array.from(oCategorias);
+                const aCategories = Array.from(oCategorias).map(cat => ({ name: cat, selected: false }));
                 oModel.setProperty("/allCategories", aCategories);
+                oModel.setProperty("/filteredCategories", aCategories);
                 console.log("📂 Categorías encontradas:", aCategories.length, aCategories);
+                
+                // 🔧 APLICAR FILTROS INICIALMENTE PARA LLENAR LAS PILAS
+                this._applyFilters();
+                console.log("✅ Filtros iniciales aplicados, pilas creadas");
                 
                 if (aProducts.length > 0) {
                     MessageToast.show(`${aProducts.length} productos cargados correctamente`);
@@ -349,20 +373,174 @@ sap.ui.define([
 
         onMarcasChange: function (oEvent) {
             const oModel = this.getView().getModel("wizardModel");
-            const aSelectedItems = oEvent.getParameter("selectedItems") || [];
-            const aSelectedKeys = aSelectedItems.map(item => item.getKey());
+            const oSource = oEvent.getSource();
+            const aSelectedKeys = oSource.getSelectedKeys() || [];
+            
+            console.log("✅ Evento onMarcasChange");
+            console.log("  Marcas seleccionadas:", aSelectedKeys);
+            console.log("  Total marcas:", aSelectedKeys.length);
+            
             oModel.setProperty("/selectedMarcas", aSelectedKeys);
-            console.log("Marcas seleccionadas:", aSelectedKeys);
             this._applyFilters();
+        },
+
+        onSearchMarcasChange: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const sSearchTerm = oEvent.getParameter("newValue") || "";
+            oModel.setProperty("/searchMarcas", sSearchTerm);
+            this._filterMarcas();
+        },
+
+        onToggleMarca: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("wizardModel");
+            if (!oContext) return;
+            
+            const oMarca = oContext.getObject();
+            const bSelected = oSource.getSelected();
+            
+            oMarca.selected = bSelected;
+            oContext.getModel().refresh(true);
+            
+            // Actualizar selectedMarcas
+            const aSelectedMarcas = oModel.getProperty("/selectedMarcas") || [];
+            if (bSelected && !aSelectedMarcas.includes(oMarca.name)) {
+                aSelectedMarcas.push(oMarca.name);
+            } else if (!bSelected) {
+                const iIndex = aSelectedMarcas.indexOf(oMarca.name);
+                if (iIndex > -1) {
+                    aSelectedMarcas.splice(iIndex, 1);
+                }
+            }
+            
+            oModel.setProperty("/selectedMarcas", aSelectedMarcas);
+            this._applyFilters();
+        },
+
+        onRemoveMarca: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("wizardModel");
+            if (!oContext) return;
+            
+            const sMarcaName = oContext.getObject();
+            console.log("❌ Removiendo marca:", sMarcaName);
+            
+            const aSelectedMarcas = oModel.getProperty("/selectedMarcas") || [];
+            const iIndex = aSelectedMarcas.indexOf(sMarcaName);
+            
+            if (iIndex > -1) {
+                aSelectedMarcas.splice(iIndex, 1);
+                console.log("✅ Marca removida. Marcas restantes:", aSelectedMarcas);
+                oModel.setProperty("/selectedMarcas", aSelectedMarcas);
+                
+                // Actualizar el MultiComboBox
+                const oComboMarcas = this.byId("comboMarcas");
+                if (oComboMarcas) {
+                    oComboMarcas.setSelectedKeys(aSelectedMarcas);
+                }
+                
+                this._applyFilters();
+            }
+        },
+
+        _filterMarcas: function () {
+            const oModel = this.getView().getModel("wizardModel");
+            const aAllMarcas = oModel.getProperty("/availableMarcas") || [];
+            const sSearchTerm = (oModel.getProperty("/searchMarcas") || "").toLowerCase();
+            
+            const aFiltered = aAllMarcas.filter(marca => 
+                marca.name.toLowerCase().includes(sSearchTerm)
+            );
+            
+            oModel.setProperty("/filteredMarcas", aFiltered);
         },
 
         onCategoriasChange: function (oEvent) {
             const oModel = this.getView().getModel("wizardModel");
-            const aSelectedItems = oEvent.getParameter("selectedItems") || [];
-            const aSelectedKeys = aSelectedItems.map(item => item.getKey());
+            const oSource = oEvent.getSource();
+            const aSelectedKeys = oSource.getSelectedKeys() || [];
+            
+            console.log("✅ Evento onCategoriasChange");
+            console.log("  Categorías seleccionadas:", aSelectedKeys);
+            console.log("  Total categorías:", aSelectedKeys.length);
+            
             oModel.setProperty("/selectedCategories", aSelectedKeys);
-            console.log("Categorías seleccionadas:", aSelectedKeys);
             this._applyFilters();
+        },
+
+        onSearchCategoriasChange: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const sSearchTerm = oEvent.getParameter("newValue") || "";
+            oModel.setProperty("/searchCategorias", sSearchTerm);
+            this._filterCategorias();
+        },
+
+        onToggleCategoria: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("wizardModel");
+            if (!oContext) return;
+            
+            const oCategoria = oContext.getObject();
+            const bSelected = oSource.getSelected();
+            
+            oCategoria.selected = bSelected;
+            oContext.getModel().refresh(true);
+            
+            // Actualizar selectedCategories
+            const aSelectedCategories = oModel.getProperty("/selectedCategories") || [];
+            if (bSelected && !aSelectedCategories.includes(oCategoria.name)) {
+                aSelectedCategories.push(oCategoria.name);
+            } else if (!bSelected) {
+                const iIndex = aSelectedCategories.indexOf(oCategoria.name);
+                if (iIndex > -1) {
+                    aSelectedCategories.splice(iIndex, 1);
+                }
+            }
+            
+            oModel.setProperty("/selectedCategories", aSelectedCategories);
+            this._applyFilters();
+        },
+
+        onRemoveCategoria: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const oSource = oEvent.getSource();
+            const oContext = oSource.getBindingContext("wizardModel");
+            if (!oContext) return;
+            
+            const sCategoriaName = oContext.getObject();
+            console.log("❌ Removiendo categoría:", sCategoriaName);
+            
+            const aSelectedCategories = oModel.getProperty("/selectedCategories") || [];
+            const iIndex = aSelectedCategories.indexOf(sCategoriaName);
+            
+            if (iIndex > -1) {
+                aSelectedCategories.splice(iIndex, 1);
+                console.log("✅ Categoría removida. Categorías restantes:", aSelectedCategories);
+                oModel.setProperty("/selectedCategories", aSelectedCategories);
+                
+                // Actualizar el MultiComboBox
+                const oComboCategorias = this.byId("comboCategorias");
+                if (oComboCategorias) {
+                    oComboCategorias.setSelectedKeys(aSelectedCategories);
+                }
+                
+                this._applyFilters();
+            }
+        },
+
+        _filterCategorias: function () {
+            const oModel = this.getView().getModel("wizardModel");
+            const aAllCategories = oModel.getProperty("/allCategories") || [];
+            const sSearchTerm = (oModel.getProperty("/searchCategorias") || "").toLowerCase();
+            
+            const aFiltered = aAllCategories.filter(categoria => 
+                categoria.name.toLowerCase().includes(sSearchTerm)
+            );
+            
+            oModel.setProperty("/filteredCategories", aFiltered);
         },
 
         onRangoPreciosChange: function (oEvent) {
@@ -419,54 +597,75 @@ sap.ui.define([
             const sSearchTerm = (oModel.getProperty("/searchTerm") || "").toLowerCase();
             const sRangoPrecio = oModel.getProperty("/RANGO_PRECIOS");
             
-            console.log("Aplicando filtros...");
-            console.log("Total productos:", aAllProducts.length);
-            console.log("Filtros activos:", {
-                marcas: aSelectedMarcas,
-                categorias: aSelectedCategories,
-                busqueda: sSearchTerm,
-                rango: sRangoPrecio
-            });
+            console.log("🔄 ===== APLICANDO FILTROS =====");
+            console.log("📊 Total productos en allProducts:", aAllProducts.length);
+            console.log("🏷️  Marcas seleccionadas:", aSelectedMarcas);
+            console.log("📂 Categorías seleccionadas:", aSelectedCategories);
+            console.log("🔍 Término de búsqueda:", sSearchTerm || "(vacío)");
+            console.log("💰 Rango de precio:", sRangoPrecio || "(vacío)");
             
-            let aFiltered = aAllProducts.filter(product => {
-                // Filtro por marcas
-                if (aSelectedMarcas.length > 0) {
-                    if (!product.MARCA || !aSelectedMarcas.includes(product.MARCA)) {
-                        return false;
-                    }
-                }
-                
-                // Filtro por categorías
-                if (aSelectedCategories.length > 0) {
-                    if (!Array.isArray(product.CATEGORIAS) || product.CATEGORIAS.length === 0) {
-                        return false;
-                    }
-                    const bHasCategory = product.CATEGORIAS.some(cat => aSelectedCategories.includes(cat));
-                    if (!bHasCategory) {
-                        return false;
-                    }
-                }
-                
-                // Filtro por búsqueda
-                if (sSearchTerm) {
-                    const bMatchSKU = product.SKUID && product.SKUID.toLowerCase().includes(sSearchTerm);
-                    const bMatchName = product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(sSearchTerm);
-                    const bMatchMarca = product.MARCA && product.MARCA.toLowerCase().includes(sSearchTerm);
+            // 🔧 SEPARAR PRODUCTOS EN DOS ARRAYS
+            const aSelectedProductsInPile = [];
+            const aAvailableProducts = [];
+            
+            aAllProducts.forEach(product => {
+                if (product._selected === true) {
+                    // Si está seleccionado, va a la pila (siempre visible)
+                    aSelectedProductsInPile.push(product);
+                } else {
+                    // Si no está seleccionado, aplicar filtros normales
+                    let bPassAllFilters = true;
                     
-                    if (!bMatchSKU && !bMatchName && !bMatchMarca) {
-                        return false;
+                    // Filtro por marcas
+                    if (aSelectedMarcas.length > 0) {
+                        const bMatchMarca = aSelectedMarcas.includes(product.MARCA);
+                        if (!bMatchMarca) {
+                            bPassAllFilters = false;
+                        }
+                    }
+                    
+                    // Filtro por categorías
+                    if (aSelectedCategories.length > 0 && bPassAllFilters) {
+                        const bHasCategory = Array.isArray(product.CATEGORIAS) && 
+                            product.CATEGORIAS.some(cat => aSelectedCategories.includes(cat));
+                        if (!bHasCategory) {
+                            bPassAllFilters = false;
+                        }
+                    }
+                    
+                    // Filtro por búsqueda
+                    if (sSearchTerm && bPassAllFilters) {
+                        const bMatchSKU = product.SKUID && product.SKUID.toLowerCase().includes(sSearchTerm);
+                        const bMatchName = product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(sSearchTerm);
+                        const bMatchMarca = product.MARCA && product.MARCA.toLowerCase().includes(sSearchTerm);
+                        
+                        if (!bMatchSKU && !bMatchName && !bMatchMarca) {
+                            bPassAllFilters = false;
+                        }
+                    }
+                    
+                    // Filtro por rango de precio
+                    if (bPassAllFilters) {
+                        aAvailableProducts.push(product);
                     }
                 }
-                
-                // Filtro por rango de precio (si implementas precios en productos)
-                // Aquí podrías agregar lógica de filtro por precio si tus productos tienen ese campo
-                
-                return true;
             });
             
-            console.log("Productos filtrados:", aFiltered.length);
+            console.log("📍 Productos en pila (seleccionados):", aSelectedProductsInPile.length);
+            console.log("📍 Productos disponibles (filtrados):", aAvailableProducts.length);
+            console.log("🔄 ===== FIN FILTROS =====");
             
-            oModel.setProperty("/filteredProducts", aFiltered);
+            // Actualizar el modelo con ambos arrays
+            oModel.setProperty("/selectedProductsInPile", aSelectedProductsInPile);
+            oModel.setProperty("/availableProductsInList", aAvailableProducts);
+            
+            // Para compatibilidad con bindings antiguos, concatenar ambos arrays
+            const aFilteredProducts = [...aSelectedProductsInPile, ...aAvailableProducts];
+            oModel.setProperty("/filteredProducts", aFilteredProducts);
+            
+            // 🔧 APLICAR PAGINACIÓN A LOS PRODUCTOS DISPONIBLES
+            oModel.setProperty("/currentPage", 1);
+            this._updatePaginatedProducts();
             
             // Contar filtros activos
             let iActiveFilters = 0;
@@ -477,18 +676,122 @@ sap.ui.define([
             
             oModel.setProperty("/activeFilterCount", iActiveFilters);
             
-            MessageToast.show(`${aFiltered.length} productos encontrados`);
+            console.log(`📱 Toast: ${aFilteredProducts.length} productos encontrados`);
+            MessageToast.show(`${aFilteredProducts.length} productos encontrados`);
+        },
+        
+        _updatePaginatedProducts: function () {
+            const oModel = this.getView().getModel("wizardModel");
+            const aAvailableProducts = oModel.getProperty("/availableProductsInList") || [];
+            const iItemsPerPage = oModel.getProperty("/itemsPerPage");
+            const iCurrentPage = oModel.getProperty("/currentPage");
+            
+            // Calcular índices
+            const iStartIndex = (iCurrentPage - 1) * iItemsPerPage;
+            const iEndIndex = iStartIndex + iItemsPerPage;
+            
+            // Obtener productos paginados
+            const aPaginatedProducts = aAvailableProducts.slice(iStartIndex, iEndIndex);
+            
+            // Calcular total de páginas
+            const iTotalPages = Math.ceil(aAvailableProducts.length / iItemsPerPage) || 1;
+            
+            console.log(`📄 Paginación: Página ${iCurrentPage} de ${iTotalPages}, mostrando ${aPaginatedProducts.length} items`);
+            
+            oModel.setProperty("/paginatedProducts", aPaginatedProducts);
+            oModel.setProperty("/totalPages", iTotalPages);
+        },
+        
+        onNextPage: function () {
+            const oModel = this.getView().getModel("wizardModel");
+            const iCurrentPage = oModel.getProperty("/currentPage");
+            const iTotalPages = oModel.getProperty("/totalPages");
+            
+            if (iCurrentPage < iTotalPages) {
+                oModel.setProperty("/currentPage", iCurrentPage + 1);
+                this._updatePaginatedProducts();
+                console.log("➡️ Página siguiente");
+            }
+        },
+        
+        onPreviousPage: function () {
+            const oModel = this.getView().getModel("wizardModel");
+            const iCurrentPage = oModel.getProperty("/currentPage");
+            
+            if (iCurrentPage > 1) {
+                oModel.setProperty("/currentPage", iCurrentPage - 1);
+                this._updatePaginatedProducts();
+                console.log("⬅️ Página anterior");
+            }
         },
 
         onProductSelect: function (oEvent) {
             const oModel = this.getView().getModel("wizardModel");
-            const oTable = this.byId("tableProductos");
-            const aSelectedItems = oTable.getSelectedItems();
+            const oSource = oEvent.getSource();
             
-            const aSelectedProducts = aSelectedItems.map(item => item.getBindingContext("wizardModel").getObject());
+            // Obtener el contexto del binding del checkbox
+            const oContext = oSource.getBindingContext("wizardModel");
+            if (!oContext) {
+                console.warn("⚠️ No hay contexto de binding");
+                return;
+            }
+            
+            const oProduct = oContext.getObject();
+            const bSelected = oSource.getSelected();
+            
+            console.log(`🔘 Producto Select Event: ${oProduct.SKUID} - ${oProduct.PRODUCTNAME}`);
+            console.log(`  Seleccionado: ${bSelected}`);
+            
+            // Marcar/desmarcar el producto en el modelo
+            oProduct._selected = bSelected;
+            oContext.getModel().refresh(true);
+            
+            // Recalcular el contador de productos seleccionados
+            const aAllProducts = oModel.getProperty("/allProducts") || [];
+            const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
+            
+            console.log(`  Total seleccionados ahora: ${aSelectedProducts.length}`);
+            
             oModel.setProperty("/selectedProducts", aSelectedProducts);
             oModel.setProperty("/selectedProductsCount", aSelectedProducts.length);
             oModel.setProperty("/canProceed", aSelectedProducts.length > 0);
+            
+            // 🔧 REAPLICAR FILTROS PARA ACTUALIZAR LAS PILAS
+            this._applyFilters();
+            console.log("✅ Pilas reaplicadas después de cambio de selección");
+        },
+
+        onSelectAllProducts: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const oCheckbox = oEvent.getSource();
+            const bSelected = oCheckbox.getSelected();
+            
+            console.log(`✅ Seleccionar todos: ${bSelected ? "SÍ" : "NO"}`);
+            
+            // Obtener los productos disponibles actualmente mostrados
+            const aAvailableProducts = oModel.getProperty("/availableProductsInList") || [];
+            
+            // Marcar/desmarcar todos los productos disponibles
+            aAvailableProducts.forEach(product => {
+                product._selected = bSelected;
+            });
+            
+            // Obtener todos los productos
+            const aAllProducts = oModel.getProperty("/allProducts") || [];
+            
+            // Recalcular el contador de productos seleccionados (desde allProducts)
+            const aSelectedProducts = aAllProducts.filter(p => p._selected === true);
+            
+            console.log(`  Total seleccionados ahora: ${aSelectedProducts.length}`);
+            
+            oModel.setProperty("/selectedProducts", aSelectedProducts);
+            oModel.setProperty("/selectedProductsCount", aSelectedProducts.length);
+            oModel.setProperty("/canProceed", aSelectedProducts.length > 0);
+            
+            // Refrescar filtros para actualizar pilas
+            this._applyFilters();
+            
+            console.log("🔄 Filtros reaplicados después de 'Seleccionar todos'");
         },
 
         onWizardNext: function () {
@@ -496,20 +799,13 @@ sap.ui.define([
             const oModel = this.getView().getModel("wizardModel");
             const iCurrentStep = oModel.getProperty("/currentStep");
             
-            if (iCurrentStep === 4) {
-                // Guardar
+            if (iCurrentStep === 2) {
+                // Paso 2 es el último - Guardar
                 this._saveLista();
             } else {
-                // Siguiente paso
+                // Paso 1 - pasar al paso 2
                 oWizard.nextStep();
-                oModel.setProperty("/currentStep", iCurrentStep + 1);
-                
-                if (iCurrentStep === 2) {
-                    // Al pasar al paso 3, validar selección
-                    oModel.setProperty("/canProceed", false);
-                } else {
-                    oModel.setProperty("/canProceed", true);
-                }
+                oModel.setProperty("/currentStep", 2);
             }
         },
 

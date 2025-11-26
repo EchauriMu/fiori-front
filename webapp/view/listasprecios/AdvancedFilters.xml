@@ -1,0 +1,106 @@
+<mvc:Fragment
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core">
+    
+    <!-- PANEL IZQUIERDO - FILTROS -->
+    <VBox width="30%" class="sapUiSmallMarginTop">
+        
+        <!-- Marcas con búsqueda -->
+        <VBox class="sapUiSmallMarginTop">
+            <Label text="Marcas" class="sapUiTinyMarginBottom"/>
+            <SearchField
+                id="searchMarcas"
+                value="{wizardModel>/searchMarcas}"
+                placeholder="Buscar marcas..."
+                width="100%"
+                liveChange="onSearchMarcasChange"
+                class="sapUiSmallMarginBottom"/>
+            
+            <!-- Lista de marcas disponibles -->
+            <VBox height="200px" class="sapUiSmallMargin">
+                <List
+                    id="listaMarcas"
+                    items="{wizardModel>/filteredMarcas}"
+                    growing="true"
+                    growingThreshold="10"
+                    noDataText="No hay marcas disponibles">
+                    <CustomListItem type="Inactive">
+                        <HBox alignItems="Center" width="100%">
+                            <CheckBox
+                                selected="{wizardModel>selected}"
+                                select="onToggleMarca"
+                                class="sapUiSmallMarginEnd"/>
+                            <Text text="{wizardModel>name}" class="sapUiSmallMarginStart"/>
+                        </HBox>
+                    </CustomListItem>
+                </List>
+            </VBox>
+        </VBox>
+        
+        <!-- Categorías con búsqueda -->
+        <VBox class="sapUiSmallMarginTop">
+            <Label text="Categorías" class="sapUiTinyMarginBottom"/>
+            <SearchField
+                id="searchCategorias"
+                value="{wizardModel>/searchCategorias}"
+                placeholder="Buscar categorías..."
+                width="100%"
+                liveChange="onSearchCategoriasChange"
+                class="sapUiSmallMarginBottom"/>
+            
+            <!-- Lista de categorías disponibles -->
+            <VBox height="200px" class="sapUiSmallMargin">
+                <List
+                    id="listaCategorias"
+                    items="{wizardModel>/filteredCategories}"
+                    growing="true"
+                    growingThreshold="10"
+                    noDataText="No hay categorías disponibles">
+                    <CustomListItem type="Inactive">
+                        <HBox alignItems="Center" width="100%">
+                            <CheckBox
+                                selected="{wizardModel>selected}"
+                                select="onToggleCategoria"
+                                class="sapUiSmallMarginEnd"/>
+                            <Text text="{wizardModel>name}" class="sapUiSmallMarginStart"/>
+                        </HBox>
+                    </CustomListItem>
+                </List>
+            </VBox>
+        </VBox>
+    </VBox>
+    
+    <!-- PANEL DERECHO - PRODUCTOS CON FILTROS ACTIVOS ARRIBA -->
+    <VBox width="70%" class="sapUiSmallMarginTop">
+        
+        <!-- Filtros activos en la parte superior -->
+        <VBox class="sapUiSmallMarginBottom">
+            <HBox wrap="Wrap" class="sapUiSmallMarginBottom">
+                <!-- Marcas seleccionadas -->
+                <HBox wrap="Wrap" items="{wizardModel>/selectedMarcas}" class="sapUiSmallMarginBottom">
+                    <ObjectStatus
+                        text="{wizardModel>}"
+                        state="Success"
+                        icon="accept"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom"
+                        active="true"
+                        press="onRemoveMarca"/>
+                </HBox>
+                
+                <!-- Categorías seleccionadas -->
+                <HBox wrap="Wrap" items="{wizardModel>/selectedCategories}" class="sapUiSmallMarginBottom">
+                    <ObjectStatus
+                        text="{wizardModel>}"
+                        state="Information"
+                        icon="accept"
+                        class="sapUiSmallMarginEnd sapUiSmallMarginBottom"
+                        active="true"
+                        press="onRemoveCategoria"/>
+                </HBox>
+            </HBox>
+        </VBox>
+        
+    </VBox>
+
+</mvc:Fragment>

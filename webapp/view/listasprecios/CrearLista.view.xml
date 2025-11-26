@@ -18,305 +18,284 @@
             <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
                 <VBox class="sapUiMediumMargin">
                     
-                    <!-- Wizard para crear lista -->
+                    <!-- Wizard con 2 pasos -->
                     <Wizard
                         id="wizardCrearLista"
                         complete=".onWizardComplete"
                         width="100%"
                         class="sapUiResponsiveMargin">
                         
-                        <!-- Paso 1: Configuración Básica -->
+                        <!-- PASO 1: Datos Generales -->
                         <WizardStep
                             id="step1Config"
-                            title="Configuración Básica"
+                            title="Datos Generales"
                             validated="true">
                             
-                            <VBox class="sapUiSmallMargin">
-                                <Title text="Información General" level="H3" class="sapUiSmallMarginBottom"/>
-                                
-                                <Label text="Descripción de la Lista" required="true" class="sapUiTinyMarginTop"/>
-                                <Input
-                                    id="inputDESLISTA"
-                                    value="{wizardModel>/DESLISTA}"
-                                    placeholder="Ej: Lista de Precios Retail 2025"
-                                    required="true"
-                                    change=".onValidateStep1"
-                                    width="100%"
-                                    maxLength="100"/>
-                                
-                                <Label text="Instituto" required="true" class="sapUiTinyMarginTop"/>
-                                <Input
-                                    id="inputINSTITUTO"
-                                    value="{wizardModel>/IDINSTITUTOOK}"
-                                    placeholder="Ej: INST-001"
-                                    required="true"
-                                    change=".onValidateStep1"
-                                    width="100%"
-                                    maxLength="50"/>
-                                
-                                <Label text="Tipo de Lista" class="sapUiTinyMarginTop"/>
-                                <Select
-                                    id="selectTipoLista"
-                                    selectedKey="{wizardModel>/IDTIPOGENERALISTAOK}"
-                                    change=".onTipoGeneralChange"
-                                    width="100%">
-                                    <items>
-                                        <core:Item key="GENERAL" text="General"/>
-                                        <core:Item key="ESPECIFICA" text="Específica"/>
-                                    </items>
-                                </Select>
-                                
-                                <Label text="Tipo de Fórmula" class="sapUiTinyMarginTop"/>
-                                <Select
-                                    id="selectTipoFormula"
-                                    selectedKey="{wizardModel>/IDTIPOFORMULAOK}"
-                                    change=".onTipoFormulaChange"
-                                    width="100%">
-                                    <items>
-                                        <core:Item key="FIJO" text="Precio Fijo"/>
-                                        <core:Item key="PORCENTAJE" text="Porcentaje"/>
-                                        <core:Item key="FORMULA" text="Fórmula Personalizada"/>
-                                    </items>
-                                </Select>
-                                
-                                <Title text="Vigencia" level="H3" class="sapUiSmallMarginTop"/>
-                                
-                                <Label text="Fecha Inicio" required="true" class="sapUiTinyMarginTop"/>
-                                <DatePicker
-                                    id="dateInicio"
-                                    value="{wizardModel>/FECHAEXPIRAINI}"
-                                    displayFormat="dd/MM/yyyy"
-                                    valueFormat="yyyy-MM-dd"
-                                    change=".onValidateStep1"
-                                    width="100%"/>
-                                
-                                <Label text="Fecha Fin" required="true" class="sapUiTinyMarginTop"/>
-                                <DatePicker
-                                    id="dateFin"
-                                    value="{wizardModel>/FECHAEXPIRAFIN}"
-                                    displayFormat="dd/MM/yyyy"
-                                    valueFormat="yyyy-MM-dd"
-                                    change=".onValidateStep1"
-                                    width="100%"/>
-                            </VBox>
-                        </WizardStep>
-                        
-                        <!-- Paso 2: Filtros de Productos -->
-                        <WizardStep
-                            id="step2Filtros"
-                            title="Filtrar Productos"
-                            validated="true">
-                            
-                            <VBox class="sapUiSmallMargin">
-                                <Title text="Aplicar Filtros" level="H3" class="sapUiSmallMarginBottom"/>
-                                
-                                <HBox alignItems="Center" class="sapUiTinyMarginBottom">
-                                    <Label text="Filtros activos:" class="sapUiTinyMarginEnd"/>
-                                    <ObjectNumber
-                                        number="{wizardModel>/activeFilterCount}"
-                                        state="Information"/>
-                                    <ToolbarSpacer/>
-                                    <Button
-                                        text="Limpiar Filtros"
-                                        icon="sap-icon://clear-filter"
-                                        press=".onClearFilters"
-                                        type="Transparent"/>
-                                </HBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Buscar Producto" class="sapUiTinyMarginBottom"/>
-                                    <SearchField
-                                        id="searchProducto"
-                                        value="{wizardModel>/searchTerm}"
-                                        placeholder="Buscar por nombre, SKU..."
+                            <VBox width="100%" alignItems="Center" class="sapUiSmallMargin">
+                                <!-- Contenedor centrado del formulario -->
+                                <VBox width="45em" class="sapUiSmallMargin">
+                                    <Title text="Información General" level="H3" class="sapUiSmallMarginBottom"/>
+                                    
+                                    <Label text="Descripción de la Lista" required="true" class="sapUiTinyMarginTop"/>
+                                    <Input
+                                        id="inputDESLISTA"
+                                        value="{wizardModel>/DESLISTA}"
+                                        placeholder="Ej: Lista de Precios Retail 2025"
+                                        required="true"
+                                        change=".onValidateStep1"
                                         width="100%"
-                                        search=".onSearchProduct"
-                                        liveChange=".onSearchProduct"/>
-                                </VBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Marcas" class="sapUiTinyMarginBottom"/>
-                                    <MultiComboBox
-                                        id="comboMarcas"
-                                        selectedKeys="{wizardModel>/selectedMarcas}"
-                                        selectionChange=".onMarcasChange"
+                                        maxLength="100"/>
+                                    
+                                    <Label text="Instituto" required="true" class="sapUiTinyMarginTop"/>
+                                    <Input
+                                        id="inputINSTITUTO"
+                                        value="{wizardModel>/IDINSTITUTOOK}"
+                                        placeholder="Ej: INST-001"
+                                        required="true"
+                                        change=".onValidateStep1"
                                         width="100%"
-                                        placeholder="Seleccionar marcas..."
-                                        items="{wizardModel>/availableMarcas}">
-                                        <core:Item key="{wizardModel>}" text="{wizardModel>}"/>
-                                    </MultiComboBox>
-                                </VBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Categorías" class="sapUiTinyMarginBottom"/>
-                                    <MultiComboBox
-                                        id="comboCategorias"
-                                        selectedKeys="{wizardModel>/selectedCategories}"
-                                        selectionChange=".onCategoriasChange"
-                                        width="100%"
-                                        placeholder="Seleccionar categorías..."
-                                        items="{wizardModel>/allCategories}">
-                                        <core:Item key="{wizardModel>}" text="{wizardModel>}"/>
-                                    </MultiComboBox>
-                                </VBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Rango de Precios" class="sapUiTinyMarginBottom"/>
+                                        maxLength="50"/>
+                                    
+                                    <Label text="Tipo de Lista" class="sapUiTinyMarginTop"/>
                                     <Select
-                                        id="selectRangoPrecio"
-                                        selectedKey="{wizardModel>/RANGO_PRECIOS}"
-                                        change=".onRangoPreciosChange"
+                                        id="selectTipoLista"
+                                        selectedKey="{wizardModel>/IDTIPOGENERALISTAOK}"
+                                        change=".onTipoGeneralChange"
                                         width="100%">
                                         <items>
-                                            <core:Item key="" text="Todos los precios"/>
-                                            <core:Item key="BAJO" text="Bajo ($0 - $500)"/>
-                                            <core:Item key="MEDIO" text="Medio ($500 - $2,000)"/>
-                                            <core:Item key="ALTO" text="Alto ($2,000 - $10,000)"/>
-                                            <core:Item key="PREMIUM" text="Premium ($10,000+)"/>
+                                            <core:Item key="GENERAL" text="General"/>
+                                            <core:Item key="ESPECIFICA" text="Específica"/>
                                         </items>
                                     </Select>
+                                    
+                                    <Label text="Tipo de Fórmula" class="sapUiTinyMarginTop"/>
+                                    <Select
+                                        id="selectTipoFormula"
+                                        selectedKey="{wizardModel>/IDTIPOFORMULAOK}"
+                                        change=".onTipoFormulaChange"
+                                        width="100%">
+                                        <items>
+                                            <core:Item key="FIJO" text="Precio Fijo"/>
+                                            <core:Item key="PORCENTAJE" text="Porcentaje"/>
+                                            <core:Item key="FORMULA" text="Fórmula Personalizada"/>
+                                        </items>
+                                    </Select>
+                                    
+                                    <Title text="Vigencia" level="H3" class="sapUiSmallMarginTop"/>
+                                    
+                                    <Label text="Fecha Inicio" required="true" class="sapUiTinyMarginTop"/>
+                                    <DatePicker
+                                        id="dateInicio"
+                                        value="{wizardModel>/FECHAEXPIRAINI}"
+                                        displayFormat="dd/MM/yyyy"
+                                        valueFormat="yyyy-MM-dd"
+                                        change=".onValidateStep1"
+                                        width="100%"/>
+                                    
+                                    <Label text="Fecha Fin" required="true" class="sapUiTinyMarginTop"/>
+                                    <DatePicker
+                                        id="dateFin"
+                                        value="{wizardModel>/FECHAEXPIRAFIN}"
+                                        displayFormat="dd/MM/yyyy"
+                                        valueFormat="yyyy-MM-dd"
+                                        change=".onValidateStep1"
+                                        width="100%"/>
                                 </VBox>
-                                
-                                <MessageStrip
-                                    text="Los productos filtrados se mostrarán en el siguiente paso"
-                                    type="Information"
-                                    showIcon="true"
-                                    class="sapUiSmallMarginTop"/>
                             </VBox>
                         </WizardStep>
                         
-                        <!-- Paso 3: Selección de Productos -->
+                        <!-- PASO 2: Selección de Productos y Fórmula -->
                         <WizardStep
-                            id="step3Productos"
-                            title="Seleccionar Productos"
+                            id="step2Filtros"
+                            title="Selecciona los Productos"
                             validated="false">
                             
-                            <VBox class="sapUiSmallMargin">
-                                <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
-                                    <Title text="Productos Disponibles" level="H3"/>
-                                    <HBox alignItems="Center">
-                                        <Label text="Seleccionados:" class="sapUiTinyMarginEnd"/>
-                                        <ObjectNumber
-                                            number="{wizardModel>/selectedProductsCount}"
-                                            unit="productos"
-                                            state="Success"
-                                            emphasized="true"/>
-                                    </HBox>
-                                </HBox>
-                                
-                                <Table
-                                    id="tableProductos"
-                                    items="{wizardModel>/filteredProducts}"
-                                    mode="MultiSelect"
-                                    selectionChange=".onProductSelect"
-                                    growing="true"
-                                    growingThreshold="20"
-                                    sticky="ColumnHeaders,HeaderToolbar">
+                            <VBox class="sapUiSmallMargin" height="100%">
+                                <!-- Layout principal: 25% filtros, 75% tabla -->
+                                <HBox width="100%" height="100%" alignItems="Stretch">
                                     
-                                    <headerToolbar>
-                                        <OverflowToolbar>
-                                            <Title text="{= ${wizardModel>/filteredProducts}.length} productos encontrados" level="H5"/>
-                                            <ToolbarSpacer/>
+                                    <!-- COLUMNA IZQUIERDA: Filtros (25%) - COMPACTA -->
+                                    <VBox width="25%" class="sapUiMediumMarginEnd" height="100%">
+                                        <Title text="Filtros" level="H5" class="sapUiSmallMarginBottom"/>
+                                        
+                                        <!-- Búsqueda de Producto -->
+                                        <VBox class="sapUiSmallMarginTop">
+                                            <Label text="Buscar" class="sapUiTinyMarginBottom" width="100%"/>
                                             <SearchField
-                                                placeholder="Buscar en resultados..."
-                                                search=".onSearchInResults"
-                                                width="200px"/>
-                                        </OverflowToolbar>
-                                    </headerToolbar>
-                                    
-                                    <columns>
-                                        <Column width="12em">
-                                            <Text text="SKU"/>
-                                        </Column>
-                                        <Column minScreenWidth="Tablet" demandPopin="true">
-                                            <Text text="Producto"/>
-                                        </Column>
-                                        <Column minScreenWidth="Tablet" demandPopin="true" hAlign="Center">
-                                            <Text text="Marca"/>
-                                        </Column>
-                                        <Column minScreenWidth="Desktop" demandPopin="true" hAlign="Center">
-                                            <Text text="Categorías"/>
-                                        </Column>
-                                    </columns>
-                                    
-                                    <items>
-                                        <ColumnListItem type="Active">
-                                            <cells>
-                                                <ObjectIdentifier
-                                                    title="{wizardModel>SKUID}"
-                                                    titleActive="false"/>
-                                                <Text text="{wizardModel>PRODUCTNAME}"/>
-                                                <Text text="{wizardModel>MARCA}"/>
-                                                <Text text="{= ${wizardModel>CATEGORIAS} ? ${wizardModel>CATEGORIAS}.slice(0,2).join(', ') : 'Sin categoría' }"/>
-                                            </cells>
-                                        </ColumnListItem>
-                                    </items>
-                                </Table>
-                                
-                                <MessageStrip
-                                    text="Selecciona al menos un producto para continuar"
-                                    type="Warning"
-                                    showIcon="true"
-                                    visible="{= ${wizardModel>/selectedProductsCount} === 0}"
-                                    class="sapUiSmallMarginTop"/>
-                            </VBox>
-                        </WizardStep>
-                        
-                        <!-- Paso 4: Resumen -->
-                        <WizardStep
-                            id="step4Resumen"
-                            title="Resumen"
-                            validated="true">
-                            
-                            <VBox class="sapUiSmallMargin">
-                                <Title text="Resumen de la Lista" level="H3" class="sapUiSmallMarginBottom"/>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Descripción"/>
-                                    <Text text="{wizardModel>/DESLISTA}" class="sapUiTinyMarginTop"/>
-                                </VBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Instituto"/>
-                                    <Text text="{wizardModel>/IDINSTITUTOOK}" class="sapUiTinyMarginTop"/>
-                                </VBox>
-                                
-                                <HBox class="sapUiSmallMarginTop">
-                                    <VBox class="sapUiMediumMarginEnd">
-                                        <Label text="Tipo de Lista"/>
-                                        <Text text="{wizardModel>/IDTIPOGENERALISTAOK}" class="sapUiTinyMarginTop"/>
+                                                id="searchProducto"
+                                                value="{wizardModel>/searchTerm}"
+                                                placeholder="SKU, nombre..."
+                                                width="100%"
+                                                search=".onSearchProduct"
+                                                liveChange=".onSearchProduct"/>
+                                        </VBox>
+                                        
+                                        <!-- Marcas (MultiComboBox) -->
+                                        <VBox class="sapUiSmallMarginTop">
+                                            <Label text="Marcas" class="sapUiTinyMarginBottom"/>
+                                            <MultiComboBox
+                                                id="comboMarcas"
+                                                selectedKeys="{wizardModel>/selectedMarcas}"
+                                                selectionChange=".onMarcasChange"
+                                                width="100%"
+                                                placeholder="Seleccionar..."
+                                                items="{wizardModel>/availableMarcas}">
+                                                <core:Item key="{wizardModel>name}" text="{wizardModel>name}"/>
+                                            </MultiComboBox>
+                                        </VBox>
+                                        
+                                        <!-- Categorías (MultiComboBox) -->
+                                        <VBox class="sapUiSmallMarginTop">
+                                            <Label text="Categorías" class="sapUiTinyMarginBottom"/>
+                                            <MultiComboBox
+                                                id="comboCategorias"
+                                                selectedKeys="{wizardModel>/selectedCategories}"
+                                                selectionChange=".onCategoriasChange"
+                                                width="100%"
+                                                placeholder="Seleccionar..."
+                                                items="{wizardModel>/allCategories}">
+                                                <core:Item key="{wizardModel>name}" text="{wizardModel>name}"/>
+                                            </MultiComboBox>
+                                        </VBox>
+                                        
+                                        <!-- Contador de filtros activos -->
+                                        <HBox alignItems="Center" class="sapUiSmallMarginTop">
+                                            <Label text="Filtros:" class="sapUiTinyMarginEnd"/>
+                                            <ObjectNumber
+                                                number="{wizardModel>/activeFilterCount}"
+                                                state="Information"/>
+                                            <ToolbarSpacer/>
+                                            <Button
+                                                icon="sap-icon://clear-filter"
+                                                press=".onClearFilters"
+                                                type="Transparent"
+                                                width="40px"/>
+                                        </HBox>
                                     </VBox>
-                                    <VBox>
-                                        <Label text="Tipo de Fórmula"/>
-                                        <Text text="{wizardModel>/IDTIPOFORMULAOK}" class="sapUiTinyMarginTop"/>
+                                    
+                                    <!-- COLUMNA DERECHA: Productos (75%) - PAGINADA -->
+                                    <VBox width="75%" class="sapUiSmallMarginTop" height="100%">
+                                        <!-- Contador de seleccionados -->
+                                        <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                                            <HBox alignItems="Center">
+                                                <Label text="Seleccionados:" class="sapUiTinyMarginEnd"/>
+                                                <ObjectNumber
+                                                    number="{wizardModel>/selectedProductsCount}"
+                                                    unit="de {= ${wizardModel>/allProducts}.length }"
+                                                    state="Success"
+                                                    emphasized="true"/>
+                                            </HBox>
+                                            <HBox alignItems="Center">
+                                                <CheckBox
+                                                    selected="{= ${wizardModel>/selectedProductsCount} > 0 &amp;&amp; ${wizardModel>/selectedProductsCount} === ${wizardModel>/availableProductsInList}.length }"
+                                                    select=".onSelectAllProducts"/>
+                                                <Label text="Todos" class="sapUiSmallMarginStart"/>
+                                            </HBox>
+                                        </HBox>
+                                        
+                                        <!-- SECCIÓN: PRODUCTOS SELECCIONADOS (PILA) - COMPACTA -->
+                                        <VBox visible="{= ${wizardModel>/selectedProductsInPile}.length > 0 }" class="sapUiSmallMarginBottom">
+                                            <Title text="Seleccionados ({= ${wizardModel>/selectedProductsInPile}.length })" level="H6" class="sapUiTinyMarginBottom"/>
+                                            <List
+                                                id="selectedProductsList"
+                                                items="{wizardModel>/selectedProductsInPile}"
+                                                width="100%"
+                                                noDataText=""
+                                                class="sapUiSmallMarginBottom">
+                                                
+                                                <CustomListItem
+                                                    type="Inactive"
+                                                    class="productLineItem selectedLineItem">
+                                                    
+                                                    <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="productLineContent">
+                                                        <HBox alignItems="Center" width="100%">
+                                                            <CheckBox
+                                                                selected="{wizardModel>_selected}"
+                                                                select=".onProductSelect"
+                                                                class="productLineCheckbox"/>
+                                                            <VBox class="productLineInfo" width="100%">
+                                                                <Text
+                                                                    text="{wizardModel>PRODUCTNAME}"
+                                                                    class="productLineName"
+                                                                    wrapping="false"/>
+                                                                <Text
+                                                                    text="SKU: {wizardModel>SKUID}"
+                                                                    class="productLineSku"
+                                                                    wrapping="false"/>
+                                                            </VBox>
+                                                        </HBox>
+                                                        <core:Icon
+                                                            src="sap-icon://accept"
+                                                            color="#4CAF50"
+                                                            class="productLineIcon"/>
+                                                    </HBox>
+                                                </CustomListItem>
+                                            </List>
+                                        </VBox>
+                                        
+                                        <!-- SECCIÓN: PRODUCTOS DISPONIBLES - CON PAGINACIÓN -->
+                                        <VBox>
+                                            <Title text="Disponibles ({= ${wizardModel>/availableProductsInList}.length })" level="H6" class="sapUiTinyMarginBottom" visible="{= ${wizardModel>/availableProductsInList}.length > 0 }"/>
+                                            <List
+                                                id="productosList"
+                                                items="{wizardModel>/paginatedProducts}"
+                                                width="100%"
+                                                noDataText="No hay productos disponibles">
+                                                
+                                                <CustomListItem
+                                                    type="Inactive"
+                                                    class="productLineItem {= ${wizardModel>_selected} ? 'selectedLineItem' : '' }">
+                                                    
+                                                    <HBox justifyContent="SpaceBetween" alignItems="Center" width="100%" class="productLineContent">
+                                                        <HBox alignItems="Center" width="100%">
+                                                            <CheckBox
+                                                                selected="{wizardModel>_selected}"
+                                                                select=".onProductSelect"
+                                                                class="productLineCheckbox"/>
+                                                            <VBox class="productLineInfo" width="100%">
+                                                                <Text
+                                                                    text="{wizardModel>PRODUCTNAME}"
+                                                                    class="productLineName"
+                                                                    wrapping="false"/>
+                                                                <Text
+                                                                    text="SKU: {wizardModel>SKUID}"
+                                                                    class="productLineSku"
+                                                                    wrapping="false"/>
+                                                            </VBox>
+                                                        </HBox>
+                                                        <core:Icon
+                                                            src="sap-icon://navigation-right-arrow"
+                                                            class="productLineIcon"/>
+                                                    </HBox>
+                                                </CustomListItem>
+                                            </List>
+                                            
+                                            <!-- Botones de Paginación -->
+                                            <HBox justifyContent="Center" alignItems="Center" class="sapUiSmallMarginTop" visible="{= ${wizardModel>/totalPages} > 1 }">
+                                                <Button
+                                                    icon="sap-icon://navigation-left-arrow"
+                                                    press=".onPreviousPage"
+                                                    enabled="{= ${wizardModel>/currentPage} > 1 }"
+                                                    type="Transparent"/>
+                                                <Text
+                                                    text="Página {wizardModel>/currentPage} de {wizardModel>/totalPages}"
+                                                    class="sapUiSmallMarginStart sapUiSmallMarginEnd"/>
+                                                <Button
+                                                    icon="sap-icon://navigation-right-arrow"
+                                                    press=".onNextPage"
+                                                    enabled="{= ${wizardModel>/currentPage} &lt; ${wizardModel>/totalPages} }"
+                                                    type="Transparent"/>
+                                            </HBox>
+                                        </VBox>
+                                        
+                                        <MessageStrip
+                                            text="Selecciona al menos un producto para continuar"
+                                            type="Warning"
+                                            showIcon="true"
+                                            visible="{= ${wizardModel>/selectedProductsCount} === 0}"
+                                            class="sapUiSmallMarginTop"/>
                                     </VBox>
                                 </HBox>
-                                
-                                <HBox class="sapUiSmallMarginTop">
-                                    <VBox class="sapUiMediumMarginEnd">
-                                        <Label text="Fecha Inicio"/>
-                                        <Text text="{wizardModel>/FECHAEXPIRAINI}" class="sapUiTinyMarginTop"/>
-                                    </VBox>
-                                    <VBox>
-                                        <Label text="Fecha Fin"/>
-                                        <Text text="{wizardModel>/FECHAEXPIRAFIN}" class="sapUiTinyMarginTop"/>
-                                    </VBox>
-                                </HBox>
-                                
-                                <VBox class="sapUiSmallMarginTop">
-                                    <Label text="Productos Seleccionados"/>
-                                    <ObjectNumber
-                                        number="{wizardModel>/selectedProductsCount}"
-                                        unit="productos"
-                                        state="Success"
-                                        class="sapUiTinyMarginTop"/>
-                                </VBox>
-                                
-                                <MessageStrip
-                                    text="Revisa la información antes de guardar"
-                                    type="Information"
-                                    showIcon="true"
-                                    class="sapUiSmallMarginTop"/>
                             </VBox>
                         </WizardStep>
                     </Wizard>
@@ -329,10 +308,10 @@
                                 press=".onWizardBack"
                                 visible="{= ${wizardModel>/currentStep} > 1}"/>
                             <Button
-                                text="{= ${wizardModel>/currentStep} === 4 ? 'Guardar' : 'Siguiente'}"
+                                text="{= ${wizardModel>/currentStep} === 2 ? 'Guardar' : 'Siguiente'}"
                                 type="Emphasized"
                                 press=".onWizardNext"
-                                enabled="{wizardModel>/canProceed}"/>
+                                enabled="{= ${wizardModel>/currentStep} === 1 ? ${wizardModel>/canProceed} : ${wizardModel>/selectedProductsCount} > 0 }"/>
                         </contentRight>
                     </Bar>
                     
