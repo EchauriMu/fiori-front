@@ -551,7 +551,7 @@ sap.ui.define([
                     onClose: () => this.onNavBack()
                 });
             } catch (error) {
-                console.error("❌ Error al crear promoción:", error);
+                console.error("Error al crear promoción:", error);
                 MessageBox.error("Error al crear la promoción: " + error.message);
             }
         },
@@ -1036,110 +1036,6 @@ sap.ui.define([
                 MessageToast.show("Error al cargar presentaciones: " + error.message);
             }
         },
-
-        _loadPresentaciones: async function(sSKUID) {
-            const oFilterModel = this.getView().getModel("filterModel");
-            if (!oFilterModel) return [];
-            
-            // Verificar si ya está en caché
-            const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
-            if (oProductPresentaciones[sSKUID]) {
-                                return oProductPresentaciones[sSKUID];
-            }
-            
-            try {
-                                
-                // Usar el endpoint correcto
-                const response = await this._callApi(
-                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
-                    'POST',
-                    {},
-                    {
-                        ProcessType: 'GetBySKUID',
-                        skuid: sSKUID
-                    }
-                );
-                
-                let presentaciones = [];
-                
-                // Extraer presentaciones de la respuesta
-                if (Array.isArray(response)) {
-                    presentaciones = response;
-                } else if (response?.data?.[0]?.dataRes) {
-                    presentaciones = response.data[0].dataRes;
-                } else if (response?.value?.[0]?.data?.[0]?.dataRes) {
-                    presentaciones = response.value[0].data[0].dataRes;
-                } else if (Array.isArray(response?.data)) {
-                    presentaciones = response.data;
-                }
-                
-                // Filtrar solo presentaciones activas
-                presentaciones = presentaciones.filter(p => p && p.ACTIVED && !p.DELETED);
-                
-                                if (presentaciones.length > 0) {
-                                    }
-                
-                // Guardar en caché
-                oProductPresentaciones[sSKUID] = presentaciones;
-                oFilterModel.setProperty("/productPresentaciones", oProductPresentaciones);
-                
-                return presentaciones;
-                
-            } catch (error) {
-                console.error(`❌ Error cargando presentaciones para ${sSKUID}:`, error);
-                return [];
-            }
-        },
-
-        onFilterProductCheckBoxSelect: function(oEvent) {
-            const bSelected = oEvent.getParameter("selected");
-            const oSource = oEvent.getSource();
-            const oContext = oSource.getBindingContext("filterModel");
-            const sPath = oContext.getPath();
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oProduct = oContext.getObject();
-            const aPresentaciones = oFilterModel.getProperty(sPath + "/presentaciones");
-            const oCreateModel = this.getView().getModel("createPromo");
-            const aSelected = oCreateModel.getProperty("/selectedPresentaciones") || [];
-            
-            if (aPresentaciones && aPresentaciones.length > 0) {
-                aPresentaciones.forEach(function(pres, index) {
-                    if (!pres.locked) {
-                        oFilterModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
-                        
-                        if (bSelected) {
-                            // Agregar si no existe
-                            const exists = aSelected.some(p => p.IdPresentaOK === pres.IdPresentaOK);
-                            if (!exists) {
-                                aSelected.push({
-                                    IdPresentaOK: pres.IdPresentaOK,
-                                    SKUID: oProduct.SKUID,
-                                    NOMBREPRESENTACION: pres.NOMBREPRESENTACION,
-                                    Precio: pres.precio,
-                                    producto: {
-                                        SKUID: oProduct.SKUID,
-                                        PRODUCTNAME: oProduct.PRODUCTNAME
-                                    }
-                                });
-                            }
-                        } else {
-                            // Quitar
-                            const idx = aSelected.findIndex(p => p.IdPresentaOK === pres.IdPresentaOK);
-                            if (idx > -1) {
-                                aSelected.splice(idx, 1);
-                            }
-                        }
-                    }
-                });
-            }
-            
-            oFilterModel.setProperty(sPath + "/allSelected", bSelected);
-            oCreateModel.setProperty("/selectedPresentaciones", aSelected);
-            this._updateGroupedSelectedProducts();
-            this._updateSelectedPresentacionesCount();
-        },
-
-
 
         // Funciones del fragmento AdvancedFilters
         onProductSelect: function(oEvent) {

@@ -628,21 +628,6 @@ sap.ui.define([
             this._updateSelectedProductsCount();
         },
 
-        onEditProductsSelectionChange: function(oEvent) {
-            const oList = oEvent.getSource();
-            const aSelectedItems = oList.getSelectedItems();
-            const oEditModel = this.getView().getModel("editPromoModel");
-            
-            let count = 0;
-            aSelectedItems.forEach(function(oItem) {
-                const oContext = oItem.getBindingContext("editPromoModel");
-                const oProduct = oContext.getObject();
-                count += oProduct.presentaciones.length;
-            });
-            
-            oEditModel.setProperty("/selectedProductsCount", count);
-        },
-
         onEditRemoveSelectedProducts: function() {
             const oEditModel = this.getView().getModel("editPromoModel");
             const aGroupedProducts = oEditModel.getProperty("/paginatedGroupedProducts") || [];
@@ -1517,42 +1502,6 @@ sap.ui.define([
             this._openEditDialog(oPromotion);
         },
 
-        onCancelAddProducts: function() {
-            this._addProductsDialog.close();
-        },
-
-        onConfirmAddProducts: function() {
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oEditModel = this.getView().getModel("editPromoModel");
-            const aPaginatedProducts = oFilterModel.getProperty("/paginatedProducts") || [];
-            let aNewPresentaciones = [];
-            
-            aPaginatedProducts.forEach(product => {
-                if (product.presentaciones && Array.isArray(product.presentaciones)) {
-                    product.presentaciones.forEach(pres => {
-                        if (pres.selected && !pres.locked) {
-                            aNewPresentaciones.push({
-                                IdPresentaOK: pres.IdPresentaOK,
-                                SKUID: product.SKUID,
-                                NOMBREPRESENTACION: pres.NOMBREPRESENTACION,
-                                Precio: pres.precio,
-                                NombreProducto: product.PRODUCTNAME
-                            });
-                        }
-                    });
-                }
-            });
-            
-            const aProductos = oEditModel.getProperty("/ProductosAplicables") || [];
-            const aCombined = [...aProductos, ...aNewPresentaciones];
-            oEditModel.setProperty("/ProductosAplicables", aCombined);
-            oEditModel.setProperty("/groupedProducts", this._groupProductsBySkuid(aCombined));
-            this._updateEditPaginatedProducts();
-            
-            MessageToast.show(`${aNewPresentaciones.length} presentación(es) agregada(s) a la promoción`);
-            this._addProductsDialog.close();
-        },
-
         // ================================================================================
         // 6. BUSINESS LOGIC - FILTERS & DATA PROCESSING
         // ================================================================================
@@ -1948,66 +1897,6 @@ sap.ui.define([
             } catch (error) {
                 console.error("Error cargando todas las presentaciones:", error);
                 MessageToast.show("Error al cargar presentaciones: " + error.message);
-            }
-        },
-
-        _loadPresentaciones: async function(sSKUID) {
-            const oFilterModel = this.getView().getModel("filterModel");
-            if (!oFilterModel) return [];
-            
-            // Verificar si ya está en caché
-            const oProductPresentaciones = oFilterModel.getProperty("/productPresentaciones") || {};
-            if (oProductPresentaciones[sSKUID]) {
-                return oProductPresentaciones[sSKUID];
-            }
-            
-            try {
-                                
-                // Usar el MISMO endpoint que SelectPresentationtoEditPage.controller.js
-                const oResponse = await this._callApi(
-                    '/ztproducts-presentaciones/productsPresentacionesCRUD',
-                    'POST',
-                    {},
-                    {
-                        ProcessType: 'GetBySKUID',
-                        skuid: sSKUID
-                    }
-                );
-                
-                let aPresentaciones = [];
-                
-                // Extraer presentaciones de la respuesta
-                if (Array.isArray(oResponse)) {
-                    // Respuesta directa como array
-                    aPresentaciones = oResponse;
-                } else if (oResponse?.data?.[0]?.dataRes) {
-                    aPresentaciones = oResponse.data[0].dataRes;
-                } else if (oResponse?.value?.[0]?.data?.[0]?.dataRes) {
-                    aPresentaciones = oResponse.value[0].data[0].dataRes;
-                } else if (Array.isArray(oResponse?.data)) {
-                    aPresentaciones = oResponse.data;
-                }
-                
-                // Filtrar solo presentaciones activas
-                aPresentaciones = aPresentaciones.filter(p => p && p.ACTIVED && !p.DELETED);
-                
-                                if (aPresentaciones.length > 0) {
-                                    }
-                
-                // Guardar en cache
-                oProductPresentaciones[sSKUID] = aPresentaciones;
-                oFilterModel.setProperty("/productPresentaciones", oProductPresentaciones);
-                
-                return aPresentaciones;
-
-            } catch (error) {
-                console.error(`? Error cargando presentaciones para ${sSKUID}:`, error);
-                
-                // En caso de error, guardar array vac�o en cache
-                oProductPresentaciones[sSKUID] = [];
-                oFilterModel.setProperty("/productPresentaciones", oProductPresentaciones);
-                
-                return [];
             }
         },
 

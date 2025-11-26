@@ -375,10 +375,6 @@ sap.ui.define([
             return oDateFormat.format(oDate);
         },
 
-        // ================================================================================
-        // FORMATTERS & HELPERS (less critical for debugging)
-        // ================================================================================
-
         formatDate: function(sDate) {
             if (!sDate) return "N/A";
             try {
