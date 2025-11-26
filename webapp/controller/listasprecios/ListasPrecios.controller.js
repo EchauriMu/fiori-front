@@ -124,6 +124,15 @@ sap.ui.define([
 
             // Cargar datos de listas
             this.loadListas();
+
+            // Suscribirse al patrón de ruta para recargar cuando regresa a esta vista
+            const oRouter = this.getOwnerComponent().getRouter();
+            oRouter.getRoute("RouteListasPrecios").attachPatternMatched(this._onRouteMatched, this);
+        },
+
+        _onRouteMatched: function () {
+            console.log("📍 Regresó a ListasPrecios - Recargando datos...");
+            this.loadListas();
         },
 
         _loadModalFragment: function () {
@@ -222,6 +231,20 @@ sap.ui.define([
                 const oRouter = this.getOwnerComponent().getRouter();
                 oRouter.navTo("RouteMain", {}, true);
             }
+        },
+
+        onRefresh: function () {
+            console.log("🔄 Refrescando listas de precios...");
+            const oViewModel = this.getView().getModel("view");
+            
+            // Resetear filtros y búsqueda
+            oViewModel.setProperty("/searchTerm", "");
+            oViewModel.setProperty("/selectedListaIDs", []);
+            
+            // Recargar listas completas
+            this.loadListas();
+            
+            MessageToast.show("Listas recargadas");
         },
 
         // ====================================================================

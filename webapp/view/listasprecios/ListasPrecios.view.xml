@@ -31,6 +31,8 @@
                         enabled="{= !${view>/loading} }"
                     />
                     
+                    <m:Button icon="sap-icon://refresh" type="Default" press=".onRefresh" tooltip="Recargar listas" enabled="{= !${view>/loading} }"/>
+                    
                     <m:Button icon="sap-icon://add" text="{i18n>listasAddButton}" type="Emphasized" press="onOpenListaDialog" />
                     
                     <m:Button icon="sap-icon://edit" text="Editar" type="Ghost" press=".onEditLista" enabled="{= ${view>/selectedListaIDs}.length === 1 }" tooltip="{i18n>listasEditTooltip}">
