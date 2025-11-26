@@ -25,6 +25,7 @@ sap.ui.define([
                 RANGO_PRECIOS: "",
                 REGUSER: oUser?.USERNAME || "SYSTEM",
                 selectedProductsCount: 0,
+                buttonSaveEnabled: false,
                 filteredProducts: [],
                 selectedProductsInPile: [],
                 availableProductsInList: [],
@@ -808,6 +809,7 @@ sap.ui.define([
             // Actualizar el modelo de forma sincrónica
             oModel.setProperty("/selectedProductsCount", iSelectedCount);
             oModel.setProperty("/canProceed", iSelectedCount > 0);
+            oModel.setProperty("/buttonSaveEnabled", iSelectedCount > 0);
             
             // Refrescar todo el modelo para asegurar que los bindings se actualicen
             oModel.refresh(true);
@@ -843,6 +845,7 @@ sap.ui.define([
             // Actualizar el modelo
             oModel.setProperty("/selectedProductsCount", iSelectedCount);
             oModel.setProperty("/canProceed", iSelectedCount > 0);
+            oModel.setProperty("/buttonSaveEnabled", iSelectedCount > 0);
             
             // Refrescar todo el modelo para asegurar que los bindings se actualicen
             oModel.refresh(true);
@@ -944,8 +947,14 @@ sap.ui.define([
                         return;
                     }
                 } else {
-                    sIdListaOK = `LISTA-${Date.now()}`;
-                    console.log("🆕 ID para crear:", sIdListaOK);
+                    // Usar el ID autogenerado del Paso 1
+                    sIdListaOK = oModel.getProperty("/IDLISTAOK");
+                    console.log("🆕 ID autogenerado para crear:", sIdListaOK);
+                    
+                    if (!sIdListaOK) {
+                        MessageBox.error("Error: No se generó el ID de la lista. Completa la descripción.");
+                        return;
+                    }
                 }
                 
                 const payload = {

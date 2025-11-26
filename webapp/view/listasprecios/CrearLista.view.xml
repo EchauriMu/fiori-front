@@ -348,7 +348,7 @@
                                 text="Guardar"
                                 type="Emphasized"
                                 press=".onWizardNext"
-                                enabled="{= ${wizardModel>/currentStep} === 1 ? ${wizardModel>/canProceed} : ${wizardModel>/selectedProductsCount} > 0 }"/>
+                                enabled="{= ${wizardModel>/currentStep} === 1 ? ${wizardModel>/canProceed} : ${wizardModel>/buttonSaveEnabled} }"/>
                         </contentRight>
                     </Bar>
                     
