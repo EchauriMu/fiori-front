@@ -47,6 +47,12 @@ sap.ui.define([
                     errors.IDTIPOLISTAOK = "Error";
                 }
 
+                // Validar IDTIPOFORMULAOK (Tipo de Fórmula)
+                if (!listData.IDTIPOFORMULAOK || listData.IDTIPOFORMULAOK.trim() === '') {
+                    errorMessages.push('El tipo de fórmula es obligatorio.');
+                    errors.IDTIPOFORMULAOK = "Error";
+                }
+
                 return { errors, errorMessages };
             }
         },
@@ -60,7 +66,7 @@ sap.ui.define([
                 IDINSTITUTOOK: "",
                 IDTIPOLISTAOK: "",
                 IDTIPOGENERALISTAOK: "",
-                IDTIPOFORMULAOK: "FIJO",
+                IDTIPOFORMULAOK: "",
                 FECHAEXPIRAINI: this._formatDateForInput(new Date()),
                 FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
                 RANGO_PRECIOS: "",
@@ -161,7 +167,7 @@ sap.ui.define([
                 // ✅ IMPORTANTE: No usar || con valor default, guardar exactamente lo que viene de BD
                 oModel.setProperty("/IDTIPOLISTAOK", oLista.IDTIPOLISTAOK || "");
                 oModel.setProperty("/IDTIPOGENERALISTAOK", oLista.IDTIPOGENERALISTAOK || "");
-                oModel.setProperty("/IDTIPOFORMULAOK", oLista.IDTIPOFORMULAOK || "FIJO");
+                oModel.setProperty("/IDTIPOFORMULAOK", oLista.IDTIPOFORMULAOK || "");
                 oModel.setProperty("/FECHAEXPIRAINI", this._formatDateForInput(new Date(oLista.FECHAEXPIRAINI)));
                 oModel.setProperty("/FECHAEXPIRAFIN", this._formatDateForInput(new Date(oLista.FECHAEXPIRAFIN)));
                 
@@ -1110,7 +1116,7 @@ sap.ui.define([
                 FECHAEXPIRAFIN: oModel.getProperty("/FECHAEXPIRAFIN"),
                 IDTIPOLISTAOK: sIDTIPOLISTA || "",
                 IDTIPOGENERALISTAOK: oModel.getProperty("/IDTIPOGENERALISTAOK") || "ESPECIFICA",
-                IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK") || "FIJO",
+                IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK") || "",
                 REGUSER: oModel.getProperty("/REGUSER"),
                 ACTIVED: true,
                 DELETED: false

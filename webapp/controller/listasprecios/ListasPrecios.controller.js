@@ -1854,91 +1854,6 @@ sap.ui.define([
         },
 
         /**
-         * Cuando cambia la Fecha de Ingreso (Desde), copia el valor a Inicio de Vigencia
-         */
-        onFechaIngresoDesdeChange: function (oEvent) {
-            const oDetailModel = this.getView().getModel("detailView");
-            const oDatePicker = oEvent.getSource();
-            const dFechaDesde = oDatePicker.getDateValue();
-            
-            if (dFechaDesde) {
-                oDetailModel.setProperty("/wizardData/FECHAEXPIRAINI", dFechaDesde);
-            }
-        },
-
-        /**
-         * Cuando cambia la Fecha de Ingreso (Hasta), copia el valor a Fin de Vigencia
-         */
-        onFechaIngresoHastaChange: function (oEvent) {
-            const oDetailModel = this.getView().getModel("detailView");
-            const oDatePicker = oEvent.getSource();
-            const dFechaHasta = oDatePicker.getDateValue();
-            
-            if (dFechaHasta) {
-                oDetailModel.setProperty("/wizardData/FECHAEXPIRAFIN", dFechaHasta);
-            }
-        },
-
-        /**
-         * Maneja el cambio de Rango de Precios en el Paso 2 del wizard
-         */
-        onRangoPreciosStep2Change: function (oEvent) {
-            const oDetailModel = this.getView().getModel("detailView");
-            const sSelectedKey = oEvent.getSource().getSelectedKey();
-            
-            // Mapeo de rangos a valores numéricos
-            const oRangoMap = {
-                "BAJO": { min: 0, max: 500 },
-                "MEDIO": { min: 500, max: 2000 },
-                "ALTO": { min: 2000, max: 10000 },
-                "PREMIUM": { min: 10000, max: 999999 }
-            };
-            
-            if (sSelectedKey && oRangoMap[sSelectedKey]) {
-                const oRango = oRangoMap[sSelectedKey];
-                oDetailModel.setProperty("/wizardFilters/priceFrom", oRango.min);
-                oDetailModel.setProperty("/wizardFilters/priceTo", oRango.max);
-                
-                // Guardar la selección del rango
-                oDetailModel.setProperty("/wizardFilters/selectedRango", sSelectedKey);
-            } else {
-                // Si no hay selección, limpiar los valores
-                oDetailModel.setProperty("/wizardFilters/priceFrom", "");
-                oDetailModel.setProperty("/wizardFilters/priceTo", "");
-                oDetailModel.setProperty("/wizardFilters/selectedRango", "");
-            }
-            
-            // Aplicar el filtro
-            this.onFiltersChangedWizard();
-        },
-
-        /**
-         * Maneja el cambio de Tipo General de Lista en el RadioButtonGroup
-         */
-        onTipoGeneralChange: function (oEvent) {
-            const iSelectedIndex = oEvent.getSource().getSelectedIndex();
-            const oDetailModel = this.getView().getModel("detailView");
-            const aValores = ["ESPECIFICA", "GENERAL", "TODOS"];
-            
-            const oWizardData = oDetailModel.getProperty("/wizardData");
-            oWizardData.IDTIPOGENERALISTAOK = aValores[iSelectedIndex];
-            oDetailModel.setProperty("/wizardData", oWizardData);
-        },
-
-        /**
-         * Maneja el cambio de Tipo de Fórmula en el RadioButtonGroup
-         */
-        onTipoFormulaChange: function (oEvent) {
-            const iSelectedIndex = oEvent.getSource().getSelectedIndex();
-            const oDetailModel = this.getView().getModel("detailView");
-            const aValores = ["FIJO", "PORCENTAJE", "ESCALA"];
-            
-            const oWizardData = oDetailModel.getProperty("/wizardData");
-            oWizardData.IDTIPOFORMULAOK = aValores[iSelectedIndex];
-            oDetailModel.setProperty("/wizardData", oWizardData);
-        },
-
-        /**
          * Limpia todos los filtros del wizard
          */
         onClearFiltersWizard: function () {
@@ -2046,7 +1961,3 @@ sap.ui.define([
         }
     });
 });
-
-
-
-

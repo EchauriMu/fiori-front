@@ -104,6 +104,23 @@
                                         </items>
                                     </Select>
                                     
+                                    <Label text="Tipo de Fórmula" required="true" class="sapUiTinyMarginTop"/>
+                                    <Select
+                                        id="selectTipoFormula"
+                                        selectedKey="{wizardModel>/IDTIPOFORMULAOK}"
+                                        change=".onTipoFormulaChange"
+                                        required="true"
+                                        liveChange=".onValidateStep1"
+                                        width="100%">
+                                        <items>
+                                            <core:Item key="" text="Seleccionar tipo..."/>
+                                            <core:Item key="FORMULA_DESCUENTO" text="Fórmula Descuento"/>
+                                            <core:Item key="FORMULA_MAYORISTA" text="Fórmula Mayorista"/>
+                                            <core:Item key="FORMULA_ESTANDAR" text="Fórmula Estándar"/>
+                                            <core:Item key="FORMULA_PAQUETE" text="Fórmula Paquete"/>
+                                        </items>
+                                    </Select>
+                                    
                                     <Title text="Vigencia" level="H3" class="sapUiSmallMarginTop"/>
                                     
                                     <Label text="Fecha Inicio" required="true" class="sapUiTinyMarginTop"/>
