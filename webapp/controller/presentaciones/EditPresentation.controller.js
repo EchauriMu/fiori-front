@@ -17,9 +17,9 @@ sap.ui.define([
             const oEditModel = new JSONModel({
                 skuid: null,
                 presentationId: null,
-                presentationData: {}, // Datos de la presentación (nombre, desc, activo)
-                propiedadesExtras: [], // Array de {key, value}
-                files: [], // Array de archivos
+                presentationData: {}, 
+                propiedadesExtras: [], 
+                files: [], 
                 newProperty: {
                     key: "",
                     value: ""
@@ -55,27 +55,21 @@ sap.ui.define([
         if (oPresentationData && typeof oPresentationData === "object" && !Array.isArray(oPresentationData)) {
             const presentation = oPresentationData;
 
-            // Datos base de la presentación
             oModel.setProperty("/presentationData", presentation);
 
-            // ---- Propiedades Extras: string JSON -> array {key,value} ----
             let aProps = [];
             if (typeof presentation.PropiedadesExtras === "string" && presentation.PropiedadesExtras.trim()) {
                 try {
                     const oPropsObj = JSON.parse(presentation.PropiedadesExtras);
                     aProps = Object.entries(oPropsObj).map(([key, value]) => ({ key, value }));
                 } catch (e) {
-                    console.warn("PropiedadesExtras no es un JSON válido:", presentation.PropiedadesExtras);
                 }
             }
             oModel.setProperty("/propiedadesExtras", aProps);
 
-            // ---- Archivos: usar lo que ya devuelve el backend en Files (como React) ----
             const aFiles = Array.isArray(presentation.Files) ? presentation.Files : [];
             oModel.setProperty("/files", aFiles);
 
-            // (Opcional) si quieres seguir refrescando tras subir, _loadFilesForPresentation
-            // se usará sólo después de upload, no en el load inicial.
         } else {
             throw new Error("No se encontró la presentación o la respuesta de la API no es válida.");
         }
@@ -107,8 +101,6 @@ sap.ui.define([
             oModel.setProperty("/files", aFiles);
         }
     } catch (error) {
-        console.error("Error al cargar archivos:", error);
-        // No bloqueamos la edición si falla esto
     }
 },
 
@@ -169,7 +161,6 @@ sap.ui.define([
                         FILETYPE: sFileType,
                         originalname: file.name,
                         mimetype: file.type,
-                        // si todavía no hay principal, el primer archivo se marca principal
                         PRINCIPAL: !bHasPrincipal && aCurrentFiles.length === 0,
                         INFOAD: "Archivo " + file.name
                     };
@@ -181,7 +172,6 @@ sap.ui.define([
                 oReader.readAsDataURL(file);
             });
 
-            // limpiar el FileUploader para poder seleccionar el mismo archivo de nuevo
             if (oFileUploader && oFileUploader.clear) {
                 oFileUploader.clear();
             }
@@ -193,7 +183,7 @@ sap.ui.define([
                 return;
             }
 
-            const sPath = oContext.getPath(); // p.ej. "/files/0"
+            const sPath = oContext.getPath(); 
             const iIndex = parseInt(sPath.split("/").pop(), 10);
 
             const oModel = this.getView().getModel("editModel");
@@ -205,10 +195,8 @@ sap.ui.define([
 
             const bWasPrincipal = !!aFiles[iIndex].PRINCIPAL;
 
-            // Quitamos el archivo del arreglo (igual que en React: ya no se envía en el payload)
             aFiles.splice(iIndex, 1);
 
-            // Si borramos el principal y quedan archivos, el primero pasa a ser principal
             if (bWasPrincipal && aFiles.length > 0) {
                 aFiles[0].PRINCIPAL = true;
             }
@@ -221,7 +209,6 @@ sap.ui.define([
         onStartUpload: function () {
             const oUploadCollection = this.byId("UploadCollection");
             const aItems = oUploadCollection.getItems();
-            // Solo subir si hay archivos nuevos pendientes
             if (this.getView().getModel("editModel").getProperty("/newFilesCount") > 0) {
                 oUploadCollection.upload();
             } else {
@@ -234,14 +221,10 @@ sap.ui.define([
             const oItem = oEvent.getParameter("item");
             const oItemData = oItem.getBindingContext("editModel").getObject();
 
-            // Si el archivo no tiene FILEID, es un archivo nuevo que se está eliminando de la cola de subida.
             if (!oItemData.FILEID) {
                 const iNewFileCount = oModel.getProperty("/newFilesCount") - 1;
                 oModel.setProperty("/newFilesCount", iNewFileCount);
             } else {
-                // Si tiene FILEID, es un archivo existente que se debe borrar del servidor.
-                // Aquí iría la lógica para llamar a la API y borrar el archivo del backend.
-                // Por ahora, solo lo quitamos de la vista.
                 MessageToast.show(`El archivo ${oItemData.originalname} se eliminará al guardar.`);
             }
         },
@@ -250,14 +233,11 @@ sap.ui.define([
             const oModel = this.getView().getModel("editModel");
             const sPresentationId = oModel.getProperty("/presentationId");
 
-            // Limpiar cabeceras para la próxima subida
             const oUploadCollection = this.byId("UploadCollection");
             oUploadCollection.removeAllHeaderParameters();
 
-            // Refrescar la lista de archivos desde el backend
             this._loadFilesForPresentation(sPresentationId);
 
-            // Reiniciar el contador de archivos nuevos
             oModel.setProperty("/newFilesCount", 0);
 
             MessageToast.show("Archivos subidos correctamente.");
@@ -275,7 +255,6 @@ sap.ui.define([
 
     oModel.setProperty("/isSubmitting", true);
 
-    // ---- 1. Propiedades Extras: array -> objeto -> string JSON (como React) ----
     const aProps = oModel.getProperty("/propiedadesExtras") || [];
     const oProps = aProps.reduce((acc, prop) => {
         if (prop.key) {
@@ -284,11 +263,9 @@ sap.ui.define([
         return acc;
     }, {});
 
-    // ---- 2. Archivos: normalizar estructura (similar al front en React) ----
     const aFilesFromModel = oModel.getProperty("/files") || [];
 
     const aFilesPayload = aFilesFromModel.map(function (f) {
-        // Copia limpia sólo con los campos relevantes
         const filePayload = {
             FILEID: f.FILEID,
             FILETYPE: f.FILETYPE,
@@ -299,7 +276,6 @@ sap.ui.define([
             FILE: f.FILE
         };
 
-        // Si por alguna razón hay archivos nuevos con base64 y sin FILEID, los mandamos
         if (f.fileBase64 && !f.FILEID) {
             filePayload.fileBase64 = f.fileBase64;
         }
@@ -307,7 +283,6 @@ sap.ui.define([
         return filePayload;
     });
 
-    // ---- 3. Payload final, igual que updatedData en React ----
     const payload = {
         NOMBREPRESENTACION: oData.NOMBREPRESENTACION,
         Descripcion: oData.Descripcion,
@@ -318,8 +293,6 @@ sap.ui.define([
                     .getModel("appView")
                     .getProperty("/currentUser/USERNAME") || "SYSTEM"
     };
-
-    console.log("Payload UpdateOne que se envía:", payload);
 
     try {
         await this._callApi(
@@ -336,7 +309,6 @@ sap.ui.define([
         this.onNavBack();
 
     } catch (error) {
-        // Aquí verás el mensaje que viene del backend si trae "message"
         MessageBox.error(this.getResourceBundle().getText("editPresentationSaveError", [error.message]));
     } finally {
         oModel.setProperty("/isSubmitting", false);
@@ -348,7 +320,6 @@ sap.ui.define([
             const oModel = this.getView().getModel("editModel");
             const sSKU = oModel && oModel.getProperty("/skuid");
 
-            // Si tenemos el SKU, siempre volvemos al grid de presentaciones
             if (sSKU) {
                 this.getOwnerComponent().getRouter().navTo(
                     "RouteSelectPresentationToEdit",
@@ -358,7 +329,6 @@ sap.ui.define([
                 return;
             }
 
-            // Fallback por si algún día no hubiera SKU
             const oHistory = History.getInstance();
             const sPreviousHash = oHistory.getPreviousHash();
 
@@ -373,7 +343,6 @@ sap.ui.define([
         },
 
        _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
-            // 1. Añadir parámetros globales (DBServer, LoggedUser)
             const dbServer = sessionStorage.getItem('DBServer');
             if (dbServer === 'CosmosDB') {
                 oParams.DBServer = 'CosmosDB';
@@ -386,7 +355,6 @@ sap.ui.define([
                 oParams.LoggedUser = loggedUser;
             }
 
-            // 2. Construir URL con query parameters
             const sQueryString = new URLSearchParams(oParams).toString();
             const sFullUrl = `${BASE_URL}${sRelativeUrl}?${sQueryString}`;
             
@@ -405,26 +373,22 @@ sap.ui.define([
 
                 const oJson = await oResponse.json();
                 
-                // Lógica para desenvolver la respuesta anidada de la API
                 if (oJson && oJson.value && Array.isArray(oJson.value) && oJson.value.length > 0) {
                     const mainResponse = oJson.value[0];
                     if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
                         const dataResponse = mainResponse.data[0];
-                        if (dataResponse.dataRes) { // No necesita ser siempre un array
+                        if (dataResponse.dataRes) { 
                             return dataResponse.dataRes;
                         }
                     }
                 }
-                // Estructura alternativa vista en otros controladores
                 if (oJson && oJson.data && Array.isArray(oJson.data) && oJson.data.length > 0 && oJson.data[0].dataRes) {
                     return oJson.data[0].dataRes;
                 }
                 
-                // Devolver el JSON si no tiene la estructura anidada (para otras llamadas)
                 return oJson; 
                 
             } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
         }

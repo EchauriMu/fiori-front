@@ -29,7 +29,6 @@ sap.ui.define([
             this.getView().setModel(oSelectModel, "selectModel");
         },
 
-        // ================= CARGA INICIAL =================
         _onRouteMatched: function (oEvent) {
             const sSKU = oEvent.getParameter("arguments").skuid;
             const oModel = this.getView().getModel("selectModel");
@@ -67,7 +66,6 @@ sap.ui.define([
                     throw new Error("La respuesta de la API no es un array.");
                 }
             } catch (err) {
-                console.error(err);
                 oModel.setProperty(
                     "/error",
                     err.message || "Error al cargar las presentaciones."
@@ -77,13 +75,7 @@ sap.ui.define([
             }
         },
 
-        // ================= NAVEGAR A EDITAR =================
-
-        // Click en la tarjeta (solo en modo simple)
         onCardPress: function (oSrcControl, oEvent) {
-            // Si el control que origina el evento es un botón, no hacemos nada.
-            // Esto permite que los eventos 'press' de los botones (onEditPress, onOpenSingleDelete) se ejecuten.
-            // También ignoramos los clics en el CheckBox.
             const sControlType = oSrcControl.getMetadata().getName();
             if (sControlType === "sap.m.Button" || sControlType === "sap.m.CheckBox") {
                 return;
@@ -91,11 +83,9 @@ sap.ui.define([
 
             const oModel = this.getView().getModel("selectModel");
             if (oModel.getProperty("/multiMode")) {
-                // En modo múltiple no navegamos al hacer click en la tarjeta
                 return;
             }
 
-            // El control que origina el evento es la tarjeta (f:Card), que tiene el contexto.
             const oCtx = oSrcControl.getBindingContext("selectModel");
             const sId = oCtx.getProperty("IdPresentaOK");
             const sSKU = oModel.getProperty("/skuid");
@@ -106,11 +96,9 @@ sap.ui.define([
             });
         },
 
-        // Click en el ícono de editar
         onEditPress: function (oEvent) {
             const oCtx = oEvent.getSource().getBindingContext("selectModel");
             if (!oCtx) {
-                console.error("onEditPress: sin bindingContext");
                 return;
             }
 
@@ -123,8 +111,6 @@ sap.ui.define([
             });
         },
 
-        // ================= MODO MÚLTIPLE / CHECKBOXES =================
-
         onMultiModeChange: function (oEvent) {
             const bState = oEvent.getParameter("state");
             const oModel = this.getView().getModel("selectModel");
@@ -132,7 +118,6 @@ sap.ui.define([
             oModel.setProperty("/multiMode", bState);
 
             if (!bState) {
-                // Se desactiva modo múltiple → limpiar selecciones
                 const aPres = oModel.getProperty("/presentations") || [];
                 aPres.forEach(function (p) { p.selected = false; });
                 oModel.setProperty("/presentations", aPres);
@@ -141,7 +126,7 @@ sap.ui.define([
         },
 
         onToggleOne: function (oEvent) {
-            oEvent.stopPropagation(); // que no dispare el press de la tarjeta
+            oEvent.stopPropagation(); 
 
             const oCheckBox = oEvent.getSource();
             const oCtx = oCheckBox.getBindingContext("selectModel");
@@ -180,12 +165,9 @@ sap.ui.define([
             oModel.setProperty("/selectedIds", aSelectedIds);
         },
 
-        // ================= ELIMINAR =================
-
         onOpenSingleDelete: function (oEvent) {
             const oCtx = oEvent.getSource().getBindingContext("selectModel");
             if (!oCtx) {
-                console.error("onOpenSingleDelete: sin bindingContext");
                 return;
             }
 
@@ -234,7 +216,6 @@ sap.ui.define([
             const oAppViewModel = this.getOwnerComponent().getModel("appView");
             const sUser = oAppViewModel.getProperty("/currentUser/USERNAME") || "SYSTEM";
 
-            // Creamos un array de promesas, una por cada llamada a la API
             const aDeletePromises = aIds.map(sId => {
                 return this._callApi(
                     "/ztproducts-presentaciones/productsPresentacionesCRUD",
@@ -243,29 +224,24 @@ sap.ui.define([
                     {
                         ProcessType: "DeleteHard",
                         MODUSER: sUser,
-                        idpresentaok: sId // Enviamos un solo ID por llamada
+                        idpresentaok: sId 
                     }
                 );
             });
 
             try {
-                // Esperamos a que todas las promesas de borrado se completen
                 await Promise.all(aDeletePromises);
 
                 MessageToast.show(`${aIds.length} presentación(es) eliminada(s) correctamente.`);
 
-                // Recargar lista con el mismo SKU
                 const sSKU = oModel.getProperty("/skuid");
                 await this._loadPresentations(sSKU);
 
             } catch (err) {
-                console.error(err);
                 MessageBox.error("Error al eliminar las presentaciones: " + (err.message || err));
                 oModel.setProperty("/loading", false);
             }
         },
-
-        // ================= NAVEGAR ATRÁS =================
 
         onNavBack: function () {
             const oHistory = History.getInstance();
@@ -278,11 +254,8 @@ sap.ui.define([
             }
         },
 
-        // ================= HELPER API =================
-
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
 
-            // DBServer si aplica
             const dbServer = sessionStorage.getItem("DBServer");
             if (dbServer === "CosmosDB") {
                 oParams.DBServer = "CosmosDB";
@@ -305,7 +278,6 @@ sap.ui.define([
                 headers: { "Content-Type": "application/json" }
             };
 
-            // Solo añadir el body si oData tiene contenido
             if (oData && Object.keys(oData).length > 0) {
                 oFetchOptions.body = JSON.stringify(oData);
             }
@@ -318,13 +290,12 @@ sap.ui.define([
                     try {
                         const oErrJson = await oResponse.json();
                         sErrorMessage = oErrJson.message || sErrorMessage;
-                    } catch (ignore) { /* nada */ }
+                    } catch (ignore) {  }
                     throw new Error(sErrorMessage);
                 }
 
                 const oJson = await oResponse.json();
 
-                // Desenredar estructura anidada
                 if (oJson && oJson.value && Array.isArray(oJson.value) && oJson.value.length > 0) {
                     const mainResponse = oJson.value[0];
                     if (mainResponse.data && Array.isArray(mainResponse.data) && mainResponse.data.length > 0) {
@@ -342,7 +313,6 @@ sap.ui.define([
                 return oJson;
 
             } catch (err) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, err);
                 throw new Error(`Error al procesar la solicitud: ${err.message || err}`);
             }
         }
