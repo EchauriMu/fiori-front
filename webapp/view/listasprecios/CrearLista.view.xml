@@ -22,7 +22,6 @@
                     <Wizard
                         id="wizardCrearLista"
                         complete=".onWizardComplete"
-                        currentStep="{wizardModel>/currentStep}"
                         width="100%"
                         class="sapUiResponsiveMargin">
                         
