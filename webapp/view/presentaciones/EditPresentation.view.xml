@@ -113,16 +113,12 @@
                             noDataText="{i18n>editPresentationNoFilesText}">
                             <CustomListItem>
                                 <HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiTinyMargin">
-                                    <HBox alignItems="Center">
-                                        <!-- Si es imagen, muestra miniatura -->
-                                        <Image
+                                    <HBox alignItems="Center">                                        <Image
                                             src="{editModel>FILE}"
                                             width="48px"
                                             height="48px"
                                             class="sapUiTinyMarginEnd"
-                                            visible="{= ${editModel>FILETYPE} === 'IMG' }" />
-                                        <!-- Si NO es imagen, muestra icono genérico -->
-                                        <core:Icon
+                                            visible="{= ${editModel>FILETYPE} === 'IMG' }" />                                        <core:Icon
                                             src="{= ${editModel>FILETYPE} === 'IMG'
                                                 ? 'sap-icon://picture'
                                                 : (${editModel>FILETYPE} === 'PDF'

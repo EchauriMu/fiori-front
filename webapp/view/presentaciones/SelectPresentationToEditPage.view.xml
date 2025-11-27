@@ -12,7 +12,6 @@
         showNavButton="true"
         navButtonPress=".onNavBack">
 
-        <!-- HEADER: switch modo múltiple + botón eliminar -->
         <headerContent>
             <Switch
                 id="multiModeSwitch"
@@ -31,7 +30,6 @@
         <content>
             <VBox class="sapUiSmallMargin">
 
-                <!-- Select All -->
                 <Toolbar visible="{= ${selectModel>/multiMode} }">
                     <CheckBox
                         text="Seleccionar todo"
@@ -39,25 +37,21 @@
                         visible="{= ${selectModel>/presentations}.length > 0 }" />
                 </Toolbar>
 
-                <!-- Loading -->
                 <BusyIndicator
                     busy="{selectModel>/loading}"
                     class="sapUiMediumMarginTop" />
 
-                <!-- Sin datos -->
                 <IllustratedMessage
                     visible="{= !${selectModel>/loading} &amp;&amp; ${selectModel>/presentations}.length === 0 }"
                     illustrationType="sapIllus-EmptyList"
                     title="{i18n>selectPresentationNoDataTitle}"
                     description="{i18n>selectPresentationNoDataDesc}" />
 
-                <!-- Error -->
                 <Text
                     text="{selectModel>/error}"
                     class="sapUiNegativeText sapUiSmallMargin"
                     visible="{= !!${selectModel>/error} }" />
 
-                <!-- TARJETAS EN FLEXBOX -->
                 <ScrollContainer
                     height="100%"
                     horizontal="false"
@@ -78,7 +72,6 @@
                                 <f:content>
                                     <VBox class="sapUiSmallMargin">
 
-                                        <!-- Título + checkbox -->
                                         <HBox
                                             justifyContent="SpaceBetween"
                                             alignItems="Center"
@@ -95,7 +88,6 @@
                                                     wrapping="true" />
                                             </VBox>
 
-                                            <!-- Checkbox sólo en modo múltiple -->
                                             <CheckBox
                                                 selected="{selectModel>selected}"
                                                 select="onToggleOne"
@@ -103,13 +95,10 @@
                                                 tooltip="Seleccionar" />
                                         </HBox>
 
-                                        <!-- Descripción completa -->
                                         <Text
                                             text="{selectModel>Descripcion}"
                                             wrapping="true"
                                             class="sapUiTinyMarginBottom" />
-
-                                        <!-- Estado + botones Editar / Eliminar -->
                                 
                                         <HBox
                                             justifyContent="SpaceBetween"
@@ -120,7 +109,6 @@
                                                 text="{= ${selectModel>ACTIVED} ? 'Activa' : 'Inactiva' }"
                                                 state="{= ${selectModel>ACTIVED} ? 'Success' : 'Warning' }" />
 
-                                            <!-- Botones sólo en modo simple -->
                                             <HBox visible="{= !${selectModel>/multiMode} }">
                                                 <Button
                                                     icon="sap-icon://edit"
