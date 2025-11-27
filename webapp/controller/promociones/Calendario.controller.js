@@ -1,3 +1,8 @@
+/**
+ * @fileOverview Controlador para la vista de calendario de promociones
+ * @author LAURA PANIAGUA
+ * @author ALBERTO PARDO
+ */
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
@@ -15,9 +20,12 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.Calendario", {
 
-        // ================================================================================
-        // LIFECYCLE METHODS
-        // ================================================================================
+        /* ================================================================================
+         * LIFECYCLE METHODS
+         * Métodos del ciclo de vida del controlador
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onInit: function () {
             const today = new Date();
@@ -47,7 +55,6 @@ sap.ui.define([
         },
 
         _onRouteMatched: function(oEvent) {
-            // Solo recargar si no hay datos cargados
             const oModel = this.getView().getModel("calendarModel");
             const aPromotions = oModel.getProperty("/promotions");
             
@@ -61,17 +68,20 @@ sap.ui.define([
             oRouter.navTo("RoutePromociones", {}, true);
         },
 
-        // ================================================================================
-        // API METHODS - CRUD OPERATIONS
-        // ================================================================================
+        /* ================================================================================
+         * API METHODS - CRUD OPERATIONS
+         * Métodos para comunicación con el backend
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         /**
          * Llama a la API REST del backend
-         * @param {string} sRelativeUrl - URL relativa del endpoint
-         * @param {string} sMethod - Método HTTP (GET, POST, etc.)
-         * @param {object} oData - Datos a enviar en el body
-         * @param {object} oParams - Parámetros de query string
-         * @returns {Promise} Promesa con la respuesta de la API
+         * sRelativeUrl - URL relativa del endpoint
+         * sMethod - Método HTTP (GET, POST, etc.)
+         * Datos a enviar en el body
+         * oParams - Parámetros de query string
+         * Promesa con la respuesta de la API
          */
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
             const dbServer = sessionStorage.getItem('DBServer');
@@ -156,9 +166,12 @@ sap.ui.define([
             }
         },
 
-        // ================================================================================
-        // BUSINESS LOGIC - FILTERS & CALENDAR
-        // ================================================================================
+        /* ================================================================================
+         * BUSINESS LOGIC - FILTERS & CALENDAR
+         * Lógica de negocio y filtros del calendario
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _applyFilters: function() {
             const oModel = this.getView().getModel("calendarModel");
@@ -219,7 +232,6 @@ sap.ui.define([
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             
-            // Empezar desde el domingo de la semana que contiene el primer día
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             
@@ -234,7 +246,6 @@ sap.ui.define([
                     const inicio = new Date(promo.FechaIni);
                     const fin = new Date(promo.FechaFin);
                     
-                    // Normalizar fechas para comparación (solo día)
                     const promoStart = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
                     const promoEnd = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate());
                     const checkDay = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
@@ -267,7 +278,6 @@ sap.ui.define([
             
             oGrid.removeAllItems();
             
-            // Crear filas de 7 días (semanas)
             let currentWeek = new sap.m.HBox();
             
             aDays.forEach((dayInfo, index) => {
@@ -285,7 +295,6 @@ sap.ui.define([
                     oVBox.addStyleClass("today");
                 }
                 
-                // Número del día
                 const oDayText = new Text({
                     text: dayInfo.day.toString()
                 }).addStyleClass("calendar-day-number");
@@ -321,7 +330,6 @@ sap.ui.define([
                             }.bind(this)
                         });
                         
-                        // Aplicar color de fondo
                         oPromoBox.addStyleClass("promo-" + this._getPromotionStatus(promo));
                         
                         oVBox.addItem(oPromoBox);
@@ -364,9 +372,12 @@ sap.ui.define([
                    oDate.getFullYear() === today.getFullYear();
         },
 
-        // ================================================================================
-        // FORMATTERS & HELPERS
-        // ================================================================================
+        /* ================================================================================
+         * FORMATTERS & HELPERS
+         * Funciones auxiliares y formateadores
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _getMonthYearText: function(oDate) {
             const oDateFormat = DateFormat.getDateInstance({
@@ -424,9 +435,12 @@ sap.ui.define([
             }
         },
 
-        // ================================================================================
-        // UI EVENT HANDLERS
-        // ================================================================================
+        /* ================================================================================
+         * UI EVENT HANDLERS
+         * Manejadores de eventos de interfaz de usuario
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onFilterChange: function() {
             this._applyFilters();

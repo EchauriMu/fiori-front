@@ -1,3 +1,8 @@
+/**
+ * @fileOverview Controlador principal para la gestión de promociones
+ * @author LAURA PANIAGUA
+ * @author ALBERTO PARDO
+ */
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
@@ -16,13 +21,16 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.Promociones", {
 
-        // ================================================================================
-        // 1. LIFECYCLE METHODS
-        // ================================================================================
+        /* ================================================================================
+         * LIFECYCLE METHODS
+         * Métodos del ciclo de vida del controlador
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onInit: function () {
             
-            // Modelo con datos para promociones
+            // Inicializar modelo de promociones
             var oModel = new JSONModel({
                 promotions: [],
                 totalPromotions: 0,
@@ -35,10 +43,7 @@ sap.ui.define([
             });
             
             this.getView().setModel(oModel, "promotionsModel");
-            
-            // Modelo para edición de promociones
             this.getView().setModel(new JSONModel({}), "editPromoModel");
-            // Modelo para edición masiva de promociones
             this.getView().setModel(new JSONModel({
                 selectedIds: [],
                 saving: false,
@@ -55,14 +60,14 @@ sap.ui.define([
                 }
             }), "bulkEditModel");
             
-            // Modelo para filtrado de productos (usado en di�logo de agregar productos)
+            // Inicializar modelo de filtrado de productos
             this.getView().setModel(new JSONModel({
                 allProducts: [],
                 filteredProducts: [],
                 paginatedProducts: [],
-                selectedPresentaciones: {},        // Selecciones temporales (antes de agregar)
-                addedPresentaciones: {},         // Agregadas (bloqueadas hasta modo gesti�n)
-                alreadyInPromotion: {},             // Ya est�n en la promoci�n en BD
+                selectedPresentaciones: {},
+                addedPresentaciones: {},
+                alreadyInPromotion: {},
                 productPresentaciones: {},
                 loading: false,
                 errorMessage: "",
@@ -85,13 +90,10 @@ sap.ui.define([
                 sortBy: "default",
                 showOnlyAdded: false,
                 isManagingSelection: false,
-                hasTemporarySelections: false       // Indica si hay selecciones temporales para mostrar bot�n Agregar
+                hasTemporarySelections: false
             }), "filterModel");
             
-            // Cargar datos automáticamente desde la API
             this.loadPromotions();
-
-            // Conectar con el router
             this.getOwnerComponent().getRouter().getRoute("RoutePromociones")
                 .attachPatternMatched(this._onRouteMatched, this);
         },
@@ -99,23 +101,22 @@ sap.ui.define([
         _onRouteMatched: function(oEvent) {
             const oModel = this.getView().getModel("promotionsModel");
             const aPromotions = oModel.getProperty("/promotions");
-            
-            // Verificar si hay un flag que indique que se debe recargar
             const bNeedsReload = this.getOwnerComponent().getModel("appView")?.getProperty("/needsPromotionsReload");
             
             if (bNeedsReload) {
-                // Limpiar flag y forzar recarga
                 this.getOwnerComponent().getModel("appView")?.setProperty("/needsPromotionsReload", false);
                 this.forceReloadPromotions();
             } else if (!aPromotions || aPromotions.length === 0) {
-                // Solo recargar si no hay datos cargados
                 this.loadPromotions();
             }
         },
 
-        // ================================================================================
-        // 2. API METHODS - CRUD OPERATIONS (CRÍTICAS PARA DEBUGGING)
-        // ================================================================================
+        /* ================================================================================
+         * API METHODS - CRUD OPERATIONS
+         * Métodos para llamadas a la API y operaciones CRUD
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
             const dbServer = sessionStorage.getItem('DBServer');
@@ -130,11 +131,10 @@ sap.ui.define([
                 oParams.LoggedUser = loggedUser;
             }
 
-            // Construir query string manualmente para manejar arrays correctamente
+            // Construir query string
             const params = new URLSearchParams();
             for (const [key, value] of Object.entries(oParams)) {
                 if (Array.isArray(value)) {
-                    // Para arrays, agregar cada elemento con el mismo nombre de parámetro
                     value.forEach(item => params.append(key, item));
                 } else {
                     params.append(key, value);
@@ -163,7 +163,6 @@ sap.ui.define([
                 return oJson;
                 
             } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
         },
@@ -177,7 +176,6 @@ sap.ui.define([
                     DBServer: 'MongoDB'
                 });
                 
-                // Estructura específica de tu API: value[0].data[0].dataRes
                 let aPromotions = [];
                 
                 if (oResponse && oResponse.value && Array.isArray(oResponse.value) && oResponse.value.length > 0) {
@@ -190,8 +188,6 @@ sap.ui.define([
                     }
                 }
                 
-                                
-                // Calcular estadísticas
                 const activePromotions = aPromotions.filter(p => this._isPromotionActive(p)).length;
                 const totalDiscount = aPromotions.reduce((sum, p) => {
                     const discount = p.DescuentoPorcentaje || p['Descuento%'] || 0;
@@ -207,10 +203,7 @@ sap.ui.define([
                 MessageToast.show(`${aPromotions.length} promociones cargadas desde el servidor`);
                 
             } catch (error) {
-                console.error("Error al cargar promociones:", error);
                 MessageBox.error("Error al cargar promociones: " + error.message);
-                
-                // Establecer valores por defecto en caso de error
                 oModel.setProperty("/promotions", []);
                 oModel.setProperty("/totalPromotions", 0);
                 oModel.setProperty("/activePromotions", 0);
@@ -221,17 +214,18 @@ sap.ui.define([
             }
         },
 
-        /**
-         * Forzar recarga de promociones (usar después de crear/editar/eliminar)
-         */
+        // Recargar promociones forzadamente
         forceReloadPromotions: function() {
-            this._isLoadingPromotions = false; // Resetear flag
+            this._isLoadingPromotions = false; 
             this.loadPromotions();
         },
 
-        // ================================================================================
-        // 3. DIALOG MANAGEMENT & EDIT OPERATIONS
-        // ================================================================================
+        /* ================================================================================
+         * DIALOG MANAGEMENT & EDIT OPERATIONS
+         * Gestión de diálogos y operaciones de edición
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _isPromotionActive: function(oPromotion) {
             if (!oPromotion) return false;
@@ -244,9 +238,12 @@ sap.ui.define([
             return now >= startDate && now <= endDate;
         },
 
-        // ================================================================================
-        // 4. FORMATTERS & HELPERS (less critical for debugging)
-        // ================================================================================
+        /* ================================================================================
+         * FORMATTERS & HELPERS
+         * Formateadores y funciones auxiliares
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
         
         formatDate: function(sDate) {
             if (!sDate) return "N/A";
@@ -303,7 +300,6 @@ sap.ui.define([
             const aSelectedItems = oTable.getSelectedItems();
             const oModel = this.getView().getModel("promotionsModel");
             
-            // Contar activas e inactivas
             let activeCount = 0;
             let inactiveCount = 0;
             
@@ -317,7 +313,6 @@ sap.ui.define([
                 }
             });
             
-            // Determinar el estado: true si hay activas, false si solo inactivas, null si mixtas
             let hasActiveSelected;
             if (activeCount > 0 && inactiveCount === 0) {
                 hasActiveSelected = true; // Solo activas
@@ -333,23 +328,23 @@ sap.ui.define([
             oModel.setProperty("/hasActiveSelected", hasActiveSelected);
         },
 
-        // ================================================================================
-        // 5. UI EVENT HANDLERS
-        // ================================================================================
+        /* ================================================================================
+         * UI EVENT HANDLERS
+         * Manejadores de eventos de la interfaz de usuario
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onRowPress: function(oEvent) {
             const oItem = oEvent.getSource();
             const oTable = this.byId("promotionsTable");
             const bSelected = oItem.getSelected();
             
-            // Toggle de selección: si está seleccionado, deseleccionar; si no, seleccionar
             oTable.setSelectedItem(oItem, !bSelected);
             
-            // Actualizar el contador de selección y estado activo
             const aSelectedItems = oTable.getSelectedItems();
             const oModel = this.getView().getModel("promotionsModel");
             
-            // Contar activas e inactivas
             let activeCount = 0;
             let inactiveCount = 0;
             
@@ -380,11 +375,11 @@ sap.ui.define([
         },
 
         onNewPromotion: function () {
-            // Navegar a la vista de creación de promociones (CrearPromocion)
             const oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RouteCrearPromocion");
         },
 
+        // Editar promoción(es) seleccionada(s)
         onEditPromotion: async function () {
             const oTable = this.byId("promotionsTable");
             const aSelectedItems = oTable.getSelectedItems();
@@ -395,7 +390,6 @@ sap.ui.define([
             }
             
             if (aSelectedItems.length > 1) {
-                // Edición masiva
                 const oModel = this.getView().getModel("promotionsModel");
                 const selectedIds = aSelectedItems.map(function (item) {
                     const ctx = item.getBindingContext("promotionsModel");
@@ -407,7 +401,6 @@ sap.ui.define([
                 return;
             }
 
-            // Edición individual
             const oContext = aSelectedItems[0].getBindingContext("promotionsModel");
             const oPromotion = oContext.getObject();
             await this._openEditDialog(oPromotion);
@@ -425,7 +418,6 @@ sap.ui.define([
                 oView.addDependent(this._editDialog);
             }
             
-            // Preparar datos para el modelo de edición
             const editData = {
                 IdPromoOK: oPromotion.IdPromoOK,
                 Titulo: oPromotion.Titulo || '',
@@ -447,7 +439,6 @@ sap.ui.define([
                 errorMessage: ''
             };
             
-            // Agrupar productos
             editData.groupedProducts = this._groupProductsBySkuid(editData.ProductosAplicables);
             editData.paginatedGroupedProducts = [];
             editData.currentPage = 1;
@@ -457,7 +448,6 @@ sap.ui.define([
             const oEditModel = this.getView().getModel("editPromoModel");
             oEditModel.setData(editData);
             
-            // Actualizar productos paginados
             this._updateEditPaginatedProducts();
             
             this._editDialog.open();
@@ -517,7 +507,6 @@ sap.ui.define([
             
             const result = Array.from(productMap.values());
             
-            // Actualizar allSelected para cada producto
             result.forEach(function(product) {
                 const totalPresentaciones = product.presentaciones.length;
                 const selectedPresentaciones = product.presentaciones.filter(p => p.selected).length;
@@ -535,14 +524,12 @@ sap.ui.define([
             const oEditModel = this.getView().getModel("editPromoModel");
             const aPresentaciones = oEditModel.getProperty(sPath + "/presentaciones");
             
-            // Seleccionar/deseleccionar todas las presentaciones del producto
             aPresentaciones.forEach(function(pres, index) {
                 oEditModel.setProperty(sPath + "/presentaciones/" + index + "/selected", bSelected);
             });
             
             oEditModel.setProperty(sPath + "/allSelected", bSelected);
             
-            // Actualizar contador global
             this._updateSelectedProductsCount();
         },
 
@@ -551,8 +538,6 @@ sap.ui.define([
             const oContext = oSource.getBindingContext("editPromoModel");
             const sPath = oContext.getPath();
             
-            // Extraer el índice del producto desde el path
-            // Ejemplo: "/paginatedGroupedProducts/0/presentaciones/1" o "/groupedProducts/0/presentaciones/1"
             const aPathParts = sPath.split("/");
             const isPaginated = aPathParts[1] === "paginatedGroupedProducts";
             const productIndex = parseInt(aPathParts[2]);
@@ -561,14 +546,12 @@ sap.ui.define([
             const basePath = isPaginated ? "/paginatedGroupedProducts/" : "/groupedProducts/";
             const oProduct = oEditModel.getProperty(basePath + productIndex);
             
-            // Verificar si todas las presentaciones están seleccionadas
             const totalPresentaciones = oProduct.presentaciones.length;
             const selectedPresentaciones = oProduct.presentaciones.filter(p => p.selected).length;
             const bAllSelected = selectedPresentaciones === totalPresentaciones;
             
             oEditModel.setProperty(basePath + productIndex + "/allSelected", bAllSelected);
             
-            // Actualizar contador global
             this._updateSelectedProductsCount();
         },
         
@@ -814,7 +797,6 @@ sap.ui.define([
             // Abrir el di�logo
             this._addProductsDialog.open();
             
-            // Cargar productos si no hay datos
             const aAllProducts = oFilterModel.getProperty("/allProducts") || [];
             if (aAllProducts.length === 0) {
                 oFilterModel.setProperty("/loading", true);
@@ -828,13 +810,11 @@ sap.ui.define([
             const oFilterModel = this.getView().getModel("filterModel");
             if (!oFilterModel) return;
             
-            // Si ya están cargados, no recargar
             const allProducts = oFilterModel.getProperty("/allProducts");
             if (allProducts && allProducts.length > 0) {
                 return;
             }
             
-            // Evitar llamadas simultáneas
             if (this._isLoadingDialogProducts) {
                 return;
             }
@@ -843,7 +823,6 @@ sap.ui.define([
             oFilterModel.setProperty("/loading", true);
             
             try {
-                // Cargar productos usando _callApi
                 const productData = await this._callApi('/ztproducts/crudProducts', 'POST', {}, {
                     ProcessType: 'GetAll'
                 });
@@ -860,10 +839,8 @@ sap.ui.define([
                     aProducts = productData;
                 }
                 
-                // Filtrar solo activos
                 aProducts = aProducts.filter(p => p.ACTIVED && !p.DELETED);
                 
-                // Cargar categor�as usando _callApi
                 const categoryData = await this._callApi('/ztcategorias/categoriasCRUD', 'POST', {}, {
                     ProcessType: 'GetAll',
                     DBServer: 'MongoDB'
@@ -879,7 +856,6 @@ sap.ui.define([
                     aCategories = categoryData.data;
                 }
                 
-                // Extraer marcas �nicas
                 const marcasSet = new Set();
                 aProducts.forEach(p => {
                     if (p.MARCA) marcasSet.add(p.MARCA);
@@ -894,15 +870,12 @@ sap.ui.define([
                 oFilterModel.setProperty("/brands", aBrands);
                 oFilterModel.setProperty("/productPresentaciones", {});
                 
-                                                
-                // Aplicar filtros para mostrar productos (manteniendo loading activo)
                 setTimeout(async () => {
                     await this._applyProductFilters();
                     oFilterModel.setProperty("/loading", false);
                 }, 100);
                 
             } catch (error) {
-                console.error("Error cargando productos:", error);
                 MessageToast.show("Error al cargar productos: " + error.message);
                 oFilterModel.setProperty("/loading", false);
             } finally {
@@ -910,11 +883,11 @@ sap.ui.define([
             }
         },
 
+        // Guardar cambios de la promoción editada
         onEditSavePromotion: async function() {
             const oEditModel = this.getView().getModel("editPromoModel");
             const oData = oEditModel.getData();
             
-            // Validaciones
             if (!oData.Titulo || oData.Titulo.trim() === "") {
                 oEditModel.setProperty("/errorMessage", "El título es obligatorio");
                 return;
@@ -991,7 +964,6 @@ sap.ui.define([
                 this.forceReloadPromotions();
                 
             } catch (error) {
-                console.error("Error al guardar:", error);
                 oEditModel.setProperty("/errorMessage", error.message || "Error al guardar la promoción");
             } finally {
                 oEditModel.setProperty("/saving", false);
@@ -1023,7 +995,6 @@ sap.ui.define([
                                 that._editDialog.close();
                                 that.loadPromotions();
                             } catch (error) {
-                                console.error("Error al eliminar:", error);
                                 oEditModel.setProperty("/errorMessage", error.message || "Error al eliminar la promoción");
                             } finally {
                                 oEditModel.setProperty("/saving", false);
@@ -1062,7 +1033,6 @@ sap.ui.define([
                             that._editDialog.close();
                             that.loadPromotions();
                         } catch (error) {
-                            console.error("Error al cambiar estado:", error);
                             oEditModel.setProperty("/errorMessage", error.message || "Error al cambiar el estado");
                         } finally {
                             oEditModel.setProperty("/saving", false);
@@ -1076,9 +1046,7 @@ sap.ui.define([
             this._editDialog.close();
         },
 
-        // ========== FIN MÉTODOS DE EDICIÓN ==========
-
-        // ========== INICIO EDICIÓN MASIVA ==========
+        // Abrir diálogo de edición masiva
         _openBulkEditDialog: async function(selectedIds) {
             const oView = this.getView();
             if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
@@ -1134,7 +1102,6 @@ sap.ui.define([
                 return;
             }
 
-            // Validaciones de consistencia
             if ((f.updateFechaIni && !f.FechaIni) || (f.updateFechaFin && !f.FechaFin)) {
                 oBulkModel.setProperty("/errorMessage", "Si actualizas fechas, ambas deben tener valor");
                 return;
@@ -1159,7 +1126,6 @@ sap.ui.define([
                     }
                 }
             } else {
-                // Si no cambia tipo, pero se intenta cambiar valores, validar también
                 if (f.updateDescuentoPorcentaje) {
                     if (f.DescuentoPorcentaje <= 0 || f.DescuentoPorcentaje > 100) {
                         oBulkModel.setProperty("/errorMessage", "El porcentaje debe estar entre 1 y 100");
@@ -1181,7 +1147,6 @@ sap.ui.define([
                 const oPromModel = this.getView().getModel("promotionsModel");
                 const aAll = oPromModel.getProperty("/promotions") || [];
 
-                // Map rápido por IdPromoOK
                 const mapById = new Map(aAll.map(p => [p.IdPromoOK, p]));
 
                 let successCount = 0;
@@ -1189,7 +1154,6 @@ sap.ui.define([
                     const promo = mapById.get(id);
                     if (!promo) continue;
 
-                    // Construir payload tomando valores actuales como base
                     const updateData = {
                         Titulo: promo.Titulo || '',
                         Descripcion: promo.Descripcion || '',
@@ -1210,7 +1174,6 @@ sap.ui.define([
                         }) : []
                     };
 
-                    // Aplicar overrides seleccionados
                     if (f.updateTitulo) updateData.Titulo = f.Titulo;
                     if (f.updateDescripcion) updateData.Descripcion = f.Descripcion;
                     if (f.updateFechaIni) updateData.FechaIni = new Date(f.FechaIni).toISOString();
@@ -1234,8 +1197,7 @@ sap.ui.define([
                         });
                         successCount++;
                     } catch (e) {
-                        // Continuar con el siguiente, acumulando errores en consola
-                        console.error('Fallo al actualizar promoción', id, e);
+                        // Error al actualizar
                     }
                 }
 
@@ -1243,7 +1205,6 @@ sap.ui.define([
                 this._bulkEditDialog.close();
                 this.loadPromotions();
             } catch (error) {
-                console.error("Error en guardado masivo:", error);
                 oBulkModel.setProperty("/errorMessage", error.message || "Error al guardar cambios");
             } finally {
                 oBulkModel.setProperty("/saving", false);
@@ -1253,8 +1214,8 @@ sap.ui.define([
         onBulkCloseDialog: function() {
             this._bulkEditDialog.close();
         },
-        // ========== FIN EDICIÓN MASIVA ==========
 
+        // Eliminar promoción(es) seleccionada(s)
         onDeletePromotion: async function () {
             const oTable = this.byId("promotionsTable");
             const aSelectedItems = oTable.getSelectedItems();
@@ -1364,6 +1325,7 @@ sap.ui.define([
             this._applyFilters();
         },
 
+        // Aplicar filtros de búsqueda y estado
         _applyFilters: function() {
             const oModel = this.getView().getModel("promotionsModel");
             const sSearchQuery = oModel.getProperty("/searchText") || "";
@@ -1373,7 +1335,6 @@ sap.ui.define([
             
             const aFilters = [];
             
-            // Filtro de búsqueda
             if (sSearchQuery && sSearchQuery.length > 0) {
                 const aSearchFilters = [
                     new Filter("Titulo", FilterOperator.Contains, sSearchQuery),
@@ -1408,7 +1369,6 @@ sap.ui.define([
                 return;
             }
             
-            // Separar IDs por estado actual (activas vs inactivas)
             const aIdsToActivate = [];
             const aIdsToDeactivate = [];
             
@@ -1417,10 +1377,8 @@ sap.ui.define([
                 const oPromotion = oContext.getObject();
                 
                 if (oPromotion.ACTIVED === true && oPromotion.DELETED !== true) {
-                    // Está activa, se desactivará
                     aIdsToDeactivate.push(oPromotion.IdPromoOK);
                 } else {
-                    // Está inactiva, se activará
                     aIdsToActivate.push(oPromotion.IdPromoOK);
                 }
             });
@@ -1487,7 +1445,6 @@ sap.ui.define([
                             oTable.removeSelections();
                             
                         } catch (error) {
-                            console.error("Error al cambiar estado:", error);
                             MessageBox.error("Error al cambiar el estado de las promociones: " + error.message);
                         }
                     }
@@ -1895,7 +1852,6 @@ sap.ui.define([
                 oFilterModel.setProperty("/allPresentacionesLoaded", true);
                 
             } catch (error) {
-                console.error("Error cargando todas las presentaciones:", error);
                 MessageToast.show("Error al cargar presentaciones: " + error.message);
             }
         },
@@ -2403,35 +2359,7 @@ sap.ui.define([
             this._applyProductFilters();
         },
         
-        onRemoveFilterChip: function(oEvent) {
-            const oSource = oEvent.getSource();
-            const sFilterKey = oSource.data("filterKey");
-            const sFilterValue = oSource.data("filterValue");
-            const oFilterModel = this.getView().getModel("filterModel");
-            const oFilters = oFilterModel.getProperty("/filters") || {};
-            
-            if (sFilterKey === "categoria") {
-                const aValues = oFilters.categorias || [];
-                oFilters.categorias = aValues.filter(v => v !== sFilterValue);
-                oFilterModel.setProperty("/filters", oFilters);
-            } else if (sFilterKey === "marca") {
-                const aValues = oFilters.marcas || [];
-                oFilters.marcas = aValues.filter(v => v !== sFilterValue);
-                oFilterModel.setProperty("/filters", oFilters);
-            } else if (sFilterKey === "precio") {
-                oFilters.precioMin = '';
-                oFilters.precioMax = '';
-                oFilterModel.setProperty("/filters", oFilters);
-            } else if (sFilterKey === "fecha") {
-                oFilters.fechaIngresoDesde = '';
-                oFilters.fechaIngresoHasta = '';
-                oFilterModel.setProperty("/filters", oFilters);
-            } else if (sFilterKey === "busqueda") {
-                oFilterModel.setProperty("/searchTerm", "");
-            }
-            
-            this._applyProductFilters();
-        },
+        /* -------------------------------------------------------------------------------- */
         
         getActiveFiltersCount: function() {
             const oFilterModel = this.getView().getModel("filterModel");

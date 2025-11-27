@@ -1,3 +1,8 @@
+/**
+ * @fileOverview Controlador para crear nuevas promociones
+ * @author LAURA PANIAGUA
+ * @author ALBERTO PARDO
+ */
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
@@ -12,9 +17,12 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.promociones.CrearPromocion", {
 
-        // ================================================================================
-        // 1. LIFECYCLE METHODS
-        // ================================================================================
+        /* ================================================================================
+         * LIFECYCLE METHODS
+         * Métodos del ciclo de vida del controlador
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onInit: function () {
             this._initializeModel();
@@ -23,17 +31,20 @@ sap.ui.define([
                 .attachPatternMatched(this._onRouteMatched, this);
         },
 
+        /* -------------------------------------------------------------------------------- */
+
         _onRouteMatched: function(oEvent) {
             this._cleanupFilterModelState();
             this._initializeModel();
             this._initializeNavContainer();
         },
 
+        /* -------------------------------------------------------------------------------- */
+
         _initializeNavContainer: function() {
             const oNavContainer = this.getView().byId("stepNavContainer");
             const oFirstPage = this.getView().byId("InfoStepPage");
             
-            // Limpiar contenedor y agregar páginas (ahora son 3 pasos)
             if (oNavContainer && oFirstPage) {
                 oNavContainer.removeAllPages();
                 oNavContainer.addPage(oFirstPage);
@@ -43,14 +54,17 @@ sap.ui.define([
             }
         },
 
+        /* -------------------------------------------------------------------------------- */
+
         onNavBack: function () {
             this._cleanupFilterModelState();
             const oRouter = this.getOwnerComponent().getRouter();
             oRouter.navTo("RoutePromociones", {}, true);
         },
 
+        /* -------------------------------------------------------------------------------- */
+
         _cleanupFilterModelState: function() {
-            // Limpiar selecciones temporales pero mantener cache de datos
             const oFilterModel = this.getView().getModel("filterModel");
             if (oFilterModel) {
                 oFilterModel.setProperty("/addedPresentaciones", {});
@@ -58,10 +72,8 @@ sap.ui.define([
                 oFilterModel.setProperty("/hasTemporarySelections", false);
                 oFilterModel.setProperty("/currentPage", 1);
                 oFilterModel.setProperty("/totalPages", 1);
-                // Mantener allPresentacionesLoaded y productPresentaciones en cache
             }
             
-            // Limpiar también el modelo createPromo
             const oCreatePromo = this.getView().getModel("createPromo");
             if (oCreatePromo) {
                 oCreatePromo.setProperty("/selectedPresentaciones", []);
@@ -75,6 +87,8 @@ sap.ui.define([
                 });
             }
         },
+
+        /* -------------------------------------------------------------------------------- */
 
         _initializeModel: function () {
             const today = new Date();
@@ -131,9 +145,12 @@ sap.ui.define([
             this.getView().setModel(oModel, "createPromo");
         },
 
-        // ================================================================================
-        // 2. API METHODS - CRUD OPERATIONS (CRÍTICAS PARA DEBUGGING)
-        // ================================================================================
+        /* ================================================================================
+         * API METHODS - CRUD OPERATIONS
+         * Métodos para llamadas a la API y operaciones CRUD
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _callApi: async function (sRelativeUrl, sMethod, oData = null, oParams = {}) {
             const dbServer = sessionStorage.getItem('DBServer');
@@ -170,14 +187,16 @@ sap.ui.define([
                 return oJson;
                 
             } catch (error) {
-                console.error(`Error en la llamada ${sRelativeUrl}:`, error);
                 throw new Error(`Error al procesar la solicitud: ${error.message || error}`);
             }
         },
 
-        // ================================================================================
-        // 4. FORMATTERS & HELPERS (less critical for debugging)
-        // ================================================================================
+        /* ================================================================================
+         * FORMATTERS & HELPERS
+         * Formateadores y funciones auxiliares
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _formatDateForInput: function(oDate) {
             const year = oDate.getFullYear();
@@ -185,6 +204,8 @@ sap.ui.define([
             const day = String(oDate.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         },
+
+        /* -------------------------------------------------------------------------------- */
 
         formatDate: function(sDate) {
             if (!sDate) return "N/A";
@@ -199,9 +220,12 @@ sap.ui.define([
             }
         },
 
-        // ================================================================================
-        // 5. UI EVENT HANDLERS
-        // ================================================================================
+        /* ================================================================================
+         * UI EVENT HANDLERS
+         * Manejadores de eventos de la interfaz de usuario
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onPlantillaChange: function(oEvent) {
             const sPlantilla = oEvent.getParameter("selectedItem").getKey();
@@ -285,9 +309,12 @@ sap.ui.define([
             }
         },
 
-        // ================================================================================
-        // 3. WIZARD NAVIGATION & STEP VALIDATION
-        // ================================================================================
+        /* ================================================================================
+         * WIZARD NAVIGATION & STEP VALIDATION
+         * Navegación del asistente y validación de pasos
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         onNextStep: async function() {
             const oModel = this.getView().getModel("createPromo");
@@ -551,14 +578,16 @@ sap.ui.define([
                     onClose: () => this.onNavBack()
                 });
             } catch (error) {
-                console.error("Error al crear promoción:", error);
                 MessageBox.error("Error al crear la promoción: " + error.message);
             }
         },
 
-        // ================================================================================
-        // 6. BUSINESS LOGIC - DATA PROCESSING & FILTERS
-        // ================================================================================
+        /* ================================================================================
+         * BUSINESS LOGIC - DATA PROCESSING & FILTERS
+         * Lógica de negocio, procesamiento de datos y filtros
+         * @author LAURA PANIAGUA
+         * @author ALBERTO PARDO
+         * ================================================================================ */
 
         _transferAddedPresentationsToModel: function() {
             const oFilterModel = this.getView().getModel("filterModel");
@@ -769,14 +798,12 @@ sap.ui.define([
                 oFilterModel.setProperty("/brands", aBrands);
                 oFilterModel.setProperty("/productPresentaciones", {});
                 
-                // Aplicar filtros
                 setTimeout(async () => {
                     await this._applyFilters();
                     oFilterModel.setProperty("/loading", false);
                 }, 100);
                 
             } catch (error) {
-                console.error("Error cargando productos:", error);
                 MessageToast.show("Error al cargar productos: " + error.message);
                 oFilterModel.setProperty("/loading", false);
             } finally {
@@ -1032,7 +1059,6 @@ sap.ui.define([
                 oFilterModel.setProperty("/allPresentacionesLoaded", true);
                 
             } catch (error) {
-                console.error("Error cargando todas las presentaciones:", error);
                 MessageToast.show("Error al cargar presentaciones: " + error.message);
             }
         },
@@ -1425,8 +1451,6 @@ sap.ui.define([
             const oFilterModel = this.getView().getModel("filterModel");
             const oFilters = oFilterModel.getProperty("/filters") || {};
             
-            // Los valores se actualizan automáticamente por el binding
-            // Solo necesitamos aplicar filtros
             this._applyFilters();
         },
 
