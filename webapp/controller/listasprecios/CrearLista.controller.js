@@ -10,6 +10,47 @@ sap.ui.define([
 
     return Controller.extend("com.invertions.sapfiorimodinv.controller.listasprecios.CrearLista", {
 
+        // =================================================================
+        //  Funciones de Validación
+        // =================================================================
+        _validation: {
+            /**
+             * Valida los datos del Paso 1 de la creación de lista de precios.
+             * @param {object} listData - El objeto con los datos del formulario.
+             * @returns {{errors: object, errorMessages: string[]}} - Un objeto con los campos erróneos y una lista de mensajes.
+             */
+            validateStep1: function (listData) {
+                const errorMessages = [];
+                const errors = {};
+
+                // Validar DESLISTA (Descripción)
+                if (!listData.DESLISTA || listData.DESLISTA.trim() === '') {
+                    errorMessages.push('La descripción es obligatoria.');
+                    errors.DESLISTA = "Error";
+                } else if (listData.DESLISTA.trim().length < 3) {
+                    errorMessages.push('La descripción debe tener al menos 3 caracteres.');
+                    errors.DESLISTA = "Error";
+                }
+
+                // Validar IDINSTITUTOOK (Instituto)
+                if (!listData.IDINSTITUTOOK || listData.IDINSTITUTOOK.trim() === '') {
+                    errorMessages.push('El instituto es obligatorio.');
+                    errors.IDINSTITUTOOK = "Error";
+                } else if (listData.IDINSTITUTOOK.trim().length < 3) {
+                    errorMessages.push('El instituto debe tener al menos 3 caracteres.');
+                    errors.IDINSTITUTOOK = "Error";
+                }
+
+                // Validar IDTIPOLISTAOK (Tipo de Lista)
+                if (!listData.IDTIPOLISTAOK || listData.IDTIPOLISTAOK.trim() === '') {
+                    errorMessages.push('El tipo de lista es obligatorio.');
+                    errors.IDTIPOLISTAOK = "Error";
+                }
+
+                return { errors, errorMessages };
+            }
+        },
+
         onInit: function () {
             const oUser = this.getOwnerComponent().getModel("appView").getProperty("/currentUser");
             
@@ -18,7 +59,7 @@ sap.ui.define([
                 IDLISTAOK: "",
                 IDINSTITUTOOK: "",
                 IDTIPOLISTAOK: "",
-                IDTIPOGENERALISTAOK: "ESPECIFICA",
+                IDTIPOGENERALISTAOK: "",
                 IDTIPOFORMULAOK: "FIJO",
                 FECHAEXPIRAINI: this._formatDateForInput(new Date()),
                 FECHAEXPIRAFIN: this._formatDateForInput(new Date(new Date().setFullYear(new Date().getFullYear() + 1))),
@@ -78,6 +119,8 @@ sap.ui.define([
             oModel.setProperty("/selectedCategories", []);
             oModel.setProperty("/searchTerm", "");
             oModel.setProperty("/RANGO_PRECIOS", "");
+            oModel.setProperty("/canProceed", false);  // ✅ DESABILITAR BOTÓN AL INICIO
+            oModel.setProperty("/buttonSaveEnabled", false);  // ✅ TAMBIÉN PASO 2
             
             // Limpiar selección de productos
             const aAllProducts = oModel.getProperty("/allProducts") || [];
@@ -109,13 +152,15 @@ sap.ui.define([
                 }
                 
                 console.log("✅ Lista encontrada:", oLista);
+                console.log("📋 IDTIPOLISTAOK de BD:", oLista.IDTIPOLISTAOK);
                 
                 const oModel = this.getView().getModel("wizardModel");
                 oModel.setProperty("/DESLISTA", oLista.DESLISTA || "");
                 oModel.setProperty("/IDLISTAOK", oLista.IDLISTAOK || sListaId);
                 oModel.setProperty("/IDINSTITUTOOK", oLista.IDINSTITUTOOK || "");
+                // ✅ IMPORTANTE: No usar || con valor default, guardar exactamente lo que viene de BD
                 oModel.setProperty("/IDTIPOLISTAOK", oLista.IDTIPOLISTAOK || "");
-                oModel.setProperty("/IDTIPOGENERALISTAOK", oLista.IDTIPOGENERALISTAOK || "ESPECIFICA");
+                oModel.setProperty("/IDTIPOGENERALISTAOK", oLista.IDTIPOGENERALISTAOK || "");
                 oModel.setProperty("/IDTIPOFORMULAOK", oLista.IDTIPOFORMULAOK || "FIJO");
                 oModel.setProperty("/FECHAEXPIRAINI", this._formatDateForInput(new Date(oLista.FECHAEXPIRAINI)));
                 oModel.setProperty("/FECHAEXPIRAFIN", this._formatDateForInput(new Date(oLista.FECHAEXPIRAFIN)));
@@ -152,8 +197,13 @@ sap.ui.define([
                 oModel.setProperty("/editingListaId", sListaId);
                 
                 console.log("✅ EditingListaId confirmado:", sListaId);
+                console.log("✅ IDTIPOLISTAOK cargado en modelo:", oModel.getProperty("/IDTIPOLISTAOK"));
                 
                 this._applyFilters();
+                
+                // ✅ Validar Paso 1 después de cargar (para edición, ya tiene datos)
+                this.onValidateStep1();
+                
                 MessageToast.show("Datos cargados para edición");
                 
             } catch (error) {
@@ -389,12 +439,25 @@ sap.ui.define([
 
         onValidateStep1: function () {
             const oModel = this.getView().getModel("wizardModel");
-            const sDESLISTA = oModel.getProperty("/DESLISTA");
-            const sINSTITUTO = oModel.getProperty("/IDINSTITUTOOK");
-            const sFechaIni = oModel.getProperty("/FECHAEXPIRAINI");
-            const sFechaFin = oModel.getProperty("/FECHAEXPIRAFIN");
             
-            const bValid = sDESLISTA && sINSTITUTO && sFechaIni && sFechaFin;
+            // Obtener valores con trim
+            const sDESLISTA = (oModel.getProperty("/DESLISTA") || "").trim();
+            const sINSTITUTO = (oModel.getProperty("/IDINSTITUTOOK") || "").trim();
+            const sIDTIPOLISTA = (oModel.getProperty("/IDTIPOGENERALISTAOK") || "").trim();
+            
+            // Validar cada campo
+            const bDesListaOk = sDESLISTA.length >= 3;
+            const bInstitutoOk = sINSTITUTO.length >= 3;
+            const bTipoListaOk = sIDTIPOLISTA !== "";
+            
+            const bValid = bDesListaOk && bInstitutoOk && bTipoListaOk;
+            
+            console.log("✓ onValidateStep1:");
+            console.log("  DESLISTA:", `"${sDESLISTA}"`, "(≥3?):", bDesListaOk);
+            console.log("  INSTITUTO:", `"${sINSTITUTO}"`, "(≥3?):", bInstitutoOk);
+            console.log("  TIPO_LISTA:", `"${sIDTIPOLISTA}"`, "(not empty?):", bTipoListaOk);
+            console.log("  → BOTÓN HABILITADO?:", bValid);
+            
             oModel.setProperty("/canProceed", bValid);
         },
 
@@ -418,6 +481,13 @@ sap.ui.define([
             
             // Validar paso 1
             this.onValidateStep1();
+        },
+
+        onTipoListaChange: function (oEvent) {
+            const oModel = this.getView().getModel("wizardModel");
+            const sSelectedKey = oEvent.getParameter("selectedItem")?.getKey() || "";
+            oModel.setProperty("/IDTIPOLISTAOK", sSelectedKey);
+            console.log("📝 Tipo de Lista seleccionado:", sSelectedKey);
         },
 
         onTipoGeneralChange: function (oEvent) {
@@ -613,9 +683,21 @@ sap.ui.define([
         onSearchProduct: function (oEvent) {
             const oModel = this.getView().getModel("wizardModel");
             const sQuery = oEvent.getParameter("query") || oEvent.getParameter("newValue") || oEvent.getParameter("value") || "";
+            
+            // Actualizar el término de búsqueda en el modelo
             oModel.setProperty("/searchTerm", sQuery);
-            console.log("Búsqueda:", sQuery);
-            this._applyFilters();
+            
+            // Limpiar debounce previo si existe
+            if (this._searchDebounceTimer) {
+                clearTimeout(this._searchDebounceTimer);
+            }
+            
+            // Aplicar filtros con debounce de 300ms para mejor performance
+            this._searchDebounceTimer = setTimeout(() => {
+                console.log("🔍 Búsqueda dinámica:", sQuery || "(vacío)");
+                this._applyFilters();
+                this._searchDebounceTimer = null;
+            }, 300);
         },
 
         onClearFilters: function () {
@@ -678,6 +760,7 @@ sap.ui.define([
                     // Filtro por marcas
                     if (aSelectedMarcas.length > 0) {
                         const bMatchMarca = aSelectedMarcas.includes(product.MARCA);
+                        console.log(`  🏷️  ${product.PRODUCTNAME}: MARCA=${product.MARCA}, match=${bMatchMarca}`);
                         if (!bMatchMarca) {
                             bPassAllFilters = false;
                         }
@@ -685,25 +768,38 @@ sap.ui.define([
                     
                     // Filtro por categorías
                     if (aSelectedCategories.length > 0 && bPassAllFilters) {
-                        const bHasCategory = Array.isArray(product.CATEGORIAS) && 
-                            product.CATEGORIAS.some(cat => aSelectedCategories.includes(cat));
+                        const aProductCategories = Array.isArray(product.CATEGORIAS) ? product.CATEGORIAS : [];
+                        const bHasCategory = aProductCategories.some(cat => aSelectedCategories.includes(cat));
+                        console.log(`  📂 ${product.PRODUCTNAME}: CATEGORIAS=${JSON.stringify(aProductCategories)}, match=${bHasCategory}`);
                         if (!bHasCategory) {
                             bPassAllFilters = false;
                         }
                     }
                     
-                    // Filtro por búsqueda
+                    // Filtro por búsqueda - BÚSQUEDA DINÁMICA COMPLETA
                     if (sSearchTerm && bPassAllFilters) {
                         const bMatchSKU = product.SKUID && product.SKUID.toLowerCase().includes(sSearchTerm);
                         const bMatchName = product.PRODUCTNAME && product.PRODUCTNAME.toLowerCase().includes(sSearchTerm);
                         const bMatchMarca = product.MARCA && product.MARCA.toLowerCase().includes(sSearchTerm);
+                        const bMatchDescription = product.DESCRIPCION && product.DESCRIPCION.toLowerCase().includes(sSearchTerm);
                         
-                        if (!bMatchSKU && !bMatchName && !bMatchMarca) {
+                        // Si al menos uno coincide, el producto pasa el filtro de búsqueda
+                        const bMatchSearch = bMatchSKU || bMatchName || bMatchMarca || bMatchDescription;
+                        
+                        if (!bMatchSearch) {
                             bPassAllFilters = false;
                         }
+                        
+                        console.log(`  🔍 "${product.PRODUCTNAME}": SKU=${bMatchSKU}, Nombre=${bMatchName}, Marca=${bMatchMarca}, Descripción=${bMatchDescription} → Match=${bMatchSearch}`);
                     }
                     
                     // Filtro por rango de precio
+                    if (bPassAllFilters && sRangoPrecio) {
+                        // Aquí puedes agregar lógica de rango de precio si es necesaria
+                        // Por ahora, solo validar que sRangoPrecio no hace fallar el filtro
+                    }
+                    
+                    // Agregar a disponibles solo si pasó todos los filtros
                     if (bPassAllFilters) {
                         aAvailableProducts.push(product);
                     }
@@ -712,6 +808,7 @@ sap.ui.define([
             
             console.log("📍 Productos en pila (seleccionados):", aSelectedProductsInPile.length);
             console.log("📍 Productos disponibles (filtrados):", aAvailableProducts.length);
+            console.log("📝 Detalle productos disponibles:", aAvailableProducts.map(p => ({ name: p.PRODUCTNAME, sku: p.SKUID, cats: p.CATEGORIAS })));
             console.log("🔄 ===== FIN FILTROS =====");
             
             // Actualizar el modelo con ambos arrays
@@ -733,7 +830,9 @@ sap.ui.define([
             if (sSearchTerm) iActiveFilters++;
             if (sRangoPrecio) iActiveFilters++;
             
-            oModel.setProperty("/activeFilterCount", iActiveFilters)        },
+            oModel.setProperty("/activeFilterCount", iActiveFilters);
+            oModel.refresh(true);
+        },
         
         _updatePaginatedProducts: function () {
             const oModel = this.getView().getModel("wizardModel");
@@ -865,11 +964,7 @@ sap.ui.define([
             
             if (iCurrentStep === 1) {
                 // Paso 1 - validar y pasar al paso 2
-                const sDESLISTA = oModel.getProperty("/DESLISTA");
-                const sINSTITUTO = oModel.getProperty("/IDINSTITUTOOK");
-                
-                if (!sDESLISTA || !sINSTITUTO) {
-                    MessageBox.error("Completa los campos: Descripción e Instituto.");
+                if (!this._validateStep1()) {
                     return;
                 }
                 
@@ -889,6 +984,54 @@ sap.ui.define([
                 console.log("✅ Guardando lista con", aSelectedProducts.length, "productos");
                 this._saveLista();
             }
+        },
+
+        _validateStep1: function() {
+            const oModel = this.getView().getModel("wizardModel");
+            
+            // Obtener valores DIRECTAMENTE del modelo (no cached)
+            const sDESLISTA = (oModel.getProperty("/DESLISTA") || "").trim();
+            const sINSTITUTO = (oModel.getProperty("/IDINSTITUTOOK") || "").trim();
+            const sIDTIPOLISTA = (oModel.getProperty("/IDTIPOLISTAOK") || "").trim();
+            
+            console.log("🔍 ===== VALIDANDO PASO 1 =====");
+            console.log("  DESLISTA:", `"${sDESLISTA}"`, "length:", sDESLISTA.length);
+            console.log("  INSTITUTO:", `"${sINSTITUTO}"`, "length:", sINSTITUTO.length);
+            console.log("  TIPO_LISTA:", `"${sIDTIPOLISTA}"`, "length:", sIDTIPOLISTA.length);
+            
+            // Validar DIRECTAMENTE sin usar el esquema
+            const errorMessages = [];
+            
+            // Validar DESLISTA
+            if (!sDESLISTA) {
+                errorMessages.push('La descripción es obligatoria.');
+            } else if (sDESLISTA.length < 3) {
+                errorMessages.push('La descripción debe tener al menos 3 caracteres.');
+            }
+            
+            // Validar INSTITUTO
+            if (!sINSTITUTO) {
+                errorMessages.push('El instituto es obligatorio.');
+            } else if (sINSTITUTO.length < 3) {
+                errorMessages.push('El instituto debe tener al menos 3 caracteres.');
+            }
+            
+            // Validar TIPO_LISTA
+            if (!sIDTIPOLISTA) {
+                errorMessages.push('El tipo de lista es obligatorio.');
+            }
+            
+            console.log("📋 Errores encontrados:", errorMessages.length);
+            
+            if (errorMessages.length > 0) {
+                const sErrorText = errorMessages.map(e => `• ${e}`).join("\n");
+                console.log("❌ Mostrando errores:", sErrorText);
+                MessageBox.error("Errores de Validación\n\n" + sErrorText);
+                return false;
+            }
+            
+            console.log("✅ ===== VALIDACIÓN EXITOSA =====");
+            return true;
         },
 
         onWizardBack: function () {
@@ -957,23 +1100,21 @@ sap.ui.define([
                     }
                 }
                 
-                const payload = {
-                    IDLISTAOK: sIdListaOK,
-                    SKUSIDS: JSON.stringify(aSKUIDs),
-                    IDINSTITUTOOK: sINSTITUTO.trim(),
-                    IDLISTABK: "",
-                    DESLISTA: sDESLISTA.trim(),
-                    FECHAEXPIRAINI: oModel.getProperty("/FECHAEXPIRAINI"),
-                    FECHAEXPIRAFIN: oModel.getProperty("/FECHAEXPIRAFIN"),
-                    IDTIPOLISTAOK: sIDTIPOLISTA || "GENERAL",
-                    IDTIPOGENERALISTAOK: oModel.getProperty("/IDTIPOGENERALISTAOK") || "ESPECIFICA",
-                    IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK") || "FIJO",
-                    REGUSER: oModel.getProperty("/REGUSER"),
-                    ACTIVED: true,
-                    DELETED: false
-                };
-                
-                console.log("📤 Payload a enviar:", JSON.stringify(payload, null, 2));
+            const payload = {
+                IDLISTAOK: sIdListaOK,
+                SKUSIDS: JSON.stringify(aSKUIDs),
+                IDINSTITUTOOK: sINSTITUTO.trim(),
+                IDLISTABK: "",
+                DESLISTA: sDESLISTA.trim(),
+                FECHAEXPIRAINI: oModel.getProperty("/FECHAEXPIRAINI"),
+                FECHAEXPIRAFIN: oModel.getProperty("/FECHAEXPIRAFIN"),
+                IDTIPOLISTAOK: sIDTIPOLISTA || "",
+                IDTIPOGENERALISTAOK: oModel.getProperty("/IDTIPOGENERALISTAOK") || "ESPECIFICA",
+                IDTIPOFORMULAOK: oModel.getProperty("/IDTIPOFORMULAOK") || "FIJO",
+                REGUSER: oModel.getProperty("/REGUSER"),
+                ACTIVED: true,
+                DELETED: false
+            };                console.log("📤 Payload a enviar:", JSON.stringify(payload, null, 2));
                 
                 const sProcessType = bIsEditing ? 'UpdateOne' : 'AddOne';
                 console.log("🔄 ProcessType:", sProcessType);

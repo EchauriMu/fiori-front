@@ -2,8 +2,8 @@
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:f="sap.ui.layout.form"
-    xmlns:l="sap.ui.layout"
->
+    xmlns:l="sap.ui.layout">
+
     <Dialog
         id="idListaWizardDialog"
         title="Nueva Lista de Precios"
@@ -12,32 +12,32 @@
         contentHeight="80vh"
         contentWidth="80vw"
         resizable="true"
-        draggable="true"
-    >
+        draggable="true">
+
         <content>
-            <Wizard 
+            <Wizard
                 id="idListaWizard"
                 complete=".onSaveNewLista"
                 finishButtonText="Guardar"
-                class="sapUiNoMargin sapUiNoPadding"
-            >
+                class="sapUiNoMargin sapUiNoPadding">
+
                 <!-- PASO 1: SELECCIÓN DE PRODUCTOS -->
                 <WizardStep
                     id="paso1"
                     title="Paso 1: Selección de Productos"
-                    validated="true"
-                >
+                    validated="true">
+
                     <ScrollContainer height="100%" width="100%">
                         <l:Splitter orientation="Horizontal" height="100%">
                             <l:contentAreas>
                                 <!-- Panel Izquierdo: Filtros -->
                                 <VBox class="sapUiTinyMargin" width="35%">
-                                    <Panel 
+                                    <Panel
                                         headerText="Filtros Avanzados"
                                         expandable="true"
                                         expanded="true"
-                                        width="100%"
-                                    >
+                                        width="100%">
+
                                         <content>
                                             <VBox class="sapUiSmallMargin">
                                                 <!-- Botón Limpiar Filtros -->
@@ -46,8 +46,7 @@
                                                     type="Ghost"
                                                     icon="sap-icon://clear-filter"
                                                     press=".onClearFiltersWizard"
-                                                    class="sapUiSmallMarginBottom"
-                                                />
+                                                    class="sapUiSmallMarginBottom"/>
 
                                                 <!-- Marca -->
                                                 <Label text="Marcas de Productos:" class="sapUiForceBold sapUiSmallMarginTop"/>
@@ -57,9 +56,8 @@
                                                     placeholder="Selecciona marcas..."
                                                     width="100%"
                                                     selectionChange=".onMarcasSelectionChange"
-                                                    class="sapUiSmallMarginBottom"
-                                                >
-                                                    <core:Item key="{detailView>key}" text="{detailView>text} ({detailView>count})"/>
+                                                    class="sapUiSmallMarginBottom">
+                                                    <core:Item key="{detailView>/key}" text="{detailView>/text} ({detailView>/count})"/>
                                                 </MultiComboBox>
 
                                                 <!-- Categoría -->
@@ -70,9 +68,8 @@
                                                     placeholder="Selecciona categorías..."
                                                     width="100%"
                                                     selectionChange=".onCategoriasSelectionChange"
-                                                    class="sapUiSmallMarginBottom"
-                                                >
-                                                    <core:Item key="{detailView>CATID}" text="{detailView>Nombre}"/>
+                                                    class="sapUiSmallMarginBottom">
+                                                    <core:Item key="{detailView>/CATID}" text="{detailView>/Nombre}"/>
                                                 </MultiComboBox>
 
                                                 <!-- Rango de Precios -->
@@ -83,9 +80,8 @@
                                                     selectedKey="{detailView>/wizardFilters/selectedRango}"
                                                     width="100%"
                                                     change=".onRangoPreciosStep2Change"
-                                                    class="sapUiSmallMarginBottom"
-                                                >
-                                                    <core:Item key="{detailView>key}" text="{detailView>text}"/>
+                                                    class="sapUiSmallMarginBottom">
+                                                    <core:Item key="{detailView>/key}" text="{detailView>/text}"/>
                                                 </Select>
 
                                                 <!-- Fecha de Ingreso (Desde) -->
@@ -96,8 +92,7 @@
                                                     displayFormat="dd/MM/yyyy"
                                                     width="100%"
                                                     change=".onFechaIngresoDesdeChange"
-                                                    class="sapUiSmallMarginBottom"
-                                                />
+                                                    class="sapUiSmallMarginBottom"/>
 
                                                 <!-- Fecha de Ingreso (Hasta) -->
                                                 <Label text="Fecha de Ingreso (Hasta):" class="sapUiForceBold sapUiSmallMarginTop"/>
@@ -107,15 +102,13 @@
                                                     displayFormat="dd/MM/yyyy"
                                                     width="100%"
                                                     change=".onFechaIngresoHastaChange"
-                                                    class="sapUiSmallMarginBottom"
-                                                />
+                                                    class="sapUiSmallMarginBottom"/>
 
                                                 <!-- Contador de filtros -->
                                                 <HBox class="sapUiSmallMarginTop">
                                                     <ObjectStatus
                                                         text="{= ${detailView>/wizardFilters/activeFilterCount} + ' filtros activos'}"
-                                                        state="{= ${detailView>/wizardFilters/activeFilterCount} > 0 ? 'Information' : 'None' }"
-                                                    />
+                                                        state="{= ${detailView>/wizardFilters/activeFilterCount} > 0 ? 'Information' : 'None' }"/>
                                                 </HBox>
                                             </VBox>
                                         </content>
@@ -130,21 +123,18 @@
                                             placeholder="Buscar por nombre, SKU, marca o categoría..."
                                             liveChange=".onSearchTermChange"
                                             width="100%"
-                                            class="sapUiSmallMarginEnd"
-                                        />
+                                            class="sapUiSmallMarginEnd"/>
                                     </HBox>
 
                                     <!-- Contador -->
                                     <HBox alignItems="Center" class="sapUiSmallMarginBottom">
-                                        <Text 
+                                        <Text
                                             text="{= 'Seleccionar todos (' + ${detailView>/filteredProductsWizard/length} + ')'}"
-                                            class="sapUiForceBold"
-                                        />
+                                            class="sapUiForceBold"/>
                                         <ToolbarSpacer/>
-                                        <Text 
+                                        <Text
                                             text="{= ${detailView>/wizardData/selectedProducts/length} + ' producto(s) seleccionado(s)'}"
-                                            class="sapUiForceBold"
-                                        />
+                                            class="sapUiForceBold"/>
                                     </HBox>
 
                                     <!-- Lista de Productos -->
@@ -153,14 +143,13 @@
                                             <VBox width="100%">
                                                 <HBox alignItems="Center" class="sapUiSmallMargin">
                                                     <CheckBox
-                                                        selected="{detailView>selected}"
+                                                        selected="{detailView>/selected}"
                                                         select=".onProductSelectWizard"
-                                                        class="sapUiSmallMarginEnd"
-                                                    />
+                                                        class="sapUiSmallMarginEnd"/>
                                                     <VBox>
-                                                        <Title level="H5" text="{detailView>PRODUCTNAME}" class="sapUiTinyMarginBottom"/>
-                                                        <Text text="SKU: {detailView>SKUID} • Marca: {detailView>MARCA}" class="sapUiSmallText"/>
-                                                        <Text text="{detailView>DESSKU}" class="sapUiSmallText sapUiGreyText"/>
+                                                        <Title level="H5" text="{detailView>/PRODUCTNAME}" class="sapUiTinyMarginBottom"/>
+                                                        <Text text="SKU: {detailView>/SKUID} • Marca: {detailView>/MARCA}" class="sapUiSmallText"/>
+                                                        <Text text="{detailView>/DESSKU}" class="sapUiSmallText sapUiGreyText"/>
                                                     </VBox>
                                                 </HBox>
                                             </VBox>
@@ -172,8 +161,7 @@
                                         text="No hay productos que coincidan con los filtros aplicados"
                                         type="Information"
                                         showCloseButton="false"
-                                        visible="{= ${detailView>/filteredProductsWizard}.length === 0 }"
-                                    />
+                                        visible="{= ${detailView>/filteredProductsWizard}.length === 0 }"/>
                                 </VBox>
                             </l:contentAreas>
                         </l:Splitter>
@@ -184,12 +172,12 @@
                 <WizardStep
                     id="paso2"
                     title="Paso 2: Información General"
-                    validated="true"
-                >
+                    validated="true">
+
                     <ScrollContainer height="100%" width="100%">
                         <VBox class="sapUiTinyMargin" width="100%">
                             <Title level="H3" text="Configuración Básica de la Lista" class="sapUiTinyMarginBottom"/>
-                            
+
                             <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanXL="2" labelSpanL="2" labelSpanM="3" labelSpanS="12" emptySpanXL="2" emptySpanL="2" emptySpanM="1" emptySpanS="0" class="sapUiNoMargin">
                                 <f:content>
                                     <!-- ID de la Lista -->
@@ -197,31 +185,27 @@
                                     <Input
                                         value="{detailView>/wizardData/IDLISTAOK}"
                                         placeholder="Ej: LISTA-MAYOREO-2025"
-                                        width="100%"
-                                    />
+                                        width="100%"/>
 
                                     <!-- Descripción de la lista -->
                                     <Label text="Descripción" required="true"/>
                                     <Input
                                         value="{detailView>/wizardData/DESLISTA}"
                                         placeholder="Ej: Lista de precios Verano 2024"
-                                        width="100%"
-                                    />
+                                        width="100%"/>
 
                                     <!-- Instituto -->
                                     <Label text="Instituto" required="true"/>
                                     <Input
                                         value="{detailView>/wizardData/IDINSTITUTOOK}"
                                         placeholder="Ej: INSTITUTO-XYZ"
-                                        width="100%"
-                                    />
+                                        width="100%"/>
 
                                     <!-- Tipo de Lista -->
                                     <Label text="Tipo de Lista" required="true"/>
                                     <Select
                                         selectedKey="{detailView>/wizardData/IDTIPOLISTAOK}"
-                                        width="100%"
-                                    >
+                                        width="100%">
                                         <core:Item key="LISTA_BASE" text="Lista Base"/>
                                         <core:Item key="LISTA_MAYORISTA" text="Lista Mayorista"/>
                                         <core:Item key="LISTA_MINORISTA" text="Lista Minorista"/>
@@ -236,12 +220,11 @@
 
                                     <!-- Tipo General de Lista -->
                                     <Label text="Tipo General de Lista"/>
-                                    <RadioButtonGroup 
+                                    <RadioButtonGroup
                                         columns="3"
                                         selectedIndex="{= ${detailView>/wizardData/IDTIPOGENERALISTAOK} === 'ESPECIFICA' ? 0 : (${detailView>/wizardData/IDTIPOGENERALISTAOK} === 'GENERAL' ? 1 : 2) }"
                                         select=".onTipoGeneralChange"
-                                        width="100%"
-                                    >
+                                        width="100%">
                                         <RadioButton text="Específica"/>
                                         <RadioButton text="General"/>
                                         <RadioButton text="Todos"/>
@@ -249,12 +232,11 @@
 
                                     <!-- Tipo de Fórmula -->
                                     <Label text="Tipo de Fórmula"/>
-                                    <RadioButtonGroup 
+                                    <RadioButtonGroup
                                         columns="3"
                                         selectedIndex="{= ${detailView>/wizardData/IDTIPOFORMULAOK} === 'FIJO' ? 0 : (${detailView>/wizardData/IDTIPOFORMULAOK} === 'PORCENTAJE' ? 1 : 2) }"
                                         select=".onTipoFormulaChange"
-                                        width="100%"
-                                    >
+                                        width="100%">
                                         <RadioButton text="Fijo"/>
                                         <RadioButton text="Porcentaje"/>
                                         <RadioButton text="Escala"/>
@@ -265,16 +247,14 @@
                                     <DatePicker
                                         value="{path: 'detailView>/wizardData/FECHAEXPIRAINI', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
                                         displayFormat="dd/MM/yyyy"
-                                        width="100%"
-                                    />
+                                        width="100%"/>
 
                                     <!-- Fin de Vigencia -->
                                     <Label text="Fin de Vigencia"/>
                                     <DatePicker
                                         value="{path: 'detailView>/wizardData/FECHAEXPIRAFIN', type: 'sap.ui.model.type.Date', formatOptions: { pattern: 'yyyy-MM-dd' }}"
                                         displayFormat="dd/MM/yyyy"
-                                        width="100%"
-                                    />
+                                        width="100%"/>
                                 </f:content>
                             </f:SimpleForm>
                         </VBox>
@@ -286,8 +266,7 @@
         <endButton>
             <Button
                 text="Cancelar"
-                press=".onCloseWizard"
-            />
+                press=".onCloseWizard"/>
         </endButton>
     </Dialog>
 </core:FragmentDefinition>

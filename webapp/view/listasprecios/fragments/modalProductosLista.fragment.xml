@@ -1,8 +1,8 @@
 <core:FragmentDefinition
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
-    xmlns:f="sap.ui.layout.form"
->
+    xmlns:f="sap.ui.layout.form">
+
     <Dialog
         id="idProductosListaModalDialog"
         title="Productos Registrados en esta Lista"
@@ -10,37 +10,34 @@
         contentWidth="1200px"
         contentHeight="95vh"
         resizable="true"
-        draggable="true"
-    >
+        draggable="true">
+
         <content>
             <ScrollContainer height="100%" width="100%" vertical="true" horizontal="false">
                 <VBox class="sapUiLargeMargin" width="100%">
-                    
+
                     <!-- Encabezado -->
                     <Title level="H2" text="{detailView>/DESLISTA}" class="sapUiForceBold sapUiSmallMarginBottom"/>
-                    
+
                     <!-- Buscador y Contador -->
                     <HBox alignItems="Center" class="sapUiSmallMarginBottom">
-                        <SearchField 
+                        <SearchField
                             id="idSearchProductos"
                             placeholder="Buscar por producto o SKU..."
                             value="{detailView>/searchSKU}"
                             liveChange=".onSearchProductos"
-                            width="400px"
-                        />
-                        <Text 
-                            text="{= 'Total de SKUs: ' + ${detailView>/SKUSIDS/length}}" 
-                            class="sapUiSmallMarginStart sapUiForceBold"
-                        />
+                            width="400px"/>
+                        <Text
+                            text="{= 'Total de SKUs: ' + ${detailView>/SKUSIDS/length}}"
+                            class="sapUiSmallMarginStart sapUiForceBold"/>
                     </HBox>
 
                     <!-- Loading -->
-                    <VBox 
+                    <VBox
                         visible="{detailView>/loadingProductos}"
                         alignItems="Center"
                         justifyContent="Center"
-                        height="300px"
-                    >
+                        height="300px">
                         <BusyIndicator busy="true"/>
                         <Text text="Cargando productos..." class="sapUiSmallMarginTop sapUiGreyText"/>
                     </VBox>
@@ -51,8 +48,7 @@
                         type="Error"
                         showCloseButton="false"
                         visible="{= !!${detailView>/errorProductos}}"
-                        class="sapUiSmallMarginBottom"
-                    />
+                        class="sapUiSmallMarginBottom"/>
 
                     <!-- Lista de Productos con Panels Expandibles -->
                     <VBox class="sapUiSmallMargin">
@@ -63,30 +59,30 @@
                                     <Panel
                                         expandable="true"
                                         expanded="false"
-                                        headerText="{detailView>SKUID} - {detailView>PRODUCTNAME}"
-                                        width="100%"
-                                    >
+                                        headerText="{detailView>/SKUID} - {detailView>/PRODUCTNAME}"
+                                        width="100%">
+
                                         <content>
                                             <VBox class="sapUiSmallMargin">
                                                 <!-- Panel de Imágenes Expandible con Carousel -->
-                                                <Panel 
+                                                <Panel
                                                     headerText="Imágenes"
                                                     expandable="true"
                                                     expanded="false"
                                                     width="100%"
-                                                    class="sapUiSmallMarginBottom"
-                                                >
+                                                    class="sapUiSmallMarginBottom">
+
                                                     <content>
                                                         <VBox class="sapUiSmallMargin">
                                                             <!-- Carousel si hay imágenes cargadas -->
-                                                            <VBox visible="{= ${detailView>imageFiles} &amp;&amp; ${detailView>imageFiles}.length > 0}">
+                                                            <VBox visible="{= ${detailView>/imageFiles} &amp;&amp; ${detailView>/imageFiles}.length > 0}">
                                                                 <Carousel
                                                                     class="sapUiSmallMarginTop"
                                                                     height="220px"
-                                                                    pages="{path: 'detailView>imageFiles'}">
+                                                                    pages="{path: 'detailView>/imageFiles'}">
                                                                     <Image
-                                                                        src="{detailView>FILE}"
-                                                                        alt="{detailView>INFOAD}"
+                                                                        src="{detailView>/FILE}"
+                                                                        alt="{detailView>/INFOAD}"
                                                                         densityAware="false"
                                                                         width="170px"
                                                                         height="150px"/>
@@ -94,96 +90,93 @@
                                                             </VBox>
 
                                                             <!-- Fallback imagen simple si no hay carousel -->
-                                                            <VBox alignItems="Center" justifyContent="Center" visible="{= !${detailView>imageFiles} || ${detailView>imageFiles}.length === 0}">
-                                                                <Image 
-                                                                    src="{detailView>FOTOPRODUCTO}"
+                                                            <VBox alignItems="Center" justifyContent="Center" visible="{= !${detailView>/imageFiles} || ${detailView>/imageFiles}.length === 0}">
+                                                                <Image
+                                                                    src="{detailView>/FOTOPRODUCTO}"
                                                                     width="300px"
                                                                     height="300px"
                                                                     densityAware="false"
-                                                                    visible="{= !!${detailView>FOTOPRODUCTO}}"
-                                                                />
+                                                                    visible="{= !!${detailView>/FOTOPRODUCTO}}"/>
                                                             </VBox>
                                                         </VBox>
                                                     </content>
                                                 </Panel>
 
                                                 <!-- Presentaciones Panel -->
-                                                <Panel 
-                                                    headerText="{= 'Presentaciones (' + (${detailView>presentaciones} &amp;&amp; ${detailView>presentaciones}.length ? ${detailView>presentaciones}.length : 0) + ')'}"
+                                                <Panel
+                                                    headerText="{= 'Presentaciones (' + (${detailView>/presentaciones} &amp;&amp; ${detailView>/presentaciones}.length ? ${detailView>/presentaciones}.length : 0) + ')'}"
                                                     expandable="true"
                                                     expanded="false"
-                                                    width="100%"
-                                                >
+                                                    width="100%">
+
                                                     <content>
                                                         <VBox>
                                                             <!-- Lista de Presentaciones -->
-                                                            <VBox visible="{= ${detailView>presentaciones} &amp;&amp; ${detailView>presentaciones}.length > 0}">
-                                                                <List items="{detailView>presentaciones}">
-                                                                                    <CustomListItem type="Inactive">
+                                                            <VBox visible="{= ${detailView>/presentaciones} &amp;&amp; ${detailView>/presentaciones}.length > 0}">
+                                                                <List items="{detailView>/presentaciones}">
+                                                                    <CustomListItem type="Inactive">
                                                                         <VBox width="100%">
                                                                             <!-- Panel Expandible para cada Presentación -->
                                                                             <Panel
                                                                                 expandable="true"
                                                                                 expanded="false"
-                                                                                headerText="{detailView>NOMBREPRESENTACION}"
-                                                                                width="100%"
-                                                                            >
+                                                                                headerText="{detailView>/NOMBREPRESENTACION}"
+                                                                                width="100%">
+
                                                                                 <content>
                                                                                     <VBox class="sapUiSmallMargin">
                                                                                         <!-- Info General de Presentación -->
                                                                                         <f:SimpleForm layout="ResponsiveGridLayout" editable="false" class="sapUiSmallMarginBottom">
                                                                                             <f:content>
                                                                                                 <Label text="Código Presentación"/>
-                                                                                                <Text text="{detailView>IdPresentaOK}" class="sapUiForceBold"/>
+                                                                                                <Text text="{detailView>/IdPresentaOK}" class="sapUiForceBold"/>
 
                                                                                                 <Label text="Nombre"/>
-                                                                                                <Text text="{detailView>NOMBREPRESENTACION}"/>
+                                                                                                <Text text="{detailView>/NOMBREPRESENTACION}"/>
 
                                                                                                 <Label text="Descripción"/>
-                                                                                                <Text text="{detailView>Descripcion}"/>
+                                                                                                <Text text="{detailView>/Descripcion}"/>
 
                                                                                                 <Label text="Código de Barras"/>
-                                                                                                <Text text="{detailView>BARCODE}"/>
+                                                                                                <Text text="{detailView>/BARCODE}"/>
 
                                                                                                 <Label text="Costo Inicial"/>
-                                                                                                <Text text="{detailView>CostoIni}"/>
+                                                                                                <Text text="{detailView>/CostoIni}"/>
 
                                                                                                 <Label text="Costo Final"/>
-                                                                                                <Text text="{detailView>CostoFin}"/>
+                                                                                                <Text text="{detailView>/CostoFin}"/>
 
                                                                                                 <Label text="Registrado por"/>
-                                                                                                <Text text="{detailView>REGUSER}"/>
+                                                                                                <Text text="{detailView>/REGUSER}"/>
 
                                                                                                 <Label text="Fecha Registro"/>
-                                                                                                <Text text="{detailView>REGDATE}"/>
+                                                                                                <Text text="{detailView>/REGDATE}"/>
 
                                                                                                 <Label text="Estado"/>
                                                                                                 <VBox>
-                                                                                                    <ObjectStatus 
-                                                                                                        state="{= ${detailView>ACTIVED} ? 'Success' : 'Error' }"
-                                                                                                        text="{= ${detailView>ACTIVED} ? 'Activo' : 'Inactivo' }"
-                                                                                                    />
+                                                                                                    <ObjectStatus
+                                                                                                        state="{= ${detailView>/ACTIVED} ? 'Success' : 'Error' }"
+                                                                                                        text="{= ${detailView>/ACTIVED} ? 'Activo' : 'Inactivo' }"/>
                                                                                                 </VBox>
                                                                                             </f:content>
                                                                                         </f:SimpleForm>
 
                                                                                         <!-- Imagen de Presentación (si existe) -->
-                                                                                        <Panel 
+                                                                                        <Panel
                                                                                             headerText="Imágenes"
                                                                                             expandable="true"
                                                                                             expanded="false"
                                                                                             width="100%"
-                                                                                            visible="{= !!${detailView>FOTOPRODUCTO}}"
-                                                                                            class="sapUiSmallMarginBottom"
-                                                                                        >
+                                                                                            visible="{= !!${detailView>/FOTOPRODUCTO}}"
+                                                                                            class="sapUiSmallMarginBottom">
+
                                                                                             <content>
                                                                                                 <VBox alignItems="Center" justifyContent="Center" class="sapUiSmallMargin">
-                                                                                                    <Image 
-                                                                                                        src="{detailView>FOTOPRODUCTO}"
+                                                                                                    <Image
+                                                                                                        src="{detailView>/FOTOPRODUCTO}"
                                                                                                         width="250px"
                                                                                                         height="250px"
-                                                                                                        densityAware="false"
-                                                                                                    />
+                                                                                                        densityAware="false"/>
                                                                                                 </VBox>
                                                                                             </content>
                                                                                         </Panel>
@@ -195,7 +188,7 @@
                                                                 </List>
                                                             </VBox>
                                                             <!-- Sin presentaciones -->
-                                                            <MessageStrip text="Sin presentaciones registradas" type="Information" showCloseButton="false" visible="{= !${detailView>presentaciones} || ${detailView>presentaciones}.length === 0}"/>
+                                                            <MessageStrip text="Sin presentaciones registradas" type="Information" showCloseButton="false" visible="{= !${detailView>/presentaciones} || ${detailView>/presentaciones}.length === 0}"/>
                                                         </VBox>
                                                     </content>
                                                 </Panel>
@@ -212,8 +205,7 @@
                         text="No hay productos registrados en esta lista"
                         type="Information"
                         showCloseButton="false"
-                        visible="{= !${detailView>/productosLista} || ${detailView>/productosLista}.length === 0}"
-                    />
+                        visible="{= !${detailView>/productosLista} || ${detailView>/productosLista}.length === 0}"/>
 
                 </VBox>
             </ScrollContainer>
@@ -224,15 +216,13 @@
                 text="Guardar Precios"
                 type="Emphasized"
                 enabled="{= !${detailView>/saving}}"
-                press=".onGuardarPrecios"
-            />
+                press=".onGuardarPrecios"/>
         </beginButton>
 
         <endButton>
             <Button
                 text="Cerrar"
-                press=".onCloseProductosDialog"
-            />
+                press=".onCloseProductosDialog"/>
         </endButton>
     </Dialog>
 </core:FragmentDefinition>

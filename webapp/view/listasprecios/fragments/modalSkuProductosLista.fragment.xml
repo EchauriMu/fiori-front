@@ -1,39 +1,37 @@
 <core:FragmentDefinition
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
-    xmlns:f="sap.ui.layout.form"
->
+    xmlns:f="sap.ui.layout.form">
+
     <Dialog
         id="idProductosListaDialog"
         title="Productos y Presentaciones"
         type="Message"
         contentWidth="1100px"
-        contentHeight="75vh"
-    >
+        contentHeight="75vh">
+
         <content>
             <VBox class="sapUiSmallMargin">
-                
+
                 <!-- Encabezado -->
                 <Title level="H3" text="{detailView>/DESLISTA}" class="sapUiForceBold sapUiSmallMarginBottom"/>
                 <Text text="{= 'Total de SKUs: ' + ${detailView>/SKUSIDS/length}}" class="sapUiSmallText sapUiGreyText sapUiSmallMarginBottom"/>
 
                 <!-- Buscador -->
                 <HBox alignItems="Center" class="sapUiSmallMarginBottom">
-                    <SearchField 
+                    <SearchField
                         placeholder="Buscar por producto o SKU..."
                         value="{detailView>/searchSKU}"
                         width="350px"
-                        liveChange=".onSearchProductos"
-                    />
+                        liveChange=".onSearchProductos"/>
                 </HBox>
 
                 <!-- Loading -->
-                <VBox 
+                <VBox
                     visible="{detailView>/loadingProductos}"
                     alignItems="Center"
                     justifyContent="Center"
-                    height="200px"
-                >
+                    height="200px">
                     <BusyIndicator busy="true"/>
                     <Text text="Cargando productos..." class="sapUiSmallMarginTop"/>
                 </VBox>
@@ -44,57 +42,54 @@
                     type="Error"
                     showCloseButton="false"
                     visible="{detailView>/errorProductos}"
-                    class="sapUiSmallMarginBottom"
-                />
+                    class="sapUiSmallMarginBottom"/>
 
                 <!-- Productos List -->
-                <List 
+                <List
                     items="{detailView>/productosLista}"
                     visible="{= ${detailView>/productosLista}.length > 0}"
-                    class="sapUiSmallMarginBottom"
-                >
+                    class="sapUiSmallMarginBottom">
+
                     <CustomListItem>
                         <VBox width="100%" class="sapUiSmallMargin">
                             <!-- Producto expandible -->
                             <Panel
                                 expandable="true"
                                 expanded="false"
-                                headerText="{SKUID} - {PRODUCTNAME}"
-                                width="100%"
-                            >
+                                headerText="{detailView>/SKUID} - {detailView>/PRODUCTNAME}"
+                                width="100%">
+
                                 <content>
                                     <VBox class="sapUiSmallMargin">
                                         <!-- Info General del Producto -->
                                         <f:SimpleForm layout="ResponsiveGridLayout" editable="false" class="sapUiSmallMarginBottom">
                                             <f:content>
                                                 <Label text="SKU"/>
-                                                <Text text="{SKUID}"/>
+                                                <Text text="{detailView>/SKUID}"/>
 
                                                 <Label text="Nombre"/>
-                                                <Text text="{PRODUCTNAME}"/>
+                                                <Text text="{detailView>/PRODUCTNAME}"/>
 
                                                 <Label text="Marca"/>
-                                                <Text text="{MARCA}"/>
+                                                <Text text="{detailView>/MARCA}"/>
                                             </f:content>
                                         </f:SimpleForm>
 
                                         <!-- Presentaciones -->
-                                        <Panel 
+                                        <Panel
                                             headerText="Presentaciones"
                                             expandable="true"
                                             expanded="true"
-                                            width="100%"
-                                        >
+                                            width="100%">
+
                                             <content>
-                                                <List 
-                                                    items="{presentaciones}"
-                                                    noDataText="Sin presentaciones registradas"
-                                                >
+                                                <List
+                                                    items="{detailView>/presentaciones}"
+                                                    noDataText="Sin presentaciones registradas">
                                                     <StandardListItem
-                                                        title="{IdPresentaOK}"
-                                                        description="{Presentacion}"
-                                                        type="Navigation"
-                                                    />
+                                                        title="{detailView>/IdPresentaOK}"
+                                                        description="{detailView>/Presentacion}"
+                                                        type="Navigation"/>
                                                 </List>
                                             </content>
                                         </Panel>
@@ -110,8 +105,7 @@
                     text="No hay productos registrados en esta lista"
                     type="Information"
                     showCloseButton="false"
-                    visible="{= ${detailView>/productosLista}.length === 0 &amp;&amp; !${detailView>/loadingProductos}}"
-                />
+                    visible="{= ${detailView>/productosLista}.length === 0 &amp;&amp; !${detailView>/loadingProductos}}"/>
 
             </VBox>
         </content>
@@ -119,8 +113,7 @@
         <beginButton>
             <Button
                 text="Cerrar"
-                press=".onCloseProductosDialog"
-            />
+                press=".onCloseProductosDialog"/>
         </beginButton>
     </Dialog>
 </core:FragmentDefinition>

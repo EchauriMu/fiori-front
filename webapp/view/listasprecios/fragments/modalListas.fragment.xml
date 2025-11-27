@@ -126,7 +126,7 @@
                                     placeholder="Selecciona SKUs..."
                                     class="sapUiSmallMarginBottom"
                                 >
-                                    <core:Item key="{detailView>SKUID}" text="{detailView>PRODUCTNAME}"/>
+                                    <core:Item key="{detailView>/SKUID}" text="{detailView>/PRODUCTNAME}"/>
                                 </MultiComboBox>
 
                                 <!-- SKUs Seleccionados: Mostrar el primero + contador -->
@@ -277,7 +277,7 @@
                                             <Panel
                                                 expandable="true"
                                                 expanded="false"
-                                                headerText="{SKUID} - {PRODUCTNAME}"
+                                                headerText="{detailView>/SKUID} - {detailView>/PRODUCTNAME}"
                                                 width="100%"
                                                 class="sapUiSmallMarginBottom"
                                             >
@@ -286,13 +286,13 @@
                                                     <f:SimpleForm layout="ResponsiveGridLayout" editable="false" class="sapUiSmallMarginBottom">
                                                         <f:content>
                                                             <Label text="SKU"/>
-                                                            <Text text="{SKUID}"/>
+                                                            <Text text="{detailView>/SKUID}"/>
 
                                                             <Label text="Producto"/>
-                                                            <Text text="{PRODUCTNAME}"/>
+                                                            <Text text="{detailView>/PRODUCTNAME}"/>
 
                                                             <Label text="Marca"/>
-                                                            <Text text="{MARCA}"/>
+                                                            <Text text="{detailView>/MARCA}"/>
                                                         </f:content>
                                                     </f:SimpleForm>
 
@@ -303,19 +303,19 @@
                                                         expanded="false"
                                                         width="100%"
                                                         class="sapUiSmallMarginTop"
-                                                        visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length > 0}"
+                                                        visible="{= ${detailView>/imageFiles} &amp;&amp; ${detailView>/imageFiles}.length > 0}"
                                                     >
                                                         <content>
                                                             <VBox alignItems="Center" justifyContent="Center" class="sapUiSmallMargin">
                                                                 <!-- Carousel de imágenes si hay múltiples -->
-                                                                <VBox visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length > 1}" width="100%">
+                                                                <VBox visible="{= ${detailView>/imageFiles} &amp;&amp; ${detailView>/imageFiles}.length > 1}" width="100%">
                                                                     <Carousel 
-                                                                        pages="{imageFiles}"
+                                                                        pages="{detailView>/imageFiles}"
                                                                         pageIndicatorPlacement="Bottom"
                                                                         width="100%"
                                                                     >
                                                                         <Image 
-                                                                            src="{FILEURL}"
+                                                                            src="{detailView>/FILEURL}"
                                                                             width="300px"
                                                                             height="300px"
                                                                             densityAware="false"/>
@@ -323,9 +323,9 @@
                                                                 </VBox>
 
                                                                 <!-- Imagen simple si solo hay una -->
-                                                                <VBox visible="{= ${imageFiles} &amp;&amp; ${imageFiles}.length === 1}" alignItems="Center" justifyContent="Center">
+                                                                <VBox visible="{= ${detailView>/imageFiles} &amp;&amp; ${detailView>/imageFiles}.length === 1}" alignItems="Center" justifyContent="Center">
                                                                     <Image 
-                                                                        src="{imageFiles/0/FILEURL}"
+                                                                        src="{detailView>/imageFiles/0/FILEURL}"
                                                                         width="300px"
                                                                         height="300px"
                                                                         densityAware="false"/>
@@ -343,7 +343,7 @@
                                                         class="sapUiSmallMarginTop"
                                                     >
                                                         <content>
-                                                            <List items="{presentaciones}">
+                                                            <List items="{SKUID}">
                                                                 <StandardListItem
                                                                     title="{IdPresentaOK}"
                                                                     description="{Presentacion}"
@@ -353,7 +353,7 @@
                                                                 text="Sin presentaciones"
                                                                 type="Information"
                                                                 showCloseButton="false"
-                                                                visible="{= !${presentaciones} || (Array.isArray(${presentaciones}) &amp;&amp; ${presentaciones}.length === 0)}"
+                                                                visible="{= !${detailView>/SKUID} || (Array.isArray(${detailView>/SKUID}) &amp;&amp; ${detailView>/SKUID}.length === 0)}"
                                                             />
                                                         </content>
                                                     </Panel>

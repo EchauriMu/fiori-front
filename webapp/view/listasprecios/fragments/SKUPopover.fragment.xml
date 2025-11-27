@@ -2,52 +2,48 @@
 <core:FragmentDefinition
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
-    xmlns:mvc="sap.ui.core.mvc"
->
+    xmlns:mvc="sap.ui.core.mvc">
+
     <Popover
         id="idSKUPopover"
         placement="Bottom"
         showHeader="false"
-        class="sapUiSmallMargin"
-    >
+        class="sapUiSmallMargin">
+
         <VBox class="sapUiSmallMargin" width="300px">
             <!-- Título -->
             <HBox>
-                <Title 
-                    level="H5" 
-                    text="Productos registrados ({view>SKUSIDS/length})"
-                    class="sapUiBoldText"
-                />
+                <Title
+                    level="H5"
+                    text="Productos registrados ({detailView>/SKUSIDS/length})"
+                    class="sapUiBoldText"/>
             </HBox>
 
             <!-- Lista de SKUs (máximo 10) -->
             <VBox class="sapUiSmallMarginTop">
                 <List
                     items="{
-                        path: 'view>SKUSIDS',
+                        path: 'detailView>/SKUSIDS',
                         startIndex: 0,
                         length: 10
                     }"
                     mode="None"
                     noDataText="Sin SKUs"
                     class="sapUiSmallMargin"
-                    width="100%"
-                >
+                    width="100%">
                     <StandardListItem
-                        title="{view>}"
+                        title="{detailView>}"
                         type="Inactive"
-                        class="sapUiSmallMarginBottom"
-                    />
+                        class="sapUiSmallMarginBottom"/>
                 </List>
             </VBox>
 
             <!-- Mensaje de "más" si hay más de 10 -->
-            <VBox visible="{= ${view>SKUSIDS}.length > 10 }" class="sapUiSmallMarginTop">
-                <Text 
-                    text="{= '+' + (${view>SKUSIDS}.length - 10) + ' más...'}"
+            <VBox visible="{= ${detailView>/SKUSIDS}.length > 10 }" class="sapUiSmallMarginTop">
+                <Text
+                    text="{= '+' + (${detailView>/SKUSIDS}.length - 10) + ' más...'}"
                     class="sapUiTinyText sapUiGreyText sapUiTinyMarginBegin"
-                    textAlign="Center"
-                />
+                    textAlign="Center"/>
             </VBox>
         </VBox>
     </Popover>

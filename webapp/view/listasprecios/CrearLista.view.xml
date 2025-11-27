@@ -45,6 +45,7 @@
                                                 placeholder="Ej: Lista de Precios Retail 2025"
                                                 required="true"
                                                 change=".onDescriptionChange"
+                                                liveChange=".onValidateStep1"
                                                 width="100%"
                                                 maxLength="100"/>
                                         </VBox>
@@ -65,31 +66,41 @@
                                         placeholder="Ej: INST-001"
                                         required="true"
                                         change=".onValidateStep1"
+                                        liveChange=".onValidateStep1"
                                         width="100%"
                                         maxLength="50"/>
                                     
                                     <Label text="Tipo de Lista" class="sapUiTinyMarginTop"/>
                                     <Select
                                         id="selectTipoLista"
+                                        selectedKey="{wizardModel>/IDTIPOLISTAOK}"
+                                        change=".onTipoListaChange"
+                                        width="100%">
+                                        <items>
+                                            <core:Item key="" text="Seleccionar tipo..."/>
+                                            <core:Item key="LISTA_BASE" text="Lista Base"/>
+                                            <core:Item key="LISTA_MAYORISTA" text="Lista Mayorista"/>
+                                            <core:Item key="LISTA_MINORISTA" text="Lista Minorista"/>
+                                            <core:Item key="LISTA_PROMOCIONAL" text="Lista Promocional"/>
+                                            <core:Item key="LISTA_VIP" text="Lista VIP"/>
+                                            <core:Item key="LISTA_ESTACIONAL" text="Lista Estacional"/>
+                                            <core:Item key="LISTA_POR_REGION" text="Lista por Región"/>
+                                            <core:Item key="LISTA_POR_CANAL" text="Lista por Canal"/>
+                                            <core:Item key="LISTA_COSTO" text="Lista de Costo"/>
+                                            <core:Item key="LISTA_ESPECIAL" text="Lista Especial"/>
+                                        </items>
+                                    </Select>
+                                    
+                                    <Label text="Tipo general de lista" class="sapUiTinyMarginTop"/>
+                                    <Select
+                                        id="selectTipoGeneralLista"
                                         selectedKey="{wizardModel>/IDTIPOGENERALISTAOK}"
                                         change=".onTipoGeneralChange"
                                         width="100%">
                                         <items>
-                                            <core:Item key="GENERAL" text="General"/>
+                                            <core:Item key="" text="Seleccionar tipo..."/>
                                             <core:Item key="ESPECIFICA" text="Específica"/>
-                                        </items>
-                                    </Select>
-                                    
-                                    <Label text="Tipo de Fórmula" class="sapUiTinyMarginTop"/>
-                                    <Select
-                                        id="selectTipoFormula"
-                                        selectedKey="{wizardModel>/IDTIPOFORMULAOK}"
-                                        change=".onTipoFormulaChange"
-                                        width="100%">
-                                        <items>
-                                            <core:Item key="FIJO" text="Precio Fijo"/>
-                                            <core:Item key="PORCENTAJE" text="Porcentaje"/>
-                                            <core:Item key="FORMULA" text="Fórmula Personalizada"/>
+                                            <core:Item key="GENERAL" text="General"/>
                                         </items>
                                     </Select>
                                     
@@ -168,40 +179,6 @@
                                             </MultiComboBox>
                                         </VBox>
                                         
-                                        <!-- Rango de Precios -->
-                                        <VBox class="sapUiSmallMarginTop">
-                                            <Label text="Rango de Precios:" class="sapUiTinyMarginBottom"/>
-                                            <Select
-                                                id="selectRangoPrecio"
-                                                selectedKey="{wizardModel>/RANGO_PRECIOS}"
-                                                change=".onRangoPreciosChange"
-                                                width="100%">
-                                                <items>
-                                                    <core:Item key="" text="Selecciona rangos de precio..."/>
-                                                    <core:Item key="BAJO" text="Bajo ($0 - $500)"/>
-                                                    <core:Item key="MEDIO" text="Medio ($500 - $2,000)"/>
-                                                    <core:Item key="ALTO" text="Alto ($2,000 - $10,000)"/>
-                                                    <core:Item key="PREMIUM" text="Premium ($10,000+)"/>
-                                                </items>
-                                            </Select>
-                                        </VBox>
-                                        
-                                        <!-- Tipo de Fórmula -->
-                                        <VBox class="sapUiSmallMarginTop">
-                                            <Label text="Tipo de Fórmula:" class="sapUiTinyMarginBottom"/>
-                                            <Select
-                                                id="selectTipoFormulaFiltro"
-                                                selectedKey="{wizardModel>/IDTIPOFORMULAOK}"
-                                                change=".onTipoFormulaChange"
-                                                width="100%">
-                                                <items>
-                                                    <core:Item key="" text="Todos"/>
-                                                    <core:Item key="FIJO" text="Fijo"/>
-                                                    <core:Item key="PORCENTAJE" text="Porcentaje"/>
-                                                    <core:Item key="DESCUENTO" text="Descuento"/>
-                                                </items>
-                                            </Select>
-                                        </VBox>
                                     </VBox>
                                     
                                     <!-- COLUMNA DERECHA: Productos (75%) - PAGINADA -->
